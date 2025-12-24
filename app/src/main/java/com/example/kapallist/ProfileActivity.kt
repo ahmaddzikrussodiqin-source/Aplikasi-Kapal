@@ -1,0 +1,446 @@
+package com.example.kapallist
+
+import android.app.AlertDialog
+import android.app.DatePickerDialog
+import android.content.Intent
+import android.os.Bundle
+import com.google.android.material.floatingactionbutton.FloatingActionButton
+import android.util.Log
+import android.view.View
+import android.widget.Button
+import android.widget.CheckBox
+import android.widget.CompoundButton
+import android.widget.LinearLayout
+import android.widget.TextView
+import android.widget.Toast
+import androidx.appcompat.app.AppCompatActivity
+import androidx.core.content.ContextCompat
+import com.google.gson.Gson
+import com.google.gson.reflect.TypeToken
+import java.text.SimpleDateFormat
+import java.util.Calendar
+import java.util.Date
+
+class ProfileActivity : AppCompatActivity() {
+    private val checkBoxStates = mutableMapOf<String, Boolean>()
+    private val checkBoxDates = mutableMapOf<String, String>()
+    private val listKapal = mutableListOf<Kapal>()
+    private lateinit var userRole: String
+    private var isProgrammaticChange = false
+    override fun onCreate(savedInstanceState: Bundle?) {
+
+        class ProfileActivity : AppCompatActivity() {
+            override fun onCreate(savedInstanceState: Bundle?) {
+                super.onCreate(savedInstanceState)
+                setContentView(R.layout.activity_profile)
+
+                val btnBack = findViewById<Button>(R.id.btn_back)
+                btnBack.setOnClickListener {
+                    finish()
+                }
+            }
+        }
+
+        super.onCreate(savedInstanceState)
+        supportActionBar?.hide()
+        setContentView(R.layout.activity_profile)
+        val btnBack = findViewById<FloatingActionButton>(R.id.btn_back)
+        btnBack.setOnClickListener {
+            finish()
+        }
+        val sharedPref = getSharedPreferences("login_prefs", MODE_PRIVATE)
+        userRole = sharedPref.getString("role", "Member") ?: "Member"  // Load role
+        loadDataAndBuildUI()
+    }
+
+    override fun onResume() {
+        super.onResume()
+        loadDataAndBuildUI()
+    }
+
+    private fun loadDataAndBuildUI() {
+        val llChecklist = findViewById<LinearLayout>(R.id.ll_checklist)
+
+        // Load dari SharedPreferences
+        val sharedPref = getSharedPreferences("kapal_data", MODE_PRIVATE)
+        val gson = Gson()
+        val json = sharedPref.getString("list_kapal", "[]")
+        val type = object : TypeToken<MutableList<Kapal>>() {}.type
+        val kapalList: MutableList<Kapal> = try {
+            gson.fromJson(json, type) ?: mutableListOf()
+        } catch (e: Exception) {
+            Log.e("ProfileActivity", "Error parsing SharedPreferences: ${e.message}")
+            sharedPref.edit().clear().apply()
+            mutableListOf<Kapal>()
+        }
+        listKapal.clear()
+        listKapal.addAll(kapalList)
+
+        runOnUiThread {
+            buildUI(llChecklist)
+        }
+    }
+
+    private fun buildUI(llChecklist: LinearLayout) {
+        val stateJson = getSharedPreferences("kapal_data", MODE_PRIVATE).getString("checkbox_states", "{}")
+        val stateType = object : TypeToken<MutableMap<String, Boolean>>() {}.type
+        val savedStates: MutableMap<String, Boolean> = Gson().fromJson(stateJson, stateType)
+        checkBoxStates.clear()
+        checkBoxStates.putAll(savedStates)
+
+        val dateJson = getSharedPreferences("kapal_data", MODE_PRIVATE).getString("checkbox_dates", "{}")
+        val dateType = object : TypeToken<MutableMap<String, String>>() {}.type
+        val savedDates: MutableMap<String, String> = Gson().fromJson(dateJson, dateType)
+        checkBoxDates.clear()
+        checkBoxDates.putAll(savedDates)
+
+        llChecklist.removeAllViews()
+
+        if (listKapal.isNotEmpty()) {
+            for (kapal in listKapal) {
+                val tvKapal = TextView(this)
+                val formattedKembali = formatTanggal(kapal.tanggalKembali ?: "")  // Handle null dengan Elvis
+                tvKapal.text = getString(R.string.kapal_info, kapal.nama ?: "", formattedKembali)  // PERBAIKAN: Handle null dengan Elvis
+                tvKapal.textSize = 16f
+                tvKapal.setPadding(0, 16, 0, 8)
+                llChecklist.addView(tvKapal)
+
+                val tvStatus = TextView(this)
+                tvStatus.text = if (kapal.isFinished) "Completed" else "Not Complete"
+                tvStatus.setTextColor(if (kapal.isFinished) android.graphics.Color.GREEN else android.graphics.Color.RED)
+                tvStatus.textSize = 12f
+                tvStatus.layoutParams = LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.WRAP_CONTENT,
+                    LinearLayout.LayoutParams.WRAP_CONTENT
+                ).apply { gravity = android.view.Gravity.END }
+                llChecklist.addView(tvStatus)
+
+                if (kapal.isFinished && !kapal.perkiraanKeberangkatan.isNullOrEmpty()) {
+                    val tvPerkiraan = TextView(this)
+                    tvPerkiraan.text = "Keberangkatan: ${kapal.perkiraanKeberangkatan}"
+                    tvPerkiraan.textSize = 14f
+                    llChecklist.addView(tvPerkiraan)
+
+                    val tvDurasi = TextView(this)
+                    tvDurasi.text = "Durasi Selesai Persiapan: ${kapal.durasiSelesaiPersiapan ?: "Belum selesai"}"  // Handle null dengan Elvis
+                    tvDurasi.textSize = 12f
+                    tvDurasi.setTextColor(android.graphics.Color.BLUE)
+                    llChecklist.addView(tvDurasi)
+
+                    val tvDurasiBerlayar = TextView(this)
+                    val durasiBerlayar = hitungDurasiBerlayar(kapal.perkiraanKeberangkatan)
+                    tvDurasiBerlayar.text = "Durasi Berlayar: $durasiBerlayar"
+                    tvDurasiBerlayar.textSize = 12f
+                    tvDurasiBerlayar.setTextColor(android.graphics.Color.MAGENTA)
+                    llChecklist.addView(tvDurasiBerlayar)
+                }
+
+                val items = kapal.listPersiapan
+                Log.d("ProfileActivity", "Checklist items for ${kapal.nama}: $items")
+
+                val btnFinish = Button(this)
+                btnFinish.text = if (kapal.isFinished) "Batal" else "Finish"  // Ubah teks berdasarkan status
+                btnFinish.setBackgroundResource(R.drawable.button_rounded)
+                btnFinish.setTextColor(android.graphics.Color.WHITE)
+                btnFinish.layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
+                val allCheckedInitial = items.all { checkBoxStates[it] == true }
+                btnFinish.isEnabled = allCheckedInitial && !kapal.isFinished  // Disable jika sudah finished
+
+                // Kontrol akses untuk Member: disable "Batal" jika role Member
+                if (userRole == "Member" && kapal.isFinished) {
+                    btnFinish.isEnabled = false
+                    btnFinish.alpha = 0.5f
+                } else if ((userRole == "Moderator" || userRole == "Supervisi") && kapal.isFinished) {
+                    btnFinish.isEnabled = true  // Enable "Batal" untuk Moderator/Supervisi
+                    btnFinish.alpha = 1.0f
+                }
+
+                for (item in items) {
+                    if (item.isNotEmpty()) {
+                        val itemLayout = LinearLayout(this)
+                        itemLayout.orientation = LinearLayout.HORIZONTAL
+                        itemLayout.layoutParams = LinearLayout.LayoutParams(
+                            LinearLayout.LayoutParams.MATCH_PARENT,
+                            LinearLayout.LayoutParams.WRAP_CONTENT
+                        )
+
+                        val checkBox = CheckBox(this)
+                        checkBox.text = item
+                        checkBox.isChecked = checkBoxStates[item] ?: false
+                        checkBox.isEnabled = !kapal.isFinished
+                        if (checkBox.isChecked) {
+                            checkBox.paintFlags = checkBox.paintFlags or android.graphics.Paint.STRIKE_THRU_TEXT_FLAG
+                        }
+                        checkBox.layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
+
+                        val tvDate = TextView(this)
+                        tvDate.text = checkBoxDates[item] ?: ""
+                        tvDate.setTextColor(android.graphics.Color.BLACK)
+                        tvDate.textSize = 12f
+                        tvDate.layoutParams = LinearLayout.LayoutParams(
+                            LinearLayout.LayoutParams.WRAP_CONTENT,
+                            LinearLayout.LayoutParams.WRAP_CONTENT
+                        ).apply { gravity = android.view.Gravity.END }
+
+                        itemLayout.addView(checkBox)
+                        itemLayout.addView(tvDate)
+
+                        var checkBoxListener: CompoundButton.OnCheckedChangeListener? = null
+                        checkBoxListener = CompoundButton.OnCheckedChangeListener { _, isChecked ->
+                            if (!kapal.isFinished) {
+                                if (isChecked) {
+                                    // Show confirmation dialog for checking
+                                    val alertDialog = AlertDialog.Builder(this@ProfileActivity)
+                                    alertDialog.setMessage("Yakin ingin menyelesaikan ?")
+                                    alertDialog.setPositiveButton("Yakin") { _, _ ->
+                                        checkBoxStates[item] = true
+                                        val dateFormat = SimpleDateFormat("dd/MM/yyyy")
+                                        val currentDate = dateFormat.format(Date())
+                                        checkBoxDates[item] = currentDate
+                                        tvDate.text = currentDate
+                                        checkBox.paintFlags = checkBox.paintFlags or android.graphics.Paint.STRIKE_THRU_TEXT_FLAG
+
+                                        val editor = getSharedPreferences("kapal_data", MODE_PRIVATE).edit()
+                                        val updatedStateJson = Gson().toJson(checkBoxStates)
+                                        editor.putString("checkbox_states", updatedStateJson)
+                                        val updatedDateJson = Gson().toJson(checkBoxDates)
+                                        editor.putString("checkbox_dates", updatedDateJson)
+                                        editor.apply()
+
+                                        val allCheckedNow = items.all { checkBoxStates[it] == true }
+                                        btnFinish.isEnabled = allCheckedNow && !kapal.isFinished
+                                    }
+                                    alertDialog.setNegativeButton("Batal") { _, _ ->
+                                        checkBox.setOnCheckedChangeListener(null)
+                                        checkBox.isChecked = false
+                                        checkBox.setOnCheckedChangeListener(checkBoxListener)
+                                    }
+                                    alertDialog.setCancelable(false)
+                                    alertDialog.show()
+                                } else {
+                                    // Show confirmation dialog for unchecking
+                                    val alertDialog = AlertDialog.Builder(this@ProfileActivity)
+                                    alertDialog.setMessage("Yakin ingin membatalkan ?")
+                                    alertDialog.setPositiveButton("Yakin") { _, _ ->
+                                        checkBoxStates[item] = false
+                                        checkBoxDates.remove(item)
+                                        tvDate.text = ""
+                                        checkBox.paintFlags = checkBox.paintFlags and android.graphics.Paint.STRIKE_THRU_TEXT_FLAG.inv()
+
+                                        val editor = getSharedPreferences("kapal_data", MODE_PRIVATE).edit()
+                                        val updatedStateJson = Gson().toJson(checkBoxStates)
+                                        editor.putString("checkbox_states", updatedStateJson)
+                                        val updatedDateJson = Gson().toJson(checkBoxDates)
+                                        editor.putString("checkbox_dates", updatedDateJson)
+                                        editor.apply()
+
+                                        val allCheckedNow = items.all { checkBoxStates[it] == true }
+                                        btnFinish.isEnabled = allCheckedNow && !kapal.isFinished
+                                    }
+                                    alertDialog.setNegativeButton("Batal") { _, _ ->
+                                        checkBox.setOnCheckedChangeListener(null)
+                                        checkBox.isChecked = true
+                                        checkBox.setOnCheckedChangeListener(checkBoxListener)
+                                    }
+                                    alertDialog.setCancelable(false)
+                                    alertDialog.show()
+                                }
+                            }
+                        }
+                        checkBox.setOnCheckedChangeListener(checkBoxListener)
+                        llChecklist.addView(itemLayout)
+                    }
+                }
+
+                val buttonLayout = LinearLayout(this)
+                buttonLayout.orientation = LinearLayout.HORIZONTAL
+                buttonLayout.layoutParams = LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.MATCH_PARENT,
+                    LinearLayout.LayoutParams.WRAP_CONTENT
+                ).apply { topMargin = 8 }
+                llChecklist.addView(buttonLayout)
+
+                val btnEdit = Button(this)
+                btnEdit.text = "Edit"
+                btnEdit.setBackgroundResource(R.drawable.button_rounded)
+                btnEdit.setTextColor(android.graphics.Color.WHITE)
+                btnEdit.layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
+                // Enable/disable berdasarkan status
+                btnEdit.isEnabled = !kapal.isFinished
+                if (kapal.isFinished) {
+                    btnEdit.alpha = 0.5f
+                } else {
+                    btnEdit.alpha = 1.0f
+                }
+                btnEdit.setOnClickListener {
+                    if (!kapal.isFinished) {
+                        val intent = Intent(this@ProfileActivity, InputActivity::class.java)
+                        intent.putExtra("edit_mode", true)
+                        intent.putExtra("kapal_index", listKapal.indexOf(kapal))
+                        startActivity(intent)
+                    } else {
+                        Toast.makeText(this@ProfileActivity, "Kapal sudah selesai, tidak bisa diedit", Toast.LENGTH_SHORT).show()
+                    }
+                }
+                buttonLayout.addView(btnEdit)
+
+                btnFinish.setOnClickListener {
+                    if (kapal.isFinished) {
+                        // Undo finish jika tombol "Batal" dan role memungkinkan
+                        if (userRole == "Moderator" || userRole == "Supervisi") {
+                            kapal.isFinished = false
+                            kapal.perkiraanKeberangkatan = null
+                            kapal.durasiSelesaiPersiapan = null
+                            // Reset checkbox states untuk kapal ini
+                            items.forEach { checkBoxStates[it] = false }
+                            // Reset checkbox dates untuk kapal ini
+                            items.forEach { checkBoxDates.remove(it) }
+                            // Simpan perubahan ke SharedPreferences
+                            val sharedPref = getSharedPreferences("kapal_data", MODE_PRIVATE)
+                            val gson = Gson()
+                            val json = sharedPref.getString("list_kapal", "[]")
+                            val type = object : TypeToken<MutableList<Kapal>>() {}.type
+                            val kapalList: MutableList<Kapal> = try {
+                                gson.fromJson(json, type) ?: mutableListOf()
+                            } catch (e: Exception) {
+                                mutableListOf()
+                            }
+                            val index = listKapal.indexOf(kapal)
+                            if (index >= 0) {
+                                kapalList[index] = kapal
+                                val editor = sharedPref.edit()
+                                val updatedJson = gson.toJson(kapalList)
+                                editor.putString("list_kapal", updatedJson)
+                                editor.apply()
+                            }
+                            // Simpan state checkbox yang direset
+                            val editor = sharedPref.edit()
+                            val updatedStateJson = Gson().toJson(checkBoxStates)
+                            editor.putString("checkbox_states", updatedStateJson)
+                            val updatedDateJson = Gson().toJson(checkBoxDates)
+                            editor.putString("checkbox_dates", updatedDateJson)
+                            editor.apply()
+                            loadDataAndBuildUI()  // Reload UI
+                            Toast.makeText(this@ProfileActivity, "Proses finish dibatalkan", Toast.LENGTH_SHORT).show()
+                        } else {
+                            Toast.makeText(this@ProfileActivity, "Akses tidak diizinkan untuk membatalkan finish", Toast.LENGTH_SHORT).show()
+                        }
+                    } else {
+                        // Kode finish asli
+                        val allChecked = items.all { checkBoxStates[it] == true }
+                        if (allChecked) {
+                            val alertDialog = AlertDialog.Builder(this@ProfileActivity)
+                            alertDialog.setMessage("Tentukan perkiraan tanggal keberangkatan")
+                            alertDialog.setPositiveButton("OK") { _, _ ->
+                                val calendar = Calendar.getInstance()
+                                val year = calendar.get(Calendar.YEAR)
+                                val month = calendar.get(Calendar.MONTH)
+                                val day = calendar.get(Calendar.DAY_OF_MONTH)
+                                val datePickerDialog = DatePickerDialog(this@ProfileActivity, { _, selectedYear, selectedMonth, selectedDay ->
+                                    val selectedDate = "$selectedDay ${getMonthName(selectedMonth)} $selectedYear"
+                                    val tanggalSelesaiMillis = Calendar.getInstance().apply {
+                                        set(selectedYear, selectedMonth, selectedDay, 0, 0, 0)
+                                    }.timeInMillis
+                                    val durasi = hitungDurasiSelesaiPersiapan(kapal.tanggalKembali, tanggalSelesaiMillis)
+                                    kapal.isFinished = true
+                                    kapal.perkiraanKeberangkatan = selectedDate
+                                    kapal.durasiSelesaiPersiapan = durasi
+                                    // Simpan perubahan ke SharedPreferences
+                                    val sharedPref = getSharedPreferences("kapal_data", MODE_PRIVATE)
+                                    val gson = Gson()
+                                    val json = sharedPref.getString("list_kapal", "[]")
+                                    val type = object : TypeToken<MutableList<Kapal>>() {}.type
+                                    val kapalList: MutableList<Kapal> = try {
+                                        gson.fromJson(json, type) ?: mutableListOf()
+                                    } catch (e: Exception) {
+                                        mutableListOf()
+                                    }
+                                    val index = listKapal.indexOf(kapal)
+                                    if (index >= 0) {
+                                        kapalList[index] = kapal
+                                        val editor = sharedPref.edit()
+                                        val updatedJson = gson.toJson(kapalList)
+                                        editor.putString("list_kapal", updatedJson)
+                                        editor.apply()
+                                    }
+                                    loadDataAndBuildUI()
+                                    Toast.makeText(this@ProfileActivity, "Kapal selesai!", Toast.LENGTH_SHORT).show()
+                                }, year, month, day)
+                                datePickerDialog.setTitle("Pilih Perkiraan Keberangkatan")
+                                datePickerDialog.show()
+                            }
+                            alertDialog.setCancelable(true)
+                            alertDialog.show()
+                        } else {
+                            Toast.makeText(this@ProfileActivity, "Semua checklist harus dicentang", Toast.LENGTH_SHORT).show()
+                        }
+                    }
+                }
+                buttonLayout.addView(btnFinish)
+
+                val separator = View(this)
+                separator.layoutParams = LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.MATCH_PARENT,
+                    2
+                )
+                separator.setBackgroundColor(ContextCompat.getColor(this, android.R.color.darker_gray))
+                llChecklist.addView(separator)
+            }
+        } else {
+            val noData = TextView(this)
+            noData.text = getString(R.string.tidak_ada_item)
+            llChecklist.addView(noData)
+        }
+    }
+
+    private fun hitungDurasiBerlayar(perkiraanKeberangkatan: String?): String {
+        if (perkiraanKeberangkatan.isNullOrEmpty()) return "Belum berlayar"
+        try {
+            val parts = perkiraanKeberangkatan.split(" ")
+            if (parts.size == 3) {
+                val day = parts[0].toInt()
+                val monthName = parts[1].lowercase()
+                val year = parts[2].toInt()
+                val monthNames = arrayOf("januari", "februari", "maret", "april", "mei", "juni", "juli", "agustus", "september", "oktober", "november", "desember")
+                val month = monthNames.indexOf(monthName)
+                if (month == -1) return "Tanggal invalid"
+
+                val keberangkatanCalendar = Calendar.getInstance().apply {
+                    set(year, month, day, 0, 0, 0)
+                }
+                val today = Calendar.getInstance().apply {
+                    set(Calendar.HOUR_OF_DAY, 0)
+                    set(Calendar.MINUTE, 0)
+                    set(Calendar.SECOND, 0)
+                    set(Calendar.MILLISECOND, 0)
+                }
+
+                val diffMillis = today.timeInMillis - keberangkatanCalendar.timeInMillis
+                val diffDays = (diffMillis / (1000 * 60 * 60 * 24)).toInt()
+                return if (diffDays >= 0) "$diffDays hari" else "Belum berlayar"
+            }
+        } catch (e: Exception) {
+            Log.e("ProfileActivity", "Error calculating sailing duration: ${e.message}")
+        }
+        return "Belum berlayar"
+    }
+
+    private fun formatTanggal(tanggal: String): String {
+        if (tanggal.isEmpty()) return ""
+        val parts = tanggal.split("/")
+        if (parts.size == 3) {
+            val day = parts[0]
+            val monthNum = parts[1].toIntOrNull() ?: 1
+            val year = parts[2]
+            val monthNames = arrayOf("Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember")
+            val month = if (monthNum in 1..12) monthNames[monthNum - 1] else "Invalid"
+            return "$day $month $year"
+        }
+        return tanggal
+    }
+
+    private fun getMonthName(month: Int): String {
+        val months = arrayOf("januari", "februari", "maret", "april", "mei", "juni", "juli", "agustus", "september", "oktober", "november", "desember")
+        return months[month]
+    }
+}

@@ -1,0 +1,80 @@
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:padding="16dp">
+
+    <EditText
+        android:id="@+id/et_jenis_edit"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:hint="Jenis Dokumen"
+        android:layout_marginTop="100dp"/>
+
+    <EditText
+        android:id="@+id/et_tanggal_expired_edit"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:hint="Tanggal Expired (dd/mm/yyyy)"
+        android:layout_marginTop="16dp"
+        android:focusable="false"
+        android:clickable="true" />
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Kelola File:"
+        android:textStyle="bold"
+        android:layout_marginTop="16dp" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:layout_marginTop="8dp">
+
+        <Button
+            android:id="@+id/btn_tambah_gambar_edit"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="Tambah Gambar"
+            android:layout_marginEnd="8dp" />
+
+        <Button
+            android:id="@+id/btn_tambah_pdf_edit"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="Tambah PDF" />
+
+    </LinearLayout>
+
+    <TextView
+        android:id="@+id/tv_gambar_list"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Gambar: 0"
+        android:layout_marginTop="16dp"
+        android:clickable="true"
+        android:focusable="true" />
+
+    <TextView
+        android:id="@+id/tv_pdf_list"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="PDF: 0"
+        android:layout_marginTop="8dp"
+        android:clickable="true"
+        android:focusable="true" />
+
+    <Button
+        style="@style/RoundedButton"
+        android:textColor="@color/white"
+        android:id="@+id/btn_simpan_edit"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Simpan"
+        android:layout_marginTop="16dp" />
+
+</LinearLayout>

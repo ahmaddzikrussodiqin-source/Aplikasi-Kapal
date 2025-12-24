@@ -1,0 +1,10 @@
+<resources xmlns:tools="http://schemas.android.com/tools">
+    <!-- Base application theme -->
+    <style name="Theme.KapalList" parent="Theme.Material3.DayNight">  <!-- PERBAIKAN: Ganti ke Material3 theme untuk mendukung MaterialCardView attributes -->
+        <item name="colorPrimary">@color/primary</item>
+        <item name="colorPrimaryDark">@color/primary</item>
+        <item name="colorAccent">@color/secondary</item>
+        <item name="android:statusBarColor" tools:targetApi="l">@color/primary</item>
+        <item name="android:windowContentTransitions">true</item>
+    </style>
+</resources>

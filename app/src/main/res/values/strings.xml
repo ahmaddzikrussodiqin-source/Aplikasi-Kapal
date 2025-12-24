@@ -1,0 +1,49 @@
+<resources>
+    <string name="app_name" translatable="false">Status Kapal</string>
+    <string name="profil_data">Tanggal Berangkat: %1$s\nTanggal Kembali: %2$s\nBahan Bakar Siap: %3$s\nCrew Lengkap: %4$s</string>
+    <string name="judul_aplikasi" translatable="false">Aplikasi Status Kapal</string>
+    <string name="ya">Ya</string> <string name="tidak">Tidak</string>
+    <string name="input_status_kapal" translatable="false">Status Kerja Kapal</string>
+    <string name="lihat_profil_kapal" translatable="false">Daftar Kapal</string>
+    <string name="Dokumen_Kapal" translatable="false">Dokumen Kapal</string>
+    <string name="persiapan_kapal" translatable="false">Persiapan Kapal:</string>
+    <string name="bahan_bakar_siap" translatable="false">Bahan Bakar Siap</string>
+    <string name="crew_lengkap" translatable="false">Crew Lengkap</string>
+    <string name="tanggal_berangkat" translatable="false">Tanggal Berangkat:</string>
+    <string name="tanggal_kembali" translatable="false">Tanggal Kembali:</string>
+    <string name="hint_tanggal" translatable="false">Masukkan tanggal (YYYY-MM-DD)</string>
+    <string name="simpan" translatable="false">Simpan</string>
+    <string name="dokumen_info">%1$s - %2$d gambar</string>
+    <string name="peringatan_perpanjang">( PERPANJANG )</string>
+    <string name="jenis_dokumen">Jenis Dokumen:</string>
+    <string name="hint_jenis_dokumen">Masukkan jenis dokumen (mis: Manifest, Sertifikat)</string>
+    <string name="upload_gambar">Upload Gambar</string>
+    <string name="gambar_dipilih">Gambar dipilih: %s</string>
+    <string name="kapal_info">Nama: %1$s, Kembali: %2$s</string>
+    <string name="checklist_disimpan">Checklist disimpan!</string>
+    <string name="nama_kapal">Nama Kapal:</string>
+    <string name="List_kapal">List Kapal:</string>
+    <string name="hint_list_persiapan">Masukkan item persiapan, satu per baris (contoh:\nDokumen\nPeralatan\nCrew)</string>
+    <string name="nama_kapal_label">Nama Kapal:</string>
+    <string name="tidak_ada_kapal">Tidak ada kapal yang tersimpan.</string>
+    <string name="nama_kapal_format">Nama Kapal: %s</string>
+    <string name="tanggal_berangkat_format">Tanggal Berangkat: %s</string>
+    <string name="tanggal_kembali_format">Tanggal Kembali: %s</string>
+    <string name="tanggal_berangkat_label">Tanggal Berangkat:</string>
+    <string name="tanggal_kembali_label">Tanggal Kembali:</string>
+    <string name="checklist_persiapan">Checklist Persiapan:</string>
+    <string name="tidak_ada_item">Tidak ada item persiapan.</string>
+    <string name="hint_nama_kapal">Masukkan nama kapal</string>
+    <string name="list_persiapan">List Persiapan Kapal :</string>
+    <string name="profil_kapal" translatable="false">List Kapal</string>
+    <string name="data_placeholder" translatable="false">Data akan muncul di sini...</string>
+    <string name="data_disimpan" translatable="false">Data disimpan!</string>
+    <string name="tambahkan_kapal">Tambahkan Kapal</string>
+    <string name="dokumen_kapal">Dokumen Kapal</string>
+    <string name="save">Save</string>
+    <string name="todo">TODO</string>
+    <string name="edit">Edit</string>
+    <string name="hapus">Hapus</string>
+    <string name="ubah_gambar">Ubah Gambar</string>
+    <string name="preview">Preview</string>
+</resources>

@@ -1,0 +1,41 @@
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent" android:layout_height="wrap_content">
+
+    <LinearLayout
+        android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:orientation="vertical" android:padding="16dp">
+
+        <EditText android:id="@+id/et_nama_pemilik"
+            android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:hint="Nama Pemilik Kapal" />
+
+        <EditText android:id="@+id/et_tanda_selar"
+            android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:hint="Tanda Selar" />
+
+        <EditText android:id="@+id/et_tanda_pengenal"
+            android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:hint="Tanda Pengenal Kapal" />
+
+        <EditText android:id="@+id/et_berat_kotor"
+            android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:hint="Berat Kotor" />
+
+        <EditText android:id="@+id/et_berat_bersih"
+            android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:hint="Berat Bersih" />
+
+        <EditText android:id="@+id/et_merek_mesin"
+            android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:hint="Merek Mesin" />
+
+        <EditText android:id="@+id/et_nomor_seri_mesin"
+            android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:hint="Nomor Seri Mesin" />
+
+        <EditText android:id="@+id/et_jenis_alat_tangkap"
+            android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:hint="Jenis Alat Tangkap" />
+
+    </LinearLayout>
+</ScrollView>

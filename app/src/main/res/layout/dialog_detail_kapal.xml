@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:padding="16dp">
+
+    <TextView
+        android:id="@+id/tv_nama_pemilik"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Nama Pemilik Kapal"
+        android:textSize="14sp" />
+
+    <TextView
+        android:id="@+id/tv_tanda_selar"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Tanda Selar"
+        android:textSize="14sp" />
+
+    <TextView
+        android:id="@+id/tv_tanda_pengenal"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Tanda Pengenal Kapal"
+        android:textSize="14sp" />
+
+    <TextView
+        android:id="@+id/tv_berat_kotor"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Berat Kotor"
+        android:textSize="14sp" />
+
+    <TextView
+        android:id="@+id/tv_berat_bersih"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Berat Bersih"
+        android:textSize="14sp" />
+
+    <TextView
+        android:id="@+id/tv_merek_mesin"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Merek Mesin"
+        android:textSize="14sp" />
+
+    <TextView
+        android:id="@+id/tv_nomor_seri_mesin"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Nomor Seri Mesin"
+        android:textSize="14sp" />
+
+    <TextView
+        android:id="@+id/tv_jenis_alat_tangkap"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Jenis Alat Tangkap"
+        android:textSize="14sp" />
+
+
+
+</LinearLayout>

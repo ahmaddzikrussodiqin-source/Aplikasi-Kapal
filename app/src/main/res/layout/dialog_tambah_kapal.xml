@@ -1,0 +1,23 @@
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:padding="16dp">
+
+    <EditText
+        android:id="@+id/et_nama_kapal_dialog"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:hint="Nama Kapal"
+        android:layout_marginTop="100dp"/>
+
+    <Button
+        style="@style/RoundedButton"
+        android:textColor="@color/white"
+        android:id="@+id/btn_simpan_kapal"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Simpan Kapal"
+        android:layout_marginTop="16dp" />
+
+</LinearLayout>
