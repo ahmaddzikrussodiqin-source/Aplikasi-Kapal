@@ -300,8 +300,8 @@ class ProfileActivity : AppCompatActivity() {
                             val sharedPref = getSharedPreferences("kapal_data", MODE_PRIVATE)
                             val gson = Gson()
                             val json = sharedPref.getString("list_kapal", "[]")
-                            val type = object : TypeToken<MutableList<Kapal>>() {}.type
-                            val kapalList: MutableList<Kapal> = try {
+                            val type = object : TypeToken<MutableList<KapalEntity>>() {}.type
+                            val kapalList: MutableList<KapalEntity> = try {
                                 gson.fromJson(json, type) ?: mutableListOf()
                             } catch (e: Exception) {
                                 mutableListOf()
@@ -350,8 +350,8 @@ class ProfileActivity : AppCompatActivity() {
                                     val sharedPref = getSharedPreferences("kapal_data", MODE_PRIVATE)
                                     val gson = Gson()
                                     val json = sharedPref.getString("list_kapal", "[]")
-                                    val type = object : TypeToken<MutableList<Kapal>>() {}.type
-                                    val kapalList: MutableList<Kapal> = try {
+                                    val type = object : TypeToken<MutableList<KapalEntity>>() {}.type
+                                    val kapalList: MutableList<KapalEntity> = try {
                                         gson.fromJson(json, type) ?: mutableListOf()
                                     } catch (e: Exception) {
                                         mutableListOf()
