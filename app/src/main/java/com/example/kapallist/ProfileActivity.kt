@@ -15,8 +15,10 @@ import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
+import androidx.lifecycle.lifecycleScope
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
+import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Date
@@ -24,23 +26,11 @@ import java.util.Date
 class ProfileActivity : AppCompatActivity() {
     private val checkBoxStates = mutableMapOf<String, Boolean>()
     private val checkBoxDates = mutableMapOf<String, String>()
-    private val listKapal = mutableListOf<Kapal>()
+    private val listKapal = mutableListOf<KapalEntity>()
     private lateinit var userRole: String
     private var isProgrammaticChange = false
+
     override fun onCreate(savedInstanceState: Bundle?) {
-
-        class ProfileActivity : AppCompatActivity() {
-            override fun onCreate(savedInstanceState: Bundle?) {
-                super.onCreate(savedInstanceState)
-                setContentView(R.layout.activity_profile)
-
-                val btnBack = findViewById<Button>(R.id.btn_back)
-                btnBack.setOnClickListener {
-                    finish()
-                }
-            }
-        }
-
         super.onCreate(savedInstanceState)
         supportActionBar?.hide()
         setContentView(R.layout.activity_profile)
@@ -61,23 +51,34 @@ class ProfileActivity : AppCompatActivity() {
     private fun loadDataAndBuildUI() {
         val llChecklist = findViewById<LinearLayout>(R.id.ll_checklist)
 
-        // Load dari SharedPreferences
-        val sharedPref = getSharedPreferences("kapal_data", MODE_PRIVATE)
-        val gson = Gson()
-        val json = sharedPref.getString("list_kapal", "[]")
-        val type = object : TypeToken<MutableList<Kapal>>() {}.type
-        val kapalList: MutableList<Kapal> = try {
-            gson.fromJson(json, type) ?: mutableListOf()
-        } catch (e: Exception) {
-            Log.e("ProfileActivity", "Error parsing SharedPreferences: ${e.message}")
-            sharedPref.edit().clear().apply()
-            mutableListOf<Kapal>()
-        }
-        listKapal.clear()
-        listKapal.addAll(kapalList)
+        lifecycleScope.launch {
+            try {
+                val sharedPref = getSharedPreferences("login_prefs", MODE_PRIVATE)
+                val token = sharedPref.getString("token", "") ?: ""
+                if (token.isEmpty()) {
+                    Toast.makeText(this@ProfileActivity, "Token tidak ditemukan", Toast.LENGTH_SHORT).show()
+                    return@launch
+                }
 
-        runOnUiThread {
-            buildUI(llChecklist)
+                val response = ApiClient.apiService.getAllKapal("Bearer $token")
+                if (response.isSuccessful) {
+                    val apiResponse = response.body()
+                    if (apiResponse?.success == true) {
+                        val kapalList = apiResponse.data ?: emptyList()
+                        listKapal.clear()
+                        listKapal.addAll(kapalList)
+                        runOnUiThread {
+                            buildUI(llChecklist)
+                        }
+                    } else {
+                        Toast.makeText(this@ProfileActivity, "Gagal memuat data kapal", Toast.LENGTH_SHORT).show()
+                    }
+                } else {
+                    Toast.makeText(this@ProfileActivity, "Gagal memuat data kapal: ${response.message()}", Toast.LENGTH_SHORT).show()
+                }
+            } catch (e: Exception) {
+                Toast.makeText(this@ProfileActivity, "Error: ${e.message}", Toast.LENGTH_SHORT).show()
+            }
         }
     }
 
