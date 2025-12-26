@@ -73,5 +73,49 @@ class LoginActivity : AppCompatActivity() {
                 }
             }
         }
+
+        btnRegister.setOnClickListener {
+            val userId = etUserId.text.toString().trim()
+            val password = etPassword.text.toString().trim()
+
+            // Validasi input
+            if (userId.isEmpty() || password.isEmpty()) {
+                Toast.makeText(this@LoginActivity, "User ID dan Password harus diisi", Toast.LENGTH_SHORT).show()
+                return@setOnClickListener
+            }
+
+            if (password.length < 6) {
+                Toast.makeText(this@LoginActivity, "Password minimal 6 karakter", Toast.LENGTH_SHORT).show()
+                return@setOnClickListener
+            }
+
+            lifecycleScope.launch {
+                try {
+                    // Call API register
+                    val registerRequest = RegisterRequest(userId, password)
+                    val response = ApiClient.apiService.register(registerRequest)
+                    if (response.isSuccessful) {
+                        val apiResponse = response.body()
+                        if (apiResponse?.success == true) {
+                            Toast.makeText(this@LoginActivity, "Akun berhasil dibuat! Silakan login.", Toast.LENGTH_LONG).show()
+                            // Clear fields after successful registration
+                            etUserId.text.clear()
+                            etPassword.text.clear()
+                        } else {
+                            Toast.makeText(this@LoginActivity, "Gagal membuat akun: ${apiResponse?.message}", Toast.LENGTH_SHORT).show()
+                        }
+                    } else {
+                        val errorMessage = when (response.code()) {
+                            409 -> "User ID sudah digunakan"
+                            400 -> "Data tidak valid"
+                            else -> "Gagal membuat akun: ${response.message()}"
+                        }
+                        Toast.makeText(this@LoginActivity, errorMessage, Toast.LENGTH_SHORT).show()
+                    }
+                } catch (e: Exception) {
+                    Toast.makeText(this@LoginActivity, "Error: ${e.message}", Toast.LENGTH_SHORT).show()
+                }
+            }
+        }
     }
 }
