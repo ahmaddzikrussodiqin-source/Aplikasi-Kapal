@@ -358,9 +358,12 @@ class ProfileActivity : AppCompatActivity() {
                                                 return@launch
                                             }
 
+                                            Log.d("ProfileActivity", "Updating kapal id: ${kapal.id}, updatedKapal: $updatedKapal")
                                             val response = ApiClient.apiService.updateKapal("Bearer $token", kapal.id, updatedKapal)
+                                            Log.d("ProfileActivity", "Response code: ${response.code()}, message: ${response.message()}")
                                             if (response.isSuccessful) {
                                                 val apiResponse = response.body()
+                                                Log.d("ProfileActivity", "API response: $apiResponse")
                                                 if (apiResponse?.success == true) {
                                                     loadDataAndBuildUI()
                                                     Toast.makeText(this@ProfileActivity, "Kapal selesai!", Toast.LENGTH_SHORT).show()
