@@ -318,6 +318,42 @@ app.delete('/api/users/:userId', authenticateToken, (req, res) => {
     });
 });
 
+// Helper function to safely parse listPersiapan
+function parseListPersiapan(value) {
+    if (!value) return [];
+
+    // If it's already an array, return it
+    if (Array.isArray(value)) return value;
+
+    // If it's '[]' or 'null', return empty array
+    if (value === '[]' || value === 'null') return [];
+
+    // Try to parse as JSON
+    try {
+        const parsed = JSON.parse(value);
+        if (Array.isArray(parsed)) return parsed;
+        if (typeof parsed === 'string') {
+            return parsed.split(/[,;\n]/).map(s => s.trim()).filter(s => s.length > 0);
+        }
+        return [];
+    } catch (e) {
+        // If JSON.parse fails, try to parse as string
+        if (typeof value === 'string') {
+            // If it looks like JSON array, try to parse it
+            if (value.startsWith('[') && value.endsWith(']')) {
+                try {
+                    return JSON.parse(value);
+                } catch (e2) {
+                    return [];
+                }
+            }
+            // Otherwise, split by comma/newline
+            return value.split(/[,;\n]/).map(s => s.trim()).filter(s => s.length > 0);
+        }
+        return [];
+    }
+}
+
 // Kapal routes (protected)
 app.get('/api/kapal', authenticateToken, (req, res) => {
     db.all('SELECT * FROM kapal ORDER BY id DESC', [], (err, kapal) => {
@@ -331,7 +367,7 @@ app.get('/api/kapal', authenticateToken, (req, res) => {
         // Parse JSON strings back to arrays
         const parsedKapal = kapal.map(k => ({
             ...k,
-            listPersiapan: JSON.parse(k.listPersiapan || '[]'),
+            listPersiapan: parseListPersiapan(k.listPersiapan),
             listDokumen: JSON.parse(k.listDokumen || '[]')
         }));
 
@@ -364,7 +400,7 @@ app.get('/api/kapal/:id', authenticateToken, (req, res) => {
         // Parse JSON strings back to arrays
         const parsedKapal = {
             ...kapal,
-            listPersiapan: JSON.parse(kapal.listPersiapan || '[]'),
+            listPersiapan: parseListPersiapan(kapal.listPersiapan),
             listDokumen: JSON.parse(kapal.listDokumen || '[]')
         };
 
@@ -414,10 +450,17 @@ app.post('/api/kapal', authenticateToken, (req, res) => {
                 });
             }
 
+            // Parse JSON strings back to arrays
+            const parsedKapal = {
+                ...kapal,
+                listPersiapan: parseListPersiapan(kapal.listPersiapan),
+                listDokumen: JSON.parse(kapal.listDokumen || '[]')
+            };
+
             res.status(201).json({
                 success: true,
                 message: 'Kapal created successfully',
-                data: kapal
+                data: parsedKapal
             });
         });
     });
