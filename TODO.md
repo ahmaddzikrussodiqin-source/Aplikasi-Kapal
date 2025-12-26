@@ -1,38 +1,26 @@
-# KapalList Synchronization Implementation - COMPLETED
+# TODO: Separate Database Tables for Kapal, Dokumen, and Kapal Masuk
 
-## Completed Tasks
-- [x] Analyze project structure and requirements
-- [x] Confirm deployment plan with user
-- [x] Install Railway CLI on Windows
-- [x] Login to Railway account via CLI (manual step)
-- [x] Create new Railway project (manual step)
-- [x] Add PostgreSQL database to project (manual step)
-- [x] Deploy backend to Railway (manual step)
-- [x] Verify DATABASE_URL environment variable is set
-- [x] Update Android app BASE_URL to Railway URL
-- [x] Test deployment and database connection
-- [x] Implement ship list synchronization (DaftarKapalActivity)
-- [x] Implement ship document synchronization (DocumentActivity)
-- [x] Implement work status synchronization (InputActivity)
-- [x] Update KapalAdapter to sync with Railway API
-- [x] Test cross-device synchronization functionality
+## Information Gathered
+- Current KapalEntity has listDokumen as List<DokumenKapal>, stored as JSON.
+- DokumenKapal has jenis, pathGambar (MutableList<String>), pathPdf (MutableList<String>), tanggalExpired.
+- Kapal masuk: ships with tanggalKembali not null.
+- Goal: Separate tables to avoid cloning data.
 
-## Synchronization Features Implemented
-- **Ship List (Daftar Kapal)**: CRUD operations synced across devices via Railway PostgreSQL
-- **Ship Documents (Dokumen Kapal)**: Document management with images/PDFs synced across devices
-- **Work Status (Status Kerja Kapal)**: Preparation lists, work status, and completion tracking synced
-- **Real-time Sync**: All changes immediately reflected across all user devices
-- **Offline Support**: Local Room database for offline access with sync on reconnection
+## Plan
+- Create DokumenEntity with foreign key to kapal_id.
+- Modify KapalEntity to remove listDokumen.
+- Create KapalMasukEntity for returned ships.
+- Update KapalDatabase with new entities and migrations.
+- Create DokumenDao and KapalMasukDao.
+- Update Converters for JSON lists.
 
-## Architecture
-- **Backend**: Node.js + Express + PostgreSQL on Railway
-- **Frontend**: Android app with Room database + Retrofit API client
-- **Sync Strategy**: API-first with local caching for offline support
-- **Authentication**: JWT-based user authentication
-- **Data Models**: KapalEntity, DokumenKapal, User with full CRUD operations
-
-## Testing Results
-- Railway backend deployed successfully at https://aplikasi-kapal-production.up.railway.app/
-- API endpoints tested and functional
-- Android app configured for Railway integration
-- Cross-device synchronization verified
+## Steps
+- [ ] Create DokumenEntity.kt
+- [ ] Create KapalMasukEntity.kt
+- [ ] Modify KapalEntity.kt (remove listDokumen)
+- [ ] Create DokumenDao.kt
+- [ ] Create KapalMasukDao.kt
+- [ ] Update KapalDatabase.kt (add entities, version, migrations)
+- [ ] Update Converters.kt if needed
+- [ ] Test database changes
+- [ ] Update activities to use new structure

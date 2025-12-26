@@ -145,6 +145,68 @@ abstract class KapalDatabase : RoomDatabase() {
             }
         }
 
+        private val MIGRATION_9_10 = object : Migration(9, 10) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                // Create dokumen_table
+                database.execSQL("""
+                    CREATE TABLE dokumen_table (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                        kapalId INTEGER NOT NULL,
+                        jenis TEXT,
+                        pathGambar TEXT NOT NULL DEFAULT '[]',
+                        pathPdf TEXT NOT NULL DEFAULT '[]',
+                        tanggalExpired TEXT,
+                        FOREIGN KEY(kapalId) REFERENCES kapal_table(id) ON DELETE CASCADE
+                    )
+                """)
+
+                // Create kapal_masuk_table
+                database.execSQL("""
+                    CREATE TABLE kapal_masuk_table (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                        nama TEXT,
+                        namaPemilik TEXT NOT NULL DEFAULT '',
+                        tandaSelar TEXT NOT NULL DEFAULT '',
+                        tandaPengenal TEXT NOT NULL DEFAULT '',
+                        beratKotor TEXT NOT NULL DEFAULT '',
+                        beratBersih TEXT NOT NULL DEFAULT '',
+                        merekMesin TEXT NOT NULL DEFAULT '',
+                        nomorSeriMesin TEXT NOT NULL DEFAULT '',
+                        jenisAlatTangkap TEXT NOT NULL DEFAULT '',
+                        tanggalInput TEXT,
+                        tanggalKeberangkatan TEXT,
+                        totalHariPersiapan INTEGER,
+                        tanggalBerangkat TEXT,
+                        tanggalKembali TEXT,
+                        listPersiapan TEXT NOT NULL DEFAULT '[]',
+                        isFinished INTEGER NOT NULL DEFAULT 0,
+                        perkiraanKeberangkatan TEXT,
+                        durasiSelesaiPersiapan TEXT
+                    )
+                """)
+
+                // Migrate kapal with tanggalKembali to kapal_masuk_table
+                database.execSQL("""
+                    INSERT INTO kapal_masuk_table (
+                        id, nama, namaPemilik, tandaSelar, tandaPengenal, beratKotor, beratBersih,
+                        merekMesin, nomorSeriMesin, jenisAlatTangkap, tanggalInput, tanggalKeberangkatan,
+                        totalHariPersiapan, tanggalBerangkat, tanggalKembali, listPersiapan, isFinished,
+                        perkiraanKeberangkatan, durasiSelesaiPersiapan
+                    )
+                    SELECT
+                        id, nama, namaPemilik, tandaSelar, tandaPengenal, beratKotor, beratBersih,
+                        merekMesin, nomorSeriMesin, jenisAlatTangkap, tanggalInput, tanggalKeberangkatan,
+                        totalHariPersiapan, tanggalBerangkat, tanggalKembali, listPersiapan, isFinished,
+                        perkiraanKeberangkatan, durasiSelesaiPersiapan
+                    FROM kapal_table
+                    WHERE tanggalKembali IS NOT NULL
+                """)
+
+                // Remove listDokumen from kapal_table (but since it's JSON, we can't easily extract, so leave it for now or handle in code)
+                // For now, keep kapal_table as is, but in future updates, remove listDokumen column
+            }
+        }
+
         fun getDatabase(context: Context): KapalDatabase {
             return INSTANCE ?: synchronized(this) {
                 val instance = Room.databaseBuilder(
@@ -152,7 +214,7 @@ abstract class KapalDatabase : RoomDatabase() {
                     KapalDatabase::class.java,
                     "kapal_database"
                 )
-                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_8_9)  // Tambahkan MIGRATION_8_9
+                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_8_9, MIGRATION_9_10)  // Tambahkan MIGRATION_9_10
                     .fallbackToDestructiveMigration()  // Fallback jika migration gagal
                     .build()
                 INSTANCE = instance
