@@ -343,29 +343,37 @@ class ProfileActivity : AppCompatActivity() {
                                         set(selectedYear, selectedMonth, selectedDay, 0, 0, 0)
                                     }.timeInMillis
                                     val durasi = hitungDurasiSelesaiPersiapan(kapal.tanggalKembali, tanggalSelesaiMillis)
-                                    kapal.isFinished = true
-                                    kapal.perkiraanKeberangkatan = selectedDate
-                                    kapal.durasiSelesaiPersiapan = durasi
-                                    // Simpan perubahan ke SharedPreferences
-                                    val sharedPref = getSharedPreferences("kapal_data", MODE_PRIVATE)
-                                    val gson = Gson()
-                                    val json = sharedPref.getString("list_kapal", "[]")
-                                    val type = object : TypeToken<MutableList<KapalEntity>>() {}.type
-                                    val kapalList: MutableList<KapalEntity> = try {
-                                        gson.fromJson(json, type) ?: mutableListOf()
-                                    } catch (e: Exception) {
-                                        mutableListOf()
+                                    val updatedKapal = kapal.copy(
+                                        isFinished = true,
+                                        perkiraanKeberangkatan = selectedDate,
+                                        durasiSelesaiPersiapan = durasi
+                                    )
+                                    // Update via API
+                                    lifecycleScope.launch {
+                                        try {
+                                            val sharedPref = getSharedPreferences("login_prefs", MODE_PRIVATE)
+                                            val token = sharedPref.getString("token", "") ?: ""
+                                            if (token.isEmpty()) {
+                                                Toast.makeText(this@ProfileActivity, "Token tidak ditemukan", Toast.LENGTH_SHORT).show()
+                                                return@launch
+                                            }
+
+                                            val response = ApiClient.apiService.updateKapal("Bearer $token", kapal.id, updatedKapal)
+                                            if (response.isSuccessful) {
+                                                val apiResponse = response.body()
+                                                if (apiResponse?.success == true) {
+                                                    loadDataAndBuildUI()
+                                                    Toast.makeText(this@ProfileActivity, "Kapal selesai!", Toast.LENGTH_SHORT).show()
+                                                } else {
+                                                    Toast.makeText(this@ProfileActivity, "Gagal update kapal", Toast.LENGTH_SHORT).show()
+                                                }
+                                            } else {
+                                                Toast.makeText(this@ProfileActivity, "Gagal update kapal: ${response.message()}", Toast.LENGTH_SHORT).show()
+                                            }
+                                        } catch (e: Exception) {
+                                            Toast.makeText(this@ProfileActivity, "Error: ${e.message}", Toast.LENGTH_SHORT).show()
+                                        }
                                     }
-                                    val index = listKapal.indexOf(kapal)
-                                    if (index >= 0) {
-                                        kapalList[index] = kapal
-                                        val editor = sharedPref.edit()
-                                        val updatedJson = gson.toJson(kapalList)
-                                        editor.putString("list_kapal", updatedJson)
-                                        editor.apply()
-                                    }
-                                    loadDataAndBuildUI()
-                                    Toast.makeText(this@ProfileActivity, "Kapal selesai!", Toast.LENGTH_SHORT).show()
                                 }, year, month, day)
                                 datePickerDialog.setTitle("Pilih Perkiraan Keberangkatan")
                                 datePickerDialog.show()
