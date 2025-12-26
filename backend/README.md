@@ -1,6 +1,6 @@
 # KapalList Backend
 
-Backend API untuk aplikasi KapalList menggunakan Node.js, Express, dan SQLite.
+Backend API untuk aplikasi KapalList menggunakan Node.js, Express, dan PostgreSQL.
 
 ## Instalasi
 
@@ -40,15 +40,17 @@ npm run dev
 ### File Upload (Protected)
 - `POST /api/upload` - Upload file
 
-## Deployment ke IDCloudHost
+## Deployment ke Railway
 
-1. Upload semua file backend ke server Anda
-2. Install Node.js di server
-3. Install dependencies: `npm install`
-4. Jalankan server: `npm start`
-5. Pastikan port yang digunakan dapat diakses
+1. Buat project baru di Railway
+2. Tambahkan PostgreSQL database ke project
+3. Deploy backend menggunakan Dockerfile
+4. Set environment variable `DATABASE_URL` dengan connection string PostgreSQL dari Railway
+5. Update `BASE_URL` di aplikasi Android ke URL Railway yang baru
 
 ## Environment Variables
 
 - `PORT` - Port server (default: 3000)
-- `JWT_SECRET` - Secret key untuk JWT (default: 'your-secret-key')
+- `JWT_SECRET` - Secret key untuk JWT (default: 'your-super-secret-jwt-key-change-this-in-production')
+- `DATABASE_URL` - PostgreSQL connection string (required for production)
+- `NODE_ENV` - Environment (production/development)
