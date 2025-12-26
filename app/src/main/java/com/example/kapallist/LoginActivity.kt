@@ -40,24 +40,35 @@ class LoginActivity : AppCompatActivity() {
             val password = etPassword.text.toString().trim()
 
             lifecycleScope.launch {
-                val user = database.userDao().getUser(userId)
-                if (user != null && user.password == password) {
-                    // Simpan status login ke SharedPreferences (untuk session)
-                    val sharedPref = getSharedPreferences("login_prefs", MODE_PRIVATE)
-                    val editor = sharedPref.edit()
-                    editor.putBoolean("is_logged_in", true)
-                    editor.putString("user_id", userId)
-                    editor.putString("user_name", user.userId)
-                    // Hapus jabatan, gunakan role default atau load dari SharedPreferences jika perlu
-                    editor.putString("role", "Moderator")  // Set default role, atau load dari tempat lain
-                    editor.putString("photo_uri", user.photoUri)
-                    editor.apply()
+                try {
+                    // Call API login
+                    val loginRequest = LoginRequest(userId, password)
+                    val response = ApiClient.apiService.login(loginRequest)
+                    if (response.isSuccessful) {
+                        val loginResponse = response.body()
+                        if (loginResponse != null) {
+                            // Simpan status login ke SharedPreferences
+                            val sharedPref = getSharedPreferences("login_prefs", MODE_PRIVATE)
+                            val editor = sharedPref.edit()
+                            editor.putBoolean("is_logged_in", true)
+                            editor.putString("user_id", userId)
+                            editor.putString("user_name", userId)
+                            editor.putString("token", loginResponse.token)
+                            editor.putString("role", "Moderator")  // Set default role
+                            editor.putString("photo_uri", loginResponse.user.photoUri)
+                            editor.apply()
 
-                    val intent = Intent(this@LoginActivity, MainActivity::class.java)
-                    startActivity(intent)
-                    finish()
-                } else {
-                    Toast.makeText(this@LoginActivity, "User ID atau Password salah", Toast.LENGTH_SHORT).show()
+                            val intent = Intent(this@LoginActivity, MainActivity::class.java)
+                            startActivity(intent)
+                            finish()
+                        } else {
+                            Toast.makeText(this@LoginActivity, "Login gagal", Toast.LENGTH_SHORT).show()
+                        }
+                    } else {
+                        Toast.makeText(this@LoginActivity, "Login gagal: ${response.message()}", Toast.LENGTH_SHORT).show()
+                    }
+                } catch (e: Exception) {
+                    Toast.makeText(this@LoginActivity, "Error: ${e.message}", Toast.LENGTH_SHORT).show()
                 }
             }
         }

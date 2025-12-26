@@ -9,8 +9,8 @@ import androidx.recyclerview.widget.RecyclerView
 import com.example.kapallist.R
 
 class DocumentKapalAdapter(
-    private val kapalList: MutableList<Kapal>,
-    private val onItemClick: (Kapal) -> Unit
+    private val kapalList: MutableList<KapalEntity>,
+    private val onItemClick: (KapalEntity) -> Unit
 ) : RecyclerView.Adapter<DocumentKapalAdapter.KapalViewHolder>() {
 
     inner class KapalViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {

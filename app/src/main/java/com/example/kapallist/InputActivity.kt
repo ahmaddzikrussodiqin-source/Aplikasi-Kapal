@@ -21,6 +21,9 @@ import java.util.Calendar
 class InputActivity : AppCompatActivity() {
     private val listPersiapan = mutableListOf<String>()
     private val listDokumen = mutableListOf<DokumenKapal>()
+    private lateinit var sharedPref: android.content.SharedPreferences
+    private var editMode: Boolean = false
+    private var kapalIndex: Int = -1
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -159,7 +162,7 @@ class InputActivity : AppCompatActivity() {
                             nama = namaKapal,
                             tanggalKembali = tanggalKembali,
                             listPersiapan = listPersiapan,
-                            listDokumen = listDokumen.map { it.toString() } // Convert to string list
+                            listDokumen = listDokumen // Already MutableList<DokumenKapal>
                         )
 
                         // Create new kapal (edit functionality removed for simplicity)

@@ -33,7 +33,7 @@ class DocumentActivity : AppCompatActivity() {
     }
 
     private lateinit var kapalAdapter: DocumentKapalAdapter
-    private var listKapal = mutableListOf<Kapal>()
+    private var listKapal = mutableListOf<KapalEntity>()
     private lateinit var database: KapalDatabase
 
     private var currentKapalPosition: Int = -1
@@ -44,7 +44,7 @@ class DocumentActivity : AppCompatActivity() {
     private lateinit var btnBack: FloatingActionButton
     private lateinit var btnAddDokumen: FloatingActionButton
 
-    private var currentKapal: Kapal? = null
+    private var currentKapal: KapalEntity? = null
     private var showingShipList = true
     private var pendingGambarAdditions = mutableListOf<String>()
     private var pendingPdfAdditions = mutableListOf<String>()
@@ -78,7 +78,7 @@ class DocumentActivity : AppCompatActivity() {
         btnBack.setOnClickListener { finish() }
         btnAddDokumen.setOnClickListener {
             currentKapal?.let { kapal ->
-                showTambahDokumenDialog(kapal.listDokumen, currentDokumenAdapter!!)
+                showTambahDokumenDialog(kapal.listDokumen.toMutableList(), currentDokumenAdapter!!)
             }
         }
 
@@ -109,22 +109,7 @@ class DocumentActivity : AppCompatActivity() {
                     if (apiResponse?.success == true) {
                         val kapalEntities = apiResponse.data ?: emptyList()
                         listKapal.clear()
-                        listKapal.addAll(kapalEntities.map { entity ->
-                            Kapal(
-                                id = entity.id,
-                                nama = entity.nama ?: "",
-                                tanggalInput = entity.tanggalInput,
-                                tanggalKeberangkatan = entity.tanggalKeberangkatan,
-                                totalHariPersiapan = entity.totalHariPersiapan,
-                                tanggalBerangkat = entity.tanggalBerangkat,
-                                tanggalKembali = entity.tanggalKembali,
-                                listPersiapan = entity.listPersiapan.toMutableList(),
-                                listDokumen = entity.listDokumen.toMutableList(),
-                                isFinished = entity.isFinished,
-                                perkiraanKeberangkatan = entity.perkiraanKeberangkatan,
-                                durasiSelesaiPersiapan = entity.durasiSelesaiPersiapan
-                            )
-                        })
+                        listKapal.addAll(kapalEntities)
                         kapalAdapter.notifyDataSetChanged()
                     } else {
                         Toast.makeText(this@DocumentActivity, "Gagal memuat data kapal", Toast.LENGTH_LONG).show()
@@ -144,7 +129,7 @@ class DocumentActivity : AppCompatActivity() {
     }
 
     // Fungsi untuk menampilkan dialog detail kapal (hanya lihat dan hapus)
-    private fun showDetailKapalDialog(kapal: Kapal) {
+    private fun showDetailKapalDialog(kapal: KapalEntity) {
         val dialogView = layoutInflater.inflate(R.layout.dialog_detail_kapal, null)
         val tvNamaPemilik = dialogView.findViewById<TextView>(R.id.tv_nama_pemilik)
         val tvTandaSelar = dialogView.findViewById<TextView>(R.id.tv_tanda_selar)
@@ -271,11 +256,11 @@ class DocumentActivity : AppCompatActivity() {
         }
     }
 
-    private fun showDocumentList(kapal: Kapal) {
+    private fun showDocumentList(kapal: KapalEntity) {
         currentKapal = kapal
         showingShipList = false
         currentDokumenAdapter = DokumenAdapter(
-            kapal.listDokumen,
+            kapal.listDokumen.toMutableList(),
             onImagePreviewClick = { position ->
                 val dokumen = kapal.listDokumen[position]
                 showImagePreviewDialog(dokumen.pathGambar)
@@ -285,7 +270,7 @@ class DocumentActivity : AppCompatActivity() {
                 showPdfSelectionDialog(dokumen.pathPdf)
             },
             onEditClick = { position ->
-                showEditDokumenDialog(kapal.listDokumen, position, currentDokumenAdapter!!)
+                showEditDokumenDialog(kapal.listDokumen.toMutableList(), position, currentDokumenAdapter!!)
             }
         )
         rvKapalList.adapter = currentDokumenAdapter

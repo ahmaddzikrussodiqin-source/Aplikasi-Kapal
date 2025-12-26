@@ -1,6 +1,7 @@
 package com.example.kapallist
 
 import android.app.AlertDialog
+import android.content.DialogInterface
 import android.widget.ListView
 import android.content.Intent
 import android.graphics.Bitmap
@@ -33,6 +34,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var tvUserName: TextView
     private var currentDialogImageView: ImageView? = null  // Untuk update foto di dialog
     private lateinit var token: String
+    private lateinit var database: KapalDatabase
 
     // Activity Result Launcher untuk galeri
     private lateinit var galleryLauncher: ActivityResultLauncher<Intent>
@@ -61,6 +63,18 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         Log.d("MainActivity", "onCreate started")  // Tambahkan log di awal
         supportActionBar?.hide()  // Sembunyikan ActionBar
+
+        // Check if user is logged in
+        val sharedPref = getSharedPreferences("login_prefs", MODE_PRIVATE)
+        val isLoggedIn = sharedPref.getBoolean("is_logged_in", false)
+        if (!isLoggedIn) {
+            // Redirect to LoginActivity if not logged in
+            val intent = Intent(this, LoginActivity::class.java)
+            startActivity(intent)
+            finish()
+            return
+        }
+
         setContentView(R.layout.activity_main)
 
         database = KapalDatabase.getDatabase(this)

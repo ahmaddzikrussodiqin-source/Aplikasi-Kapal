@@ -25,6 +25,8 @@ class DaftarKapalActivity : AppCompatActivity() {
         supportActionBar?.hide()  // Menghilangkan ActionBar sesuai permintaan
         setContentView(R.layout.activity_daftar_kapal)
 
+        database = KapalDatabase.getDatabase(this)
+
         val btnBack = findViewById<FloatingActionButton>(R.id.btn_back)
         btnBack.setOnClickListener {
             finish()
