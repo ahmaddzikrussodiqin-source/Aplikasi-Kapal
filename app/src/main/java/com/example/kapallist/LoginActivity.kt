@@ -47,16 +47,16 @@ class LoginActivity : AppCompatActivity() {
                     val response = ApiClient.apiService.login(loginRequest)
                     if (response.isSuccessful) {
                         val loginResponse = response.body()
-                        if (loginResponse != null) {
+                        if (loginResponse != null && loginResponse.success && loginResponse.data != null) {
                             // Simpan status login ke SharedPreferences
                             val sharedPref = getSharedPreferences("login_prefs", MODE_PRIVATE)
                             val editor = sharedPref.edit()
                             editor.putBoolean("is_logged_in", true)
                             editor.putString("user_id", userId)
                             editor.putString("user_name", userId)
-                            editor.putString("token", loginResponse.token)
+                            editor.putString("token", loginResponse.data.token)
                             editor.putString("role", "Moderator")  // Set default role
-                            editor.putString("photo_uri", loginResponse.user.photoUri)
+                            editor.putString("photo_uri", loginResponse.data.user.photoUri)
                             editor.apply()
 
                             val intent = Intent(this@LoginActivity, MainActivity::class.java)
