@@ -64,7 +64,27 @@ async function testAPI() {
         });
         console.log('✅ Kapal list retrieved:', getKapalResponse.data);
 
-        console.log('\n🎉 All tests passed! Backend is ready for deployment.');
+        // Test create dokumen
+        console.log('\n6. Testing dokumen creation...');
+        const dokumenResponse = await axios.post(`${BASE_URL}/api/dokumen`, {
+            kapalId: kapalResponse.data.data.id,
+            jenis: 'Surat Izin',
+            pathGambar: ['image1.jpg', 'image2.jpg'],
+            pathPdf: ['document.pdf'],
+            tanggalExpired: '2025-01-01'
+        }, {
+            headers: { Authorization: `Bearer ${token}` }
+        });
+        console.log('✅ Dokumen created:', dokumenResponse.data);
+
+        // Test get dokumen
+        console.log('\n7. Testing get dokumen list...');
+        const getDokumenResponse = await axios.get(`${BASE_URL}/api/dokumen`, {
+            headers: { Authorization: `Bearer ${token}` }
+        });
+        console.log('✅ Dokumen list retrieved:', getDokumenResponse.data);
+
+        console.log('\n🎉 All tests passed! Backend with separated database tables is ready for deployment.');
 
     } catch (error) {
         console.error('❌ Test failed:', error.response?.data || error.message);
