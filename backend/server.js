@@ -1,5 +1,5 @@
 const express = require('express');
-const sqlite3 = require('sqlite3').verbose();
+const { Pool } = require('pg');
 const cors = require('cors');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
@@ -35,55 +35,68 @@ const storage = multer.diskStorage({
 const upload = multer({ storage: storage });
 
 // Database setup
-const db = new sqlite3.Database('./kapallist.db', (err) => {
-    if (err) {
-        console.error('Error opening database:', err.message);
-    } else {
-        console.log('Connected to SQLite database.');
-        initializeDatabase();
-    }
+const pool = new Pool({
+    connectionString: process.env.DATABASE_URL,
+    ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
 });
 
 // Initialize database tables
-function initializeDatabase() {
-    // Users table
-    db.run(`
-        CREATE TABLE IF NOT EXISTS users (
-            userId TEXT PRIMARY KEY,
-            password TEXT NOT NULL,
-            nama TEXT,
-            email TEXT,
-            photoUri TEXT,
-            created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-        )
-    `);
+async function initializeDatabase() {
+    try {
+        // Users table
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS users (
+                userId TEXT PRIMARY KEY,
+                password TEXT NOT NULL,
+                nama TEXT,
+                email TEXT,
+                photoUri TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        `);
 
-    // Kapal table
-    db.run(`
-        CREATE TABLE IF NOT EXISTS kapal (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            nama TEXT,
-            namaPemilik TEXT NOT NULL DEFAULT '',
-            tandaSelar TEXT NOT NULL DEFAULT '',
-            tandaPengenal TEXT NOT NULL DEFAULT '',
-            beratKotor TEXT NOT NULL DEFAULT '',
-            beratBersih TEXT NOT NULL DEFAULT '',
-            merekMesin TEXT NOT NULL DEFAULT '',
-            nomorSeriMesin TEXT NOT NULL DEFAULT '',
-            jenisAlatTangkap TEXT NOT NULL DEFAULT '',
-            tanggalInput TEXT,
-            tanggalKeberangkatan TEXT,
-            totalHariPersiapan INTEGER,
-            tanggalBerangkat TEXT,
-            tanggalKembali TEXT,
-            listPersiapan TEXT NOT NULL DEFAULT '[]',
-            listDokumen TEXT NOT NULL DEFAULT '[]',
-            isFinished INTEGER NOT NULL DEFAULT 0,
-            perkiraanKeberangkatan TEXT,
-            durasiSelesaiPersiapan TEXT
-        )
-    `);
+        // Kapal table
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS kapal (
+                id SERIAL PRIMARY KEY,
+                nama TEXT,
+                namaPemilik TEXT NOT NULL DEFAULT '',
+                tandaSelar TEXT NOT NULL DEFAULT '',
+                tandaPengenal TEXT NOT NULL DEFAULT '',
+                beratKotor TEXT NOT NULL DEFAULT '',
+                beratBersih TEXT NOT NULL DEFAULT '',
+                merekMesin TEXT NOT NULL DEFAULT '',
+                nomorSeriMesin TEXT NOT NULL DEFAULT '',
+                jenisAlatTangkap TEXT NOT NULL DEFAULT '',
+                tanggalInput TEXT,
+                tanggalKeberangkatan TEXT,
+                totalHariPersiapan INTEGER,
+                tanggalBerangkat TEXT,
+                tanggalKembali TEXT,
+                listPersiapan TEXT NOT NULL DEFAULT '[]',
+                listDokumen TEXT NOT NULL DEFAULT '[]',
+                isFinished INTEGER NOT NULL DEFAULT 0,
+                perkiraanKeberangkatan TEXT,
+                durasiSelesaiPersiapan TEXT
+            )
+        `);
+
+        console.log('Database tables initialized.');
+    } catch (err) {
+        console.error('Error initializing database:', err);
+    }
 }
+
+// Connect to database and initialize
+pool.connect((err, client, release) => {
+    if (err) {
+        console.error('Error connecting to database:', err);
+    } else {
+        console.log('Connected to PostgreSQL database.');
+        initializeDatabase();
+        release();
+    }
+});
 
 // Middleware to verify JWT token
 function authenticateToken(req, res, next) {
@@ -127,50 +140,45 @@ app.post('/api/login', async (req, res) => {
             });
         }
 
-        db.get('SELECT * FROM users WHERE userId = ?', [userId], async (err, user) => {
-            if (err) {
-                return res.status(500).json({
-                    success: false,
-                    message: 'Database error'
-                });
-            }
+        const result = await pool.query('SELECT * FROM users WHERE userId = $1', [userId]);
+        const user = result.rows[0];
 
-            if (!user) {
-                return res.status(401).json({
-                    success: false,
-                    message: 'Invalid credentials'
-                });
-            }
-
-            const isValidPassword = await bcrypt.compare(password, user.password);
-            if (!isValidPassword) {
-                return res.status(401).json({
-                    success: false,
-                    message: 'Invalid credentials'
-                });
-            }
-
-            const token = jwt.sign(
-                { userId: user.userId, nama: user.nama },
-                JWT_SECRET,
-                { expiresIn: '24h' }
-            );
-
-            res.json({
-                success: true,
-                message: 'Login successful',
-                data: {
-                    token,
-                    user: {
-                        userId: user.userId,
-                        nama: user.nama,
-                        email: user.email,
-                        photoUri: user.photoUri
-                    }
-                }
+        if (!user) {
+            return res.status(401).json({
+                success: false,
+                message: 'Invalid credentials'
             });
+        }
+
+        const isValidPassword = await bcrypt.compare(password, user.password);
+        if (!isValidPassword) {
+            return res.status(401).json({
+                success: false,
+                message: 'Invalid credentials'
+            });
+        }
+
+        const token = jwt.sign(
+            { userId: user.userid, nama: user.nama },
+            JWT_SECRET,
+            { expiresIn: '24h' }
+        );
+
+        res.json({
+            success: true,
+            message: 'Login successful',
+            data: {
+                token,
+                user: {
+                    userId: user.userid,
+                    nama: user.nama,
+                    email: user.email,
+                    photoUri: user.photouri
+                }
+            }
         });
     } catch (error) {
+        console.error('Login error:', error);
         res.status(500).json({
             success: false,
             message: 'Server error'
@@ -190,47 +198,32 @@ app.post('/api/register', async (req, res) => {
         }
 
         // Check if user already exists
-        db.get('SELECT userId FROM users WHERE userId = ?', [userId], async (err, existingUser) => {
-            if (err) {
-                return res.status(500).json({
-                    success: false,
-                    message: 'Database error'
-                });
+        const existingResult = await pool.query('SELECT userId FROM users WHERE userId = $1', [userId]);
+        if (existingResult.rows.length > 0) {
+            return res.status(409).json({
+                success: false,
+                message: 'User already exists'
+            });
+        }
+
+        // Hash password
+        const hashedPassword = await bcrypt.hash(password, 10);
+
+        // Insert new user
+        await pool.query(
+            'INSERT INTO users (userId, password) VALUES ($1, $2)',
+            [userId, hashedPassword]
+        );
+
+        res.status(201).json({
+            success: true,
+            message: 'User created successfully',
+            data: {
+                userId: userId
             }
-
-            if (existingUser) {
-                return res.status(409).json({
-                    success: false,
-                    message: 'User already exists'
-                });
-            }
-
-            // Hash password
-            const hashedPassword = await bcrypt.hash(password, 10);
-
-            // Insert new user
-            db.run(
-                'INSERT INTO users (userId, password) VALUES (?, ?)',
-                [userId, hashedPassword],
-                function(err) {
-                    if (err) {
-                        return res.status(500).json({
-                            success: false,
-                            message: 'Failed to create user'
-                        });
-                    }
-
-                    res.status(201).json({
-                        success: true,
-                        message: 'User created successfully',
-                        data: {
-                            userId: userId
-                        }
-                    });
-                }
-            );
         });
     } catch (error) {
+        console.error('Register error:', error);
         res.status(500).json({
             success: false,
             message: 'Server error'
@@ -239,21 +232,21 @@ app.post('/api/register', async (req, res) => {
 });
 
 // User routes (protected)
-app.get('/api/users', authenticateToken, (req, res) => {
-    db.all('SELECT userId, nama, email, photoUri, created_at FROM users', [], (err, users) => {
-        if (err) {
-            return res.status(500).json({
-                success: false,
-                message: 'Database error'
-            });
-        }
-
+app.get('/api/users', authenticateToken, async (req, res) => {
+    try {
+        const result = await pool.query('SELECT userId, nama, email, photoUri, created_at FROM users');
         res.json({
             success: true,
             message: 'Users retrieved successfully',
-            data: users
+            data: result.rows
         });
-    });
+    } catch (error) {
+        console.error('Get users error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Database error'
+        });
+    }
 });
 
 app.put('/api/users/:userId', authenticateToken, async (req, res) => {
@@ -261,31 +254,24 @@ app.put('/api/users/:userId', authenticateToken, async (req, res) => {
         const { userId } = req.params;
         const { nama, email, photoUri } = req.body;
 
-        db.run(
-            'UPDATE users SET nama = ?, email = ?, photoUri = ? WHERE userId = ?',
-            [nama, email, photoUri, userId],
-            function(err) {
-                if (err) {
-                    return res.status(500).json({
-                        success: false,
-                        message: 'Failed to update user'
-                    });
-                }
-
-                if (this.changes === 0) {
-                    return res.status(404).json({
-                        success: false,
-                        message: 'User not found'
-                    });
-                }
-
-                res.json({
-                    success: true,
-                    message: 'User updated successfully'
-                });
-            }
+        const result = await pool.query(
+            'UPDATE users SET nama = $1, email = $2, photoUri = $3 WHERE userId = $4',
+            [nama, email, photoUri, userId]
         );
+
+        if (result.rowCount === 0) {
+            return res.status(404).json({
+                success: false,
+                message: 'User not found'
+            });
+        }
+
+        res.json({
+            success: true,
+            message: 'User updated successfully'
+        });
     } catch (error) {
+        console.error('Update user error:', error);
         res.status(500).json({
             success: false,
             message: 'Server error'
@@ -293,18 +279,13 @@ app.put('/api/users/:userId', authenticateToken, async (req, res) => {
     }
 });
 
-app.delete('/api/users/:userId', authenticateToken, (req, res) => {
-    const { userId } = req.params;
+app.delete('/api/users/:userId', authenticateToken, async (req, res) => {
+    try {
+        const { userId } = req.params;
 
-    db.run('DELETE FROM users WHERE userId = ?', [userId], function(err) {
-        if (err) {
-            return res.status(500).json({
-                success: false,
-                message: 'Failed to delete user'
-            });
-        }
+        const result = await pool.query('DELETE FROM users WHERE userId = $1', [userId]);
 
-        if (this.changes === 0) {
+        if (result.rowCount === 0) {
             return res.status(404).json({
                 success: false,
                 message: 'User not found'
@@ -315,7 +296,13 @@ app.delete('/api/users/:userId', authenticateToken, (req, res) => {
             success: true,
             message: 'User deleted successfully'
         });
-    });
+    } catch (error) {
+        console.error('Delete user error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Server error'
+        });
+    }
 });
 
 // Helper function to safely parse listPersiapan
@@ -355,21 +342,17 @@ function parseListPersiapan(value) {
 }
 
 // Kapal routes (protected)
-app.get('/api/kapal', authenticateToken, (req, res) => {
-    db.all('SELECT * FROM kapal ORDER BY id DESC', [], (err, kapal) => {
-        if (err) {
-            return res.status(500).json({
-                success: false,
-                message: 'Database error'
-            });
-        }
+app.get('/api/kapal', authenticateToken, async (req, res) => {
+    try {
+        const result = await pool.query('SELECT * FROM kapal ORDER BY id DESC');
+        const kapal = result.rows;
 
         // Parse JSON strings back to arrays and convert isFinished to boolean
         const parsedKapal = kapal.map(k => ({
             ...k,
-            listPersiapan: parseListPersiapan(k.listPersiapan),
-            listDokumen: JSON.parse(k.listDokumen || '[]'),
-            isFinished: Boolean(k.isFinished)
+            listPersiapan: parseListPersiapan(k.listpersiapan),
+            listDokumen: JSON.parse(k.listdokumen || '[]'),
+            isFinished: Boolean(k.isfinished)
         }));
 
         res.json({
@@ -377,19 +360,21 @@ app.get('/api/kapal', authenticateToken, (req, res) => {
             message: 'Kapal retrieved successfully',
             data: parsedKapal
         });
-    });
+    } catch (error) {
+        console.error('Get kapal error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Database error'
+        });
+    }
 });
 
-app.get('/api/kapal/:id', authenticateToken, (req, res) => {
-    const { id } = req.params;
+app.get('/api/kapal/:id', authenticateToken, async (req, res) => {
+    try {
+        const { id } = req.params;
 
-    db.get('SELECT * FROM kapal WHERE id = ?', [id], (err, kapal) => {
-        if (err) {
-            return res.status(500).json({
-                success: false,
-                message: 'Database error'
-            });
-        }
+        const result = await pool.query('SELECT * FROM kapal WHERE id = $1', [id]);
+        const kapal = result.rows[0];
 
         if (!kapal) {
             return res.status(404).json({
@@ -401,9 +386,9 @@ app.get('/api/kapal/:id', authenticateToken, (req, res) => {
         // Parse JSON strings back to arrays
         const parsedKapal = {
             ...kapal,
-            listPersiapan: parseListPersiapan(kapal.listPersiapan),
-            listDokumen: JSON.parse(kapal.listDokumen || '[]'),
-            isFinished: Boolean(kapal.isFinished)
+            listPersiapan: parseListPersiapan(kapal.listpersiapan),
+            listDokumen: JSON.parse(kapal.listdokumen || '[]'),
+            isFinished: Boolean(kapal.isfinished)
         };
 
         res.json({
@@ -411,98 +396,85 @@ app.get('/api/kapal/:id', authenticateToken, (req, res) => {
             message: 'Kapal retrieved successfully',
             data: parsedKapal
         });
-    });
-});
-
-app.post('/api/kapal', authenticateToken, (req, res) => {
-    const kapalData = req.body;
-
-    const sql = `
-        INSERT INTO kapal (
-            nama, namaPemilik, tandaSelar, tandaPengenal, beratKotor, beratBersih,
-            merekMesin, nomorSeriMesin, jenisAlatTangkap, tanggalInput, tanggalKeberangkatan,
-            totalHariPersiapan, tanggalBerangkat, tanggalKembali, listPersiapan, listDokumen,
-            isFinished, perkiraanKeberangkatan, durasiSelesaiPersiapan
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `;
-
-    const values = [
-        kapalData.nama, kapalData.namaPemilik, kapalData.tandaSelar, kapalData.tandaPengenal,
-        kapalData.beratKotor, kapalData.beratBersih, kapalData.merekMesin, kapalData.nomorSeriMesin,
-        kapalData.jenisAlatTangkap, kapalData.tanggalInput, kapalData.tanggalKeberangkatan,
-        kapalData.totalHariPersiapan, kapalData.tanggalBerangkat, kapalData.tanggalKembali,
-        JSON.stringify(kapalData.listPersiapan || []), JSON.stringify(kapalData.listDokumen || []),
-        kapalData.isFinished || 0, kapalData.perkiraanKeberangkatan, kapalData.durasiSelesaiPersiapan
-    ];
-
-    db.run(sql, values, function(err) {
-        if (err) {
-            return res.status(500).json({
-                success: false,
-                message: 'Failed to create kapal'
-            });
-        }
-
-        // Get the created kapal
-        db.get('SELECT * FROM kapal WHERE id = ?', [this.lastID], (err, kapal) => {
-            if (err) {
-                return res.status(500).json({
-                    success: false,
-                    message: 'Failed to retrieve created kapal'
-                });
-            }
-
-            // Parse JSON strings back to arrays
-            const parsedKapal = {
-                ...kapal,
-                listPersiapan: parseListPersiapan(kapal.listPersiapan),
-                listDokumen: JSON.parse(kapal.listDokumen || '[]'),
-                isFinished: Boolean(kapal.isFinished)
-            };
-
-            res.status(201).json({
-                success: true,
-                message: 'Kapal created successfully',
-                data: parsedKapal
-            });
+    } catch (error) {
+        console.error('Get kapal by id error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Database error'
         });
-    });
+    }
 });
 
-app.put('/api/kapal/:id', authenticateToken, (req, res) => {
-    const { id } = req.params;
-    const kapalData = req.body;
+app.post('/api/kapal', authenticateToken, async (req, res) => {
+    try {
+        const kapalData = req.body;
 
-    const sql = `
-        UPDATE kapal SET
-            nama = ?, namaPemilik = ?, tandaSelar = ?, tandaPengenal = ?,
-            beratKotor = ?, beratBersih = ?, merekMesin = ?, nomorSeriMesin = ?,
-            jenisAlatTangkap = ?, tanggalInput = ?, tanggalKeberangkatan = ?,
-            totalHariPersiapan = ?, tanggalBerangkat = ?, tanggalKembali = ?,
-            listPersiapan = ?, listDokumen = ?, isFinished = ?,
-            perkiraanKeberangkatan = ?, durasiSelesaiPersiapan = ?
-        WHERE id = ?
-    `;
+        const result = await pool.query(`
+            INSERT INTO kapal (
+                nama, namaPemilik, tandaSelar, tandaPengenal, beratKotor, beratBersih,
+                merekMesin, nomorSeriMesin, jenisAlatTangkap, tanggalInput, tanggalKeberangkatan,
+                totalHariPersiapan, tanggalBerangkat, tanggalKembali, listPersiapan, listDokumen,
+                isFinished, perkiraanKeberangkatan, durasiSelesaiPersiapan
+            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19)
+            RETURNING *
+        `, [
+            kapalData.nama, kapalData.namaPemilik, kapalData.tandaSelar, kapalData.tandaPengenal,
+            kapalData.beratKotor, kapalData.beratBersih, kapalData.merekMesin, kapalData.nomorSeriMesin,
+            kapalData.jenisAlatTangkap, kapalData.tanggalInput, kapalData.tanggalKeberangkatan,
+            kapalData.totalHariPersiapan, kapalData.tanggalBerangkat, kapalData.tanggalKembali,
+            JSON.stringify(kapalData.listPersiapan || []), JSON.stringify(kapalData.listDokumen || []),
+            kapalData.isFinished || 0, kapalData.perkiraanKeberangkatan, kapalData.durasiSelesaiPersiapan
+        ]);
 
-    const values = [
-        kapalData.nama, kapalData.namaPemilik, kapalData.tandaSelar, kapalData.tandaPengenal,
-        kapalData.beratKotor, kapalData.beratBersih, kapalData.merekMesin, kapalData.nomorSeriMesin,
-        kapalData.jenisAlatTangkap, kapalData.tanggalInput, kapalData.tanggalKeberangkatan,
-        kapalData.totalHariPersiapan, kapalData.tanggalBerangkat, kapalData.tanggalKembali,
-        JSON.stringify(kapalData.listPersiapan || []), JSON.stringify(kapalData.listDokumen || []),
-        kapalData.isFinished || 0, kapalData.perkiraanKeberangkatan, kapalData.durasiSelesaiPersiapan,
-        id
-    ];
+        const kapal = result.rows[0];
 
-    db.run(sql, values, function(err) {
-        if (err) {
-            return res.status(500).json({
-                success: false,
-                message: 'Failed to update kapal'
-            });
-        }
+        // Parse JSON strings back to arrays
+        const parsedKapal = {
+            ...kapal,
+            listPersiapan: parseListPersiapan(kapal.listpersiapan),
+            listDokumen: JSON.parse(kapal.listdokumen || '[]'),
+            isFinished: Boolean(kapal.isfinished)
+        };
 
-        if (this.changes === 0) {
+        res.status(201).json({
+            success: true,
+            message: 'Kapal created successfully',
+            data: parsedKapal
+        });
+    } catch (error) {
+        console.error('Create kapal error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Failed to create kapal'
+        });
+    }
+});
+
+app.put('/api/kapal/:id', authenticateToken, async (req, res) => {
+    try {
+        const { id } = req.params;
+        const kapalData = req.body;
+
+        const result = await pool.query(`
+            UPDATE kapal SET
+                nama = $1, namaPemilik = $2, tandaSelar = $3, tandaPengenal = $4,
+                beratKotor = $5, beratBersih = $6, merekMesin = $7, nomorSeriMesin = $8,
+                jenisAlatTangkap = $9, tanggalInput = $10, tanggalKeberangkatan = $11,
+                totalHariPersiapan = $12, tanggalBerangkat = $13, tanggalKembali = $14,
+                listPersiapan = $15, listDokumen = $16, isFinished = $17,
+                perkiraanKeberangkatan = $18, durasiSelesaiPersiapan = $19
+            WHERE id = $20
+        `, [
+            kapalData.nama, kapalData.namaPemilik, kapalData.tandaSelar, kapalData.tandaPengenal,
+            kapalData.beratKotor, kapalData.beratBersih, kapalData.merekMesin, kapalData.nomorSeriMesin,
+            kapalData.jenisAlatTangkap, kapalData.tanggalInput, kapalData.tanggalKeberangkatan,
+            kapalData.totalHariPersiapan, kapalData.tanggalBerangkat, kapalData.tanggalKembali,
+            JSON.stringify(kapalData.listPersiapan || []), JSON.stringify(kapalData.listDokumen || []),
+            kapalData.isFinished || 0, kapalData.perkiraanKeberangkatan, kapalData.durasiSelesaiPersiapan,
+            id
+        ]);
+
+        if (result.rowCount === 0) {
             return res.status(404).json({
                 success: false,
                 message: 'Kapal not found'
@@ -513,21 +485,22 @@ app.put('/api/kapal/:id', authenticateToken, (req, res) => {
             success: true,
             message: 'Kapal updated successfully'
         });
-    });
+    } catch (error) {
+        console.error('Update kapal error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Failed to update kapal'
+        });
+    }
 });
 
-app.delete('/api/kapal/:id', authenticateToken, (req, res) => {
-    const { id } = req.params;
+app.delete('/api/kapal/:id', authenticateToken, async (req, res) => {
+    try {
+        const { id } = req.params;
 
-    db.run('DELETE FROM kapal WHERE id = ?', [id], function(err) {
-        if (err) {
-            return res.status(500).json({
-                success: false,
-                message: 'Failed to delete kapal'
-            });
-        }
+        const result = await pool.query('DELETE FROM kapal WHERE id = $1', [id]);
 
-        if (this.changes === 0) {
+        if (result.rowCount === 0) {
             return res.status(404).json({
                 success: false,
                 message: 'Kapal not found'
@@ -538,7 +511,13 @@ app.delete('/api/kapal/:id', authenticateToken, (req, res) => {
             success: true,
             message: 'Kapal deleted successfully'
         });
-    });
+    } catch (error) {
+        console.error('Delete kapal error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Failed to delete kapal'
+        });
+    }
 });
 
 // File upload route (protected)
@@ -587,12 +566,8 @@ app.listen(PORT, () => {
 // Graceful shutdown
 process.on('SIGINT', () => {
     console.log('Shutting down gracefully...');
-    db.close((err) => {
-        if (err) {
-            console.error('Error closing database:', err.message);
-        } else {
-            console.log('Database connection closed.');
-        }
+    pool.end(() => {
+        console.log('Database connection closed.');
         process.exit(0);
     });
 });
