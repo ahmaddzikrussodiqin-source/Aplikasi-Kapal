@@ -320,18 +320,37 @@ app.delete('/api/users/:userId', authenticateToken, (req, res) => {
 
 // Helper function to safely parse listPersiapan
 function parseListPersiapan(value) {
-    if (!value || value === '[]') return [];
+    if (!value) return [];
+
+    // If it's already an array, return it
+    if (Array.isArray(value)) return value;
+
+    // If it's '[]' or 'null', return empty array
+    if (value === '[]' || value === 'null') return [];
+
+    // Try to parse as JSON
     try {
         const parsed = JSON.parse(value);
         if (Array.isArray(parsed)) return parsed;
-        // If it's a string, try to split by comma or newline
         if (typeof parsed === 'string') {
             return parsed.split(/[,;\n]/).map(s => s.trim()).filter(s => s.length > 0);
         }
         return [];
     } catch (e) {
-        // If JSON.parse fails, treat as comma-separated string
-        return value.split(/[,;\n]/).map(s => s.trim()).filter(s => s.length > 0);
+        // If JSON.parse fails, try to parse as string
+        if (typeof value === 'string') {
+            // If it looks like JSON array, try to parse it
+            if (value.startsWith('[') && value.endsWith(']')) {
+                try {
+                    return JSON.parse(value);
+                } catch (e2) {
+                    return [];
+                }
+            }
+            // Otherwise, split by comma/newline
+            return value.split(/[,;\n]/).map(s => s.trim()).filter(s => s.length > 0);
+        }
+        return [];
     }
 }
 
