@@ -47,7 +47,17 @@ interface ApiService {
 // Data classes for API requests/responses
 data class LoginRequest(val userId: String, val password: String)
 data class RegisterRequest(val userId: String, val password: String)
-data class LoginResponse(val token: String, val user: User)
+
+data class LoginResponse(
+    val success: Boolean,
+    val message: String,
+    val data: LoginData
+)
+
+data class LoginData(
+    val token: String,
+    val user: User
+)
 
 data class ApiResponse<T>(
     val success: Boolean,
