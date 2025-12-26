@@ -318,6 +318,23 @@ app.delete('/api/users/:userId', authenticateToken, (req, res) => {
     });
 });
 
+// Helper function to safely parse listPersiapan
+function parseListPersiapan(value) {
+    if (!value || value === '[]') return [];
+    try {
+        const parsed = JSON.parse(value);
+        if (Array.isArray(parsed)) return parsed;
+        // If it's a string, try to split by comma or newline
+        if (typeof parsed === 'string') {
+            return parsed.split(/[,;\n]/).map(s => s.trim()).filter(s => s.length > 0);
+        }
+        return [];
+    } catch (e) {
+        // If JSON.parse fails, treat as comma-separated string
+        return value.split(/[,;\n]/).map(s => s.trim()).filter(s => s.length > 0);
+    }
+}
+
 // Kapal routes (protected)
 app.get('/api/kapal', authenticateToken, (req, res) => {
     db.all('SELECT * FROM kapal ORDER BY id DESC', [], (err, kapal) => {
@@ -331,7 +348,7 @@ app.get('/api/kapal', authenticateToken, (req, res) => {
         // Parse JSON strings back to arrays
         const parsedKapal = kapal.map(k => ({
             ...k,
-            listPersiapan: JSON.parse(k.listPersiapan || '[]'),
+            listPersiapan: parseListPersiapan(k.listPersiapan),
             listDokumen: JSON.parse(k.listDokumen || '[]')
         }));
 
@@ -364,7 +381,7 @@ app.get('/api/kapal/:id', authenticateToken, (req, res) => {
         // Parse JSON strings back to arrays
         const parsedKapal = {
             ...kapal,
-            listPersiapan: JSON.parse(kapal.listPersiapan || '[]'),
+            listPersiapan: parseListPersiapan(kapal.listPersiapan),
             listDokumen: JSON.parse(kapal.listDokumen || '[]')
         };
 
@@ -417,7 +434,7 @@ app.post('/api/kapal', authenticateToken, (req, res) => {
             // Parse JSON strings back to arrays
             const parsedKapal = {
                 ...kapal,
-                listPersiapan: JSON.parse(kapal.listPersiapan || '[]'),
+                listPersiapan: parseListPersiapan(kapal.listPersiapan),
                 listDokumen: JSON.parse(kapal.listDokumen || '[]')
             };
 
