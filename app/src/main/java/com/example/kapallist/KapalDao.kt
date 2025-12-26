@@ -22,4 +22,7 @@ interface KapalDao {
 
     @Query("SELECT * FROM kapal_table WHERE id = :id")
     suspend fun getKapalById(id: Int): KapalEntity?
+
+    @Query("DELETE FROM kapal_table")
+    suspend fun deleteAllKapal()
 }
