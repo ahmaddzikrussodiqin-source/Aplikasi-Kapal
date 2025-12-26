@@ -103,10 +103,39 @@ class DaftarKapalActivity : AppCompatActivity() {
 
     private fun loadKapalList() {
         lifecycleScope.launch {
-            val allKapal = database.kapalDao().getAllKapal()
-            kapalList.clear()
-            kapalList.addAll(allKapal)
-            kapalAdapter.notifyDataSetChanged()
+            try {
+                val sharedPref = getSharedPreferences("login_prefs", MODE_PRIVATE)
+                val token = sharedPref.getString("token", "") ?: ""
+                if (token.isEmpty()) {
+                    Toast.makeText(this@DaftarKapalActivity, "Token tidak ditemukan", Toast.LENGTH_SHORT).show()
+                    return@launch
+                }
+
+                val response = ApiClient.apiService.getAllKapal("Bearer $token")
+                if (response.isSuccessful) {
+                    val apiResponse = response.body()
+                    if (apiResponse?.success == true) {
+                        val kapalFromApi = apiResponse.data ?: emptyList()
+                        kapalList.clear()
+                        kapalList.addAll(kapalFromApi)
+                        kapalAdapter.notifyDataSetChanged()
+
+                        // Sync to local database for offline access
+                        database.kapalDao().deleteAllKapal()
+                        for (kapal in kapalFromApi) {
+                            database.kapalDao().insertKapal(kapal)
+                        }
+
+                        Toast.makeText(this@DaftarKapalActivity, "Data tersinkronisasi", Toast.LENGTH_SHORT).show()
+                    } else {
+                        Toast.makeText(this@DaftarKapalActivity, "Gagal memuat data kapal", Toast.LENGTH_SHORT).show()
+                    }
+                } else {
+                    Toast.makeText(this@DaftarKapalActivity, "Gagal memuat data kapal: ${response.message()}", Toast.LENGTH_SHORT).show()
+                }
+            } catch (e: Exception) {
+                Toast.makeText(this@DaftarKapalActivity, "Error: ${e.message}", Toast.LENGTH_SHORT).show()
+            }
         }
     }
 
@@ -146,10 +175,32 @@ class DaftarKapalActivity : AppCompatActivity() {
             .setMessage("Apakah Anda yakin ingin menghapus kapal '${kapal.nama}'?")
             .setPositiveButton("Hapus") { _, _ ->
                 lifecycleScope.launch {
-                    database.kapalDao().deleteKapalById(kapal.id)
-                    kapalList.remove(kapal)
-                    kapalAdapter.notifyDataSetChanged()
-                    Toast.makeText(this@DaftarKapalActivity, "Kapal berhasil dihapus", Toast.LENGTH_SHORT).show()
+                    try {
+                        val sharedPref = getSharedPreferences("login_prefs", MODE_PRIVATE)
+                        val token = sharedPref.getString("token", "") ?: ""
+                        if (token.isEmpty()) {
+                            Toast.makeText(this@DaftarKapalActivity, "Token tidak ditemukan", Toast.LENGTH_SHORT).show()
+                            return@launch
+                        }
+
+                        val response = ApiClient.apiService.deleteKapal("Bearer $token", kapal.id)
+                        if (response.isSuccessful) {
+                            val apiResponse = response.body()
+                            if (apiResponse?.success == true) {
+                                // Delete from local database
+                                database.kapalDao().deleteKapalById(kapal.id)
+                                kapalList.remove(kapal)
+                                kapalAdapter.notifyDataSetChanged()
+                                Toast.makeText(this@DaftarKapalActivity, "Kapal berhasil dihapus", Toast.LENGTH_SHORT).show()
+                            } else {
+                                Toast.makeText(this@DaftarKapalActivity, "Gagal menghapus kapal", Toast.LENGTH_SHORT).show()
+                            }
+                        } else {
+                            Toast.makeText(this@DaftarKapalActivity, "Gagal menghapus kapal: ${response.message()}", Toast.LENGTH_SHORT).show()
+                        }
+                    } catch (e: Exception) {
+                        Toast.makeText(this@DaftarKapalActivity, "Error: ${e.message}", Toast.LENGTH_SHORT).show()
+                    }
                 }
             }
             .setNegativeButton("Batal", null)
