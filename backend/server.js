@@ -423,7 +423,7 @@ app.post('/api/kapal', authenticateToken, async (req, res) => {
             kapalData.jenisAlatTangkap, kapalData.tanggalInput, kapalData.tanggalKeberangkatan,
             kapalData.totalHariPersiapan, kapalData.tanggalBerangkat, kapalData.tanggalKembali,
             JSON.stringify(kapalData.listPersiapan || []), JSON.stringify(kapalData.listDokumen || []),
-            kapalData.isFinished || 0, kapalData.perkiraanKeberangkatan, kapalData.durasiSelesaiPersiapan
+            kapalData.isFinished ? 1 : 0, kapalData.perkiraanKeberangkatan, kapalData.durasiSelesaiPersiapan
         ]);
 
         const kapal = result.rows[0];
@@ -470,7 +470,7 @@ app.put('/api/kapal/:id', authenticateToken, async (req, res) => {
             kapalData.jenisAlatTangkap, kapalData.tanggalInput, kapalData.tanggalKeberangkatan,
             kapalData.totalHariPersiapan, kapalData.tanggalBerangkat, kapalData.tanggalKembali,
             JSON.stringify(kapalData.listPersiapan || []), JSON.stringify(kapalData.listDokumen || []),
-            kapalData.isFinished || 0, kapalData.perkiraanKeberangkatan, kapalData.durasiSelesaiPersiapan,
+            kapalData.isFinished ? 1 : 0, kapalData.perkiraanKeberangkatan, kapalData.durasiSelesaiPersiapan,
             id
         ]);
 
