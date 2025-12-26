@@ -328,10 +328,17 @@ app.get('/api/kapal', authenticateToken, (req, res) => {
             });
         }
 
+        // Parse JSON strings back to arrays
+        const parsedKapal = kapal.map(k => ({
+            ...k,
+            listPersiapan: JSON.parse(k.listPersiapan || '[]'),
+            listDokumen: JSON.parse(k.listDokumen || '[]')
+        }));
+
         res.json({
             success: true,
             message: 'Kapal retrieved successfully',
-            data: kapal
+            data: parsedKapal
         });
     });
 });
@@ -354,10 +361,17 @@ app.get('/api/kapal/:id', authenticateToken, (req, res) => {
             });
         }
 
+        // Parse JSON strings back to arrays
+        const parsedKapal = {
+            ...kapal,
+            listPersiapan: JSON.parse(kapal.listPersiapan || '[]'),
+            listDokumen: JSON.parse(kapal.listDokumen || '[]')
+        };
+
         res.json({
             success: true,
             message: 'Kapal retrieved successfully',
-            data: kapal
+            data: parsedKapal
         });
     });
 });
