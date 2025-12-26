@@ -1,7 +1,6 @@
 {
   "build": {
     "builder": "DOCKERFILE",
-    "context": "backend",
     "dockerfilePath": "Dockerfile"
   },
   "deploy": {
