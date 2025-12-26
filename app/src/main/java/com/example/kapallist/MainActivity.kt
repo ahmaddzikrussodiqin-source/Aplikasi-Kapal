@@ -111,7 +111,6 @@ class MainActivity : AppCompatActivity() {
         }
 
         // Load user data from SharedPreferences (since we have token, user data should be available)
-        val sharedPref = getSharedPreferences("login_prefs", MODE_PRIVATE)
         val userId = sharedPref.getString("user_id", "") ?: ""
         val userRole = sharedPref.getString("role", "Member") ?: "Member"
         val userName = userId

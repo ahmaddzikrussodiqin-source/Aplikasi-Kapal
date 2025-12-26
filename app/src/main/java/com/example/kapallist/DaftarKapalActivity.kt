@@ -1,5 +1,6 @@
 package com.example.kapallist
 
+import android.content.Intent
 import android.os.Bundle
 import android.widget.Button
 import android.widget.EditText
@@ -23,6 +24,18 @@ class DaftarKapalActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         supportActionBar?.hide()  // Menghilangkan ActionBar sesuai permintaan
+
+        // Check if user is logged in
+        val sharedPref = getSharedPreferences("login_prefs", MODE_PRIVATE)
+        val isLoggedIn = sharedPref.getBoolean("is_logged_in", false)
+        if (!isLoggedIn) {
+            // Redirect to LoginActivity if not logged in
+            val intent = Intent(this, LoginActivity::class.java)
+            startActivity(intent)
+            finish()
+            return
+        }
+
         setContentView(R.layout.activity_daftar_kapal)
 
         database = KapalDatabase.getDatabase(this)
