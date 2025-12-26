@@ -364,11 +364,12 @@ app.get('/api/kapal', authenticateToken, (req, res) => {
             });
         }
 
-        // Parse JSON strings back to arrays
+        // Parse JSON strings back to arrays and convert isFinished to boolean
         const parsedKapal = kapal.map(k => ({
             ...k,
             listPersiapan: parseListPersiapan(k.listPersiapan),
-            listDokumen: JSON.parse(k.listDokumen || '[]')
+            listDokumen: JSON.parse(k.listDokumen || '[]'),
+            isFinished: Boolean(k.isFinished)
         }));
 
         res.json({
@@ -401,7 +402,8 @@ app.get('/api/kapal/:id', authenticateToken, (req, res) => {
         const parsedKapal = {
             ...kapal,
             listPersiapan: parseListPersiapan(kapal.listPersiapan),
-            listDokumen: JSON.parse(kapal.listDokumen || '[]')
+            listDokumen: JSON.parse(kapal.listDokumen || '[]'),
+            isFinished: Boolean(kapal.isFinished)
         };
 
         res.json({
