@@ -414,10 +414,17 @@ app.post('/api/kapal', authenticateToken, (req, res) => {
                 });
             }
 
+            // Parse JSON strings back to arrays
+            const parsedKapal = {
+                ...kapal,
+                listPersiapan: JSON.parse(kapal.listPersiapan || '[]'),
+                listDokumen: JSON.parse(kapal.listDokumen || '[]')
+            };
+
             res.status(201).json({
                 success: true,
                 message: 'Kapal created successfully',
-                data: kapal
+                data: parsedKapal
             });
         });
     });
