@@ -1,6 +1,15 @@
-# TODO List for Fixing Checklist Confirmation Dialog Loop
+# PostgreSQL Setup on Railway - TODO
 
-- [x] Add `isProgrammaticChange` boolean flag to ProfileActivity class
-- [x] Modify `setOnCheckedChangeListener` to return early if `isProgrammaticChange` is true
-- [x] Wrap checkbox state changes in "Batal" buttons with the flag to prevent listener trigger
-- [x] Test the checklist functionality to ensure canceling works without additional dialogs
+## Completed Tasks
+- [x] Analyze project structure and requirements
+- [x] Confirm deployment plan with user
+
+## Pending Tasks
+- [x] Install Railway CLI on Windows
+- [ ] Login to Railway account via CLI (manual step)
+- [ ] Create new Railway project (manual step)
+- [ ] Add PostgreSQL database to project (manual step)
+- [ ] Deploy backend to Railway (manual step)
+- [ ] Verify DATABASE_URL environment variable is set
+- [ ] Update Android app BASE_URL to Railway URL
+- [ ] Test deployment and database connection
