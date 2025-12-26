@@ -456,7 +456,8 @@ app.post('/api/kapal', authenticateToken, (req, res) => {
             const parsedKapal = {
                 ...kapal,
                 listPersiapan: parseListPersiapan(kapal.listPersiapan),
-                listDokumen: JSON.parse(kapal.listDokumen || '[]')
+                listDokumen: JSON.parse(kapal.listDokumen || '[]'),
+                isFinished: Boolean(kapal.isFinished)
             };
 
             res.status(201).json({
