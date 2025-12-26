@@ -1,4 +1,4 @@
-yaqpackage com.example.kapallist
+package com.example.kapallist
 
 import android.app.AlertDialog
 import android.app.DatePickerDialog
