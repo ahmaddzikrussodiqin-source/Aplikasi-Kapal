@@ -24,6 +24,7 @@ class InputActivity : AppCompatActivity() {
     private lateinit var sharedPref: android.content.SharedPreferences
     private var editMode: Boolean = false
     private var kapalIndex: Int = -1
+    private var selectedKapalId: Int? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -73,6 +74,7 @@ class InputActivity : AppCompatActivity() {
                                 builder.setTitle("Pilih Nama Kapal")
                                 builder.setItems(namaKapalList.toTypedArray()) { _, which ->
                                     etNamaKapal.setText(namaKapalList[which])
+                                    selectedKapalId = kapalList[which].id
                                 }
                                 builder.setNegativeButton("Batal", null)
                                 builder.show()
