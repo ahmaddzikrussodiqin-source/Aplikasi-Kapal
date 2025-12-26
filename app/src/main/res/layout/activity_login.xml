@@ -40,6 +40,16 @@
         android:layout_height="wrap_content"
         android:text="Login"
         android:textColor="@color/on_primary"
-        app:backgroundTint="@color/primary" />
+        app:backgroundTint="@color/primary"
+        android:layout_marginBottom="16dp" />
+
+    <Button
+        android:id="@+id/btn_register"
+        style="@style/MaterialButton"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Create Account"
+        android:textColor="@color/on_primary"
+        app:backgroundTint="@color/secondary" />
 
 </LinearLayout>
