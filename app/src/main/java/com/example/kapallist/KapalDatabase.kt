@@ -8,7 +8,7 @@ import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 import androidx.room.TypeConverters
 
-@Database(entities = [KapalEntity::class, User::class], version = 8, exportSchema = false)  // Naikkan ke 8
+@Database(entities = [KapalEntity::class, User::class], version = 9, exportSchema = false)  // Naikkan ke 9 untuk User schema changes
 @TypeConverters(Converters::class)
 abstract class KapalDatabase : RoomDatabase() {
     abstract fun kapalDao(): KapalDao
@@ -136,6 +136,15 @@ abstract class KapalDatabase : RoomDatabase() {
                 // No changes needed; schema is already correct
             }
         }
+
+        private val MIGRATION_8_9 = object : Migration(8, 9) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                // Add nama and email columns to user_table
+                database.execSQL("ALTER TABLE user_table ADD COLUMN nama TEXT")
+                database.execSQL("ALTER TABLE user_table ADD COLUMN email TEXT")
+            }
+        }
+
         fun getDatabase(context: Context): KapalDatabase {
             return INSTANCE ?: synchronized(this) {
                 val instance = Room.databaseBuilder(
@@ -143,7 +152,7 @@ abstract class KapalDatabase : RoomDatabase() {
                     KapalDatabase::class.java,
                     "kapal_database"
                 )
-                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7)  // Tambahkan MIGRATION_6_7
+                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_8_9)  // Tambahkan MIGRATION_8_9
                     .fallbackToDestructiveMigration()  // Fallback jika migration gagal
                     .build()
                 INSTANCE = instance
