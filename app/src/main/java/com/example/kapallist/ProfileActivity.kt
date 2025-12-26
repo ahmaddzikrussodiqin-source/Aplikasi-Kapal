@@ -365,10 +365,17 @@ class ProfileActivity : AppCompatActivity() {
                                                     loadDataAndBuildUI()
                                                     Toast.makeText(this@ProfileActivity, "Kapal selesai!", Toast.LENGTH_SHORT).show()
                                                 } else {
-                                                    Toast.makeText(this@ProfileActivity, "Gagal update kapal", Toast.LENGTH_SHORT).show()
+                                                    Toast.makeText(this@ProfileActivity, "Gagal update kapal: ${apiResponse?.message}", Toast.LENGTH_SHORT).show()
                                                 }
                                             } else {
-                                                Toast.makeText(this@ProfileActivity, "Gagal update kapal: ${response.message()}", Toast.LENGTH_SHORT).show()
+                                                if (response.code() == 403) {
+                                                    val intent = Intent(this@ProfileActivity, LoginActivity::class.java)
+                                                    startActivity(intent)
+                                                    finish()
+                                                    Toast.makeText(this@ProfileActivity, "Token expired, please login again", Toast.LENGTH_SHORT).show()
+                                                } else {
+                                                    Toast.makeText(this@ProfileActivity, "Gagal update kapal: ${response.message()}", Toast.LENGTH_SHORT).show()
+                                                }
                                             }
                                         } catch (e: Exception) {
                                             Toast.makeText(this@ProfileActivity, "Error: ${e.message}", Toast.LENGTH_SHORT).show()
