@@ -7,12 +7,12 @@ data class ApiResponse<T>(
 )
 
 data class LoginRequest(
-    val username: String,
+    val userId: String,
     val password: String
 )
 
 data class RegisterRequest(
-    val username: String,
+    val userId: String,
     val password: String,
     val nama: String? = null
 )
