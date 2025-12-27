@@ -120,13 +120,7 @@ class DaftarKapalActivity : AppCompatActivity() {
                         kapalList.addAll(kapalFromApi)
                         kapalAdapter.notifyDataSetChanged()
 
-                        // Sync to local database for offline access
-                        database.kapalDao().deleteAllKapal()
-                        for (kapal in kapalFromApi) {
-                            database.kapalDao().insertKapal(kapal)
-                        }
-
-                        Toast.makeText(this@DaftarKapalActivity, "Data tersinkronisasi", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(this@DaftarKapalActivity, "Data berhasil dimuat", Toast.LENGTH_SHORT).show()
                     } else {
                         Toast.makeText(this@DaftarKapalActivity, "Gagal memuat data kapal", Toast.LENGTH_SHORT).show()
                     }

@@ -1,26 +1,37 @@
-# TODO: Separate Database Tables for Kapal, Dokumen, and Kapal Masuk
+# TODO: Separate Databases Implementation
 
-## Information Gathered
-- Current KapalEntity has listDokumen as List<DokumenKapal>, stored as JSON.
-- DokumenKapal has jenis, pathGambar (MutableList<String>), pathPdf (MutableList<String>), tanggalExpired.
-- Kapal masuk: ships with tanggalKembali not null.
-- Goal: Separate tables to avoid cloning data.
+## Backend Changes
+- [ ] Modify server.js to use 4 separate database connections (schemas)
+- [ ] Create separate tables for each schema: users, kapal, dokumen, kapal_masuk
+- [ ] Update API endpoints to use respective schemas
+- [ ] Update environment variables for multiple database URLs
 
-## Plan
-- Create DokumenEntity with foreign key to kapal_id.
-- Modify KapalEntity to remove listDokumen.
-- Create KapalMasukEntity for returned ships.
-- Update KapalDatabase with new entities and migrations.
-- Create DokumenDao and KapalMasukDao.
-- Update Converters for JSON lists.
+## Android App Changes
+- [ ] Remove Room database usage from all activities
+- [ ] Update ApiService.kt to include all CRUD operations for each entity
+- [ ] Update Config.kt with new API endpoints
+- [ ] Modify all activities to use API calls instead of local database
+- [ ] Update data models if needed for API communication
 
-## Steps
-- [ ] Create DokumenEntity.kt
-- [ ] Create KapalMasukEntity.kt
-- [ ] Modify KapalEntity.kt (remove listDokumen)
-- [ ] Create DokumenDao.kt
-- [ ] Create KapalMasukDao.kt
-- [ ] Update KapalDatabase.kt (add entities, version, migrations)
-- [ ] Update Converters.kt if needed
-- [ ] Test database changes
-- [ ] Update activities to use new structure
+## Testing
+- [ ] Test backend API endpoints
+- [ ] Test Android app functionality
+- [ ] Verify data synchronization
+
+## Files to Modify
+### Backend
+- backend/server.js
+- backend/package.json (if needed)
+
+### Android App
+- app/src/main/java/com/example/kapallist/ApiService.kt
+- app/src/main/java/com/example/kapallist/Config.kt
+- app/src/main/java/com/example/kapallist/MainActivity.kt
+- app/src/main/java/com/example/kapallist/LoginActivity.kt
+- app/src/main/java/com/example/kapallist/DaftarKapalActivity.kt
+- app/src/main/java/com/example/kapallist/InputActivity.kt
+- app/src/main/java/com/example/kapallist/DocumentActivity.kt
+- app/src/main/java/com/example/kapallist/ProfileActivity.kt
+
+### Files to Remove
+- All Room database files (*.kt database, dao, entity files)

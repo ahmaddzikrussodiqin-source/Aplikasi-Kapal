@@ -1,29 +1,4 @@
-package com.example.kapallist
-
-import retrofit2.Response
-import retrofit2.http.*
-
-interface ApiService {
-
-    // Authentication
-    @POST("api/login")
-    suspend fun login(@Body loginRequest: LoginRequest): Response<LoginResponse>
-
-    @POST("api/register")
-    suspend fun register(@Body registerRequest: RegisterRequest): Response<ApiResponse<User>>
-
-    // Users
-    @GET("api/users")
-    suspend fun getAllUsers(@Header("Authorization") token: String): Response<ApiResponse<List<User>>>
-
-    @PUT("api/users/{userId}")
-    suspend fun updateUser(@Header("Authorization") token: String, @Path("userId") userId: String, @Body user: User): Response<ApiResponse<User>>
-
-    @DELETE("api/users/{userId}")
-    suspend fun deleteUser(@Header("Authorization") token: String, @Path("userId") userId: String): Response<ApiResponse<Unit>>
-
-    // Kapal
-    @GET("api/kapal")
+@GET("api/kapal")
     suspend fun getAllKapal(@Header("Authorization") token: String): Response<ApiResponse<List<KapalEntity>>>
 
     @GET("api/kapal/{id}")
@@ -42,25 +17,56 @@ interface ApiService {
     @Multipart
     @POST("api/upload")
     suspend fun uploadFile(@Header("Authorization") token: String, @Part file: okhttp3.MultipartBody.Part): Response<ApiResponse<String>>
-}
+=======
+    // Kapal
+    @GET("api/kapal")
+    suspend fun getAllKapal(@Header("Authorization") token: String): Response<ApiResponse<List<KapalEntity>>>
 
-// Data classes for API requests/responses
-data class LoginRequest(val userId: String, val password: String)
-data class RegisterRequest(val userId: String, val password: String)
+    @GET("api/kapal/{id}")
+    suspend fun getKapalById(@Header("Authorization") token: String, @Path("id") id: Int): Response<ApiResponse<KapalEntity>>
 
-data class LoginResponse(
-    val success: Boolean,
-    val message: String,
-    val data: LoginData
-)
+    @POST("api/kapal")
+    suspend fun createKapal(@Header("Authorization") token: String, @Body kapal: KapalEntity): Response<ApiResponse<KapalEntity>>
 
-data class LoginData(
-    val token: String,
-    val user: User
-)
+    @PUT("api/kapal/{id}")
+    suspend fun updateKapal(@Header("Authorization") token: String, @Path("id") id: Int, @Body kapal: KapalEntity): Response<ApiResponse<KapalEntity>>
 
-data class ApiResponse<T>(
-    val success: Boolean,
-    val message: String,
-    val data: T? = null
-)
+    @DELETE("api/kapal/{id}")
+    suspend fun deleteKapal(@Header("Authorization") token: String, @Path("id") id: Int): Response<ApiResponse<Unit>>
+
+    // Dokumen
+    @GET("api/dokumen")
+    suspend fun getAllDokumen(@Header("Authorization") token: String): Response<ApiResponse<List<DokumenEntity>>>
+
+    @GET("api/dokumen/{id}")
+    suspend fun getDokumenById(@Header("Authorization") token: String, @Path("id") id: Int): Response<ApiResponse<DokumenEntity>>
+
+    @POST("api/dokumen")
+    suspend fun createDokumen(@Header("Authorization") token: String, @Body dokumen: DokumenEntity): Response<ApiResponse<DokumenEntity>>
+
+    @PUT("api/dokumen/{id}")
+    suspend fun updateDokumen(@Header("Authorization") token: String, @Path("id") id: Int, @Body dokumen: DokumenEntity): Response<ApiResponse<DokumenEntity>>
+
+    @DELETE("api/dokumen/{id}")
+    suspend fun deleteDokumen(@Header("Authorization") token: String, @Path("id") id: Int): Response<ApiResponse<Unit>>
+
+    // Kapal Masuk
+    @GET("api/kapal-masuk")
+    suspend fun getAllKapalMasuk(@Header("Authorization") token: String): Response<ApiResponse<List<KapalMasukEntity>>>
+
+    @GET("api/kapal-masuk/{id}")
+    suspend fun getKapalMasukById(@Header("Authorization") token: String, @Path("id") id: Int): Response<ApiResponse<KapalMasukEntity>>
+
+    @POST("api/kapal-masuk")
+    suspend fun createKapalMasuk(@Header("Authorization") token: String, @Body kapalMasuk: KapalMasukEntity): Response<ApiResponse<KapalMasukEntity>>
+
+    @PUT("api/kapal-masuk/{id}")
+    suspend fun updateKapalMasuk(@Header("Authorization") token: String, @Path("id") id: Int, @Body kapalMasuk: KapalMasukEntity): Response<ApiResponse<KapalMasukEntity>>
+
+    @DELETE("api/kapal-masuk/{id}")
+    suspend fun deleteKapalMasuk(@Header("Authorization") token: String, @Path("id") id: Int): Response<ApiResponse<Unit>>
+
+    // File upload
+    @Multipart
+    @POST("api/upload")
+    suspend fun uploadFile(@Header("Authorization") token: String, @Part file: okhttp3.MultipartBody.Part): Response<ApiResponse<String>>

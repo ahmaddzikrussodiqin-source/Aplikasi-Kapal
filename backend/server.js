@@ -34,18 +34,39 @@ const storage = multer.diskStorage({
 });
 const upload = multer({ storage: storage });
 
-// Database setup
-const pool = new Pool({
-    connectionString: process.env.DATABASE_URL,
+// Database setup - Multiple schemas in one PostgreSQL instance
+const usersPool = new Pool({
+    connectionString: process.env.USERS_DATABASE_URL || process.env.DATABASE_URL,
     ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
 });
 
-// Initialize database tables
+const kapalPool = new Pool({
+    connectionString: process.env.KAPAL_DATABASE_URL || process.env.DATABASE_URL,
+    ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
+});
+
+const dokumenPool = new Pool({
+    connectionString: process.env.DOKUMEN_DATABASE_URL || process.env.DATABASE_URL,
+    ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
+});
+
+const kapalMasukPool = new Pool({
+    connectionString: process.env.KAPAL_MASUK_DATABASE_URL || process.env.DATABASE_URL,
+    ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
+});
+
+// Initialize database schemas and tables
 async function initializeDatabase() {
     try {
-        // Users table
-        await pool.query(`
-            CREATE TABLE IF NOT EXISTS users (
+        // Create schemas if they don't exist
+        await usersPool.query(`CREATE SCHEMA IF NOT EXISTS users_schema`);
+        await kapalPool.query(`CREATE SCHEMA IF NOT EXISTS kapal_schema`);
+        await dokumenPool.query(`CREATE SCHEMA IF NOT EXISTS dokumen_schema`);
+        await kapalMasukPool.query(`CREATE SCHEMA IF NOT EXISTS kapal_masuk_schema`);
+
+        // Users table in users_schema
+        await usersPool.query(`
+            CREATE TABLE IF NOT EXISTS users_schema.users (
                 userId TEXT PRIMARY KEY,
                 password TEXT NOT NULL,
                 nama TEXT,
@@ -55,9 +76,9 @@ async function initializeDatabase() {
             )
         `);
 
-        // Kapal table
-        await pool.query(`
-            CREATE TABLE IF NOT EXISTS kapal (
+        // Kapal table in kapal_schema
+        await kapalPool.query(`
+            CREATE TABLE IF NOT EXISTS kapal_schema.kapal (
                 id SERIAL PRIMARY KEY,
                 nama TEXT,
                 namaPemilik TEXT NOT NULL DEFAULT '',
@@ -81,21 +102,65 @@ async function initializeDatabase() {
             )
         `);
 
-        console.log('Database tables initialized.');
+        // Dokumen table in dokumen_schema
+        await dokumenPool.query(`
+            CREATE TABLE IF NOT EXISTS dokumen_schema.dokumen (
+                id SERIAL PRIMARY KEY,
+                kapalId INTEGER NOT NULL,
+                nama TEXT NOT NULL,
+                jenis TEXT NOT NULL,
+                nomor TEXT,
+                tanggalTerbit TEXT,
+                tanggalKadaluarsa TEXT,
+                status TEXT NOT NULL DEFAULT 'aktif',
+                filePath TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        `);
+
+        // Kapal Masuk table in kapal_masuk_schema
+        await kapalMasukPool.query(`
+            CREATE TABLE IF NOT EXISTS kapal_masuk_schema.kapal_masuk (
+                id SERIAL PRIMARY KEY,
+                nama TEXT,
+                namaPemilik TEXT NOT NULL DEFAULT '',
+                tandaSelar TEXT NOT NULL DEFAULT '',
+                tandaPengenal TEXT NOT NULL DEFAULT '',
+                beratKotor TEXT NOT NULL DEFAULT '',
+                beratBersih TEXT NOT NULL DEFAULT '',
+                merekMesin TEXT NOT NULL DEFAULT '',
+                nomorSeriMesin TEXT NOT NULL DEFAULT '',
+                jenisAlatTangkap TEXT NOT NULL DEFAULT '',
+                tanggalInput TEXT,
+                tanggalKeberangkatan TEXT,
+                totalHariPersiapan INTEGER,
+                tanggalBerangkat TEXT,
+                tanggalKembali TEXT,
+                listPersiapan TEXT NOT NULL DEFAULT '[]',
+                isFinished INTEGER NOT NULL DEFAULT 0,
+                perkiraanKeberangkatan TEXT,
+                durasiSelesaiPersiapan TEXT,
+                statusKerja TEXT NOT NULL DEFAULT 'persiapan'
+            )
+        `);
+
+        console.log('Database schemas and tables initialized.');
     } catch (err) {
         console.error('Error initializing database:', err);
     }
 }
 
-// Connect to database and initialize
-pool.connect((err, client, release) => {
-    if (err) {
-        console.error('Error connecting to database:', err);
-    } else {
-        console.log('Connected to PostgreSQL database.');
-        initializeDatabase();
-        release();
-    }
+// Connect to databases and initialize
+Promise.all([
+    usersPool.connect(),
+    kapalPool.connect(),
+    dokumenPool.connect(),
+    kapalMasukPool.connect()
+]).then(() => {
+    console.log('Connected to all PostgreSQL databases.');
+    initializeDatabase();
+}).catch(err => {
+    console.error('Error connecting to databases:', err);
 });
 
 // Middleware to verify JWT token
@@ -140,7 +205,7 @@ app.post('/api/login', async (req, res) => {
             });
         }
 
-        const result = await pool.query('SELECT * FROM users WHERE userId = $1', [userId]);
+        const result = await usersPool.query('SELECT * FROM users_schema.users WHERE userId = $1', [userId]);
         const user = result.rows[0];
 
         if (!user) {
@@ -198,7 +263,7 @@ app.post('/api/register', async (req, res) => {
         }
 
         // Check if user already exists
-        const existingResult = await pool.query('SELECT userId FROM users WHERE userId = $1', [userId]);
+        const existingResult = await usersPool.query('SELECT userId FROM users_schema.users WHERE userId = $1', [userId]);
         if (existingResult.rows.length > 0) {
             return res.status(409).json({
                 success: false,
@@ -210,8 +275,8 @@ app.post('/api/register', async (req, res) => {
         const hashedPassword = await bcrypt.hash(password, 10);
 
         // Insert new user
-        await pool.query(
-            'INSERT INTO users (userId, password) VALUES ($1, $2)',
+        await usersPool.query(
+            'INSERT INTO users_schema.users (userId, password) VALUES ($1, $2)',
             [userId, hashedPassword]
         );
 
@@ -234,7 +299,7 @@ app.post('/api/register', async (req, res) => {
 // User routes (protected)
 app.get('/api/users', authenticateToken, async (req, res) => {
     try {
-        const result = await pool.query('SELECT userId, nama, email, photoUri, created_at FROM users');
+        const result = await usersPool.query('SELECT userId, nama, email, photoUri, created_at FROM users_schema.users');
         res.json({
             success: true,
             message: 'Users retrieved successfully',
@@ -254,8 +319,8 @@ app.put('/api/users/:userId', authenticateToken, async (req, res) => {
         const { userId } = req.params;
         const { nama, email, photoUri } = req.body;
 
-        const result = await pool.query(
-            'UPDATE users SET nama = $1, email = $2, photoUri = $3 WHERE userId = $4',
+        const result = await usersPool.query(
+            'UPDATE users_schema.users SET nama = $1, email = $2, photoUri = $3 WHERE userId = $4',
             [nama, email, photoUri, userId]
         );
 
@@ -283,7 +348,7 @@ app.delete('/api/users/:userId', authenticateToken, async (req, res) => {
     try {
         const { userId } = req.params;
 
-        const result = await pool.query('DELETE FROM users WHERE userId = $1', [userId]);
+        const result = await usersPool.query('DELETE FROM users_schema.users WHERE userId = $1', [userId]);
 
         if (result.rowCount === 0) {
             return res.status(404).json({
@@ -344,7 +409,7 @@ function parseListPersiapan(value) {
 // Kapal routes (protected)
 app.get('/api/kapal', authenticateToken, async (req, res) => {
     try {
-        const result = await pool.query('SELECT * FROM kapal ORDER BY id DESC');
+        const result = await kapalPool.query('SELECT * FROM kapal_schema.kapal ORDER BY id DESC');
         const kapal = result.rows;
 
         // Parse JSON strings back to arrays and convert isFinished to boolean
@@ -373,7 +438,7 @@ app.get('/api/kapal/:id', authenticateToken, async (req, res) => {
     try {
         const { id } = req.params;
 
-        const result = await pool.query('SELECT * FROM kapal WHERE id = $1', [id]);
+        const result = await kapalPool.query('SELECT * FROM kapal_schema.kapal WHERE id = $1', [id]);
         const kapal = result.rows[0];
 
         if (!kapal) {
@@ -409,8 +474,8 @@ app.post('/api/kapal', authenticateToken, async (req, res) => {
     try {
         const kapalData = req.body;
 
-        const result = await pool.query(`
-            INSERT INTO kapal (
+        const result = await kapalPool.query(`
+            INSERT INTO kapal_schema.kapal (
                 nama, namaPemilik, tandaSelar, tandaPengenal, beratKotor, beratBersih,
                 merekMesin, nomorSeriMesin, jenisAlatTangkap, tanggalInput, tanggalKeberangkatan,
                 totalHariPersiapan, tanggalBerangkat, tanggalKembali, listPersiapan, listDokumen,
@@ -455,8 +520,8 @@ app.put('/api/kapal/:id', authenticateToken, async (req, res) => {
         const { id } = req.params;
         const kapalData = req.body;
 
-        const result = await pool.query(`
-            UPDATE kapal SET
+        const result = await kapalPool.query(`
+            UPDATE kapal_schema.kapal SET
                 nama = $1, namaPemilik = $2, tandaSelar = $3, tandaPengenal = $4,
                 beratKotor = $5, beratBersih = $6, merekMesin = $7, nomorSeriMesin = $8,
                 jenisAlatTangkap = $9, tanggalInput = $10, tanggalKeberangkatan = $11,
@@ -498,7 +563,7 @@ app.delete('/api/kapal/:id', authenticateToken, async (req, res) => {
     try {
         const { id } = req.params;
 
-        const result = await pool.query('DELETE FROM kapal WHERE id = $1', [id]);
+        const result = await kapalPool.query('DELETE FROM kapal_schema.kapal WHERE id = $1', [id]);
 
         if (result.rowCount === 0) {
             return res.status(404).json({
@@ -516,6 +581,314 @@ app.delete('/api/kapal/:id', authenticateToken, async (req, res) => {
         res.status(500).json({
             success: false,
             message: 'Failed to delete kapal'
+        });
+    }
+});
+
+// Dokumen routes (protected)
+app.get('/api/dokumen', authenticateToken, async (req, res) => {
+    try {
+        const result = await dokumenPool.query('SELECT * FROM dokumen_schema.dokumen ORDER BY id DESC');
+        res.json({
+            success: true,
+            message: 'Dokumen retrieved successfully',
+            data: result.rows
+        });
+    } catch (error) {
+        console.error('Get dokumen error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Database error'
+        });
+    }
+});
+
+app.get('/api/dokumen/:id', authenticateToken, async (req, res) => {
+    try {
+        const { id } = req.params;
+        const result = await dokumenPool.query('SELECT * FROM dokumen_schema.dokumen WHERE id = $1', [id]);
+        const dokumen = result.rows[0];
+
+        if (!dokumen) {
+            return res.status(404).json({
+                success: false,
+                message: 'Dokumen not found'
+            });
+        }
+
+        res.json({
+            success: true,
+            message: 'Dokumen retrieved successfully',
+            data: dokumen
+        });
+    } catch (error) {
+        console.error('Get dokumen by id error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Database error'
+        });
+    }
+});
+
+app.post('/api/dokumen', authenticateToken, async (req, res) => {
+    try {
+        const dokumenData = req.body;
+        const result = await dokumenPool.query(`
+            INSERT INTO dokumen_schema.dokumen (
+                kapalId, nama, jenis, nomor, tanggalTerbit, tanggalKadaluarsa, status, filePath
+            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+            RETURNING *
+        `, [
+            dokumenData.kapalId, dokumenData.nama, dokumenData.jenis, dokumenData.nomor,
+            dokumenData.tanggalTerbit, dokumenData.tanggalKadaluarsa, dokumenData.status || 'aktif',
+            dokumenData.filePath
+        ]);
+
+        res.status(201).json({
+            success: true,
+            message: 'Dokumen created successfully',
+            data: result.rows[0]
+        });
+    } catch (error) {
+        console.error('Create dokumen error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Failed to create dokumen'
+        });
+    }
+});
+
+app.put('/api/dokumen/:id', authenticateToken, async (req, res) => {
+    try {
+        const { id } = req.params;
+        const dokumenData = req.body;
+
+        const result = await dokumenPool.query(`
+            UPDATE dokumen_schema.dokumen SET
+                kapalId = $1, nama = $2, jenis = $3, nomor = $4,
+                tanggalTerbit = $5, tanggalKadaluarsa = $6, status = $7, filePath = $8
+            WHERE id = $9
+        `, [
+            dokumenData.kapalId, dokumenData.nama, dokumenData.jenis, dokumenData.nomor,
+            dokumenData.tanggalTerbit, dokumenData.tanggalKadaluarsa, dokumenData.status,
+            dokumenData.filePath, id
+        ]);
+
+        if (result.rowCount === 0) {
+            return res.status(404).json({
+                success: false,
+                message: 'Dokumen not found'
+            });
+        }
+
+        res.json({
+            success: true,
+            message: 'Dokumen updated successfully'
+        });
+    } catch (error) {
+        console.error('Update dokumen error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Failed to update dokumen'
+        });
+    }
+});
+
+app.delete('/api/dokumen/:id', authenticateToken, async (req, res) => {
+    try {
+        const { id } = req.params;
+        const result = await dokumenPool.query('DELETE FROM dokumen_schema.dokumen WHERE id = $1', [id]);
+
+        if (result.rowCount === 0) {
+            return res.status(404).json({
+                success: false,
+                message: 'Dokumen not found'
+            });
+        }
+
+        res.json({
+            success: true,
+            message: 'Dokumen deleted successfully'
+        });
+    } catch (error) {
+        console.error('Delete dokumen error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Failed to delete dokumen'
+        });
+    }
+});
+
+// Kapal Masuk routes (protected)
+app.get('/api/kapal-masuk', authenticateToken, async (req, res) => {
+    try {
+        const result = await kapalMasukPool.query('SELECT * FROM kapal_masuk_schema.kapal_masuk ORDER BY id DESC');
+        const kapalMasuk = result.rows;
+
+        // Parse JSON strings back to arrays and convert isFinished to boolean
+        const parsedKapalMasuk = kapalMasuk.map(k => ({
+            ...k,
+            listPersiapan: parseListPersiapan(k.listpersiapan),
+            isFinished: Boolean(k.isfinished)
+        }));
+
+        res.json({
+            success: true,
+            message: 'Kapal Masuk retrieved successfully',
+            data: parsedKapalMasuk
+        });
+    } catch (error) {
+        console.error('Get kapal masuk error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Database error'
+        });
+    }
+});
+
+app.get('/api/kapal-masuk/:id', authenticateToken, async (req, res) => {
+    try {
+        const { id } = req.params;
+        const result = await kapalMasukPool.query('SELECT * FROM kapal_masuk_schema.kapal_masuk WHERE id = $1', [id]);
+        const kapalMasuk = result.rows[0];
+
+        if (!kapalMasuk) {
+            return res.status(404).json({
+                success: false,
+                message: 'Kapal Masuk not found'
+            });
+        }
+
+        // Parse JSON strings back to arrays
+        const parsedKapalMasuk = {
+            ...kapalMasuk,
+            listPersiapan: parseListPersiapan(kapalMasuk.listpersiapan),
+            isFinished: Boolean(kapalMasuk.isfinished)
+        };
+
+        res.json({
+            success: true,
+            message: 'Kapal Masuk retrieved successfully',
+            data: parsedKapalMasuk
+        });
+    } catch (error) {
+        console.error('Get kapal masuk by id error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Database error'
+        });
+    }
+});
+
+app.post('/api/kapal-masuk', authenticateToken, async (req, res) => {
+    try {
+        const kapalMasukData = req.body;
+        const result = await kapalMasukPool.query(`
+            INSERT INTO kapal_masuk_schema.kapal_masuk (
+                nama, namaPemilik, tandaSelar, tandaPengenal, beratKotor, beratBersih,
+                merekMesin, nomorSeriMesin, jenisAlatTangkap, tanggalInput, tanggalKeberangkatan,
+                totalHariPersiapan, tanggalBerangkat, tanggalKembali, listPersiapan,
+                isFinished, perkiraanKeberangkatan, durasiSelesaiPersiapan, statusKerja
+            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19)
+            RETURNING *
+        `, [
+            kapalMasukData.nama, kapalMasukData.namaPemilik, kapalMasukData.tandaSelar, kapalMasukData.tandaPengenal,
+            kapalMasukData.beratKotor, kapalMasukData.beratBersih, kapalMasukData.merekMesin, kapalMasukData.nomorSeriMesin,
+            kapalMasukData.jenisAlatTangkap, kapalMasukData.tanggalInput, kapalMasukData.tanggalKeberangkatan,
+            kapalMasukData.totalHariPersiapan, kapalMasukData.tanggalBerangkat, kapalMasukData.tanggalKembali,
+            JSON.stringify(kapalMasukData.listPersiapan || []), kapalMasukData.isFinished ? 1 : 0,
+            kapalMasukData.perkiraanKeberangkatan, kapalMasukData.durasiSelesaiPersiapan,
+            kapalMasukData.statusKerja || 'persiapan'
+        ]);
+
+        const kapalMasuk = result.rows[0];
+
+        // Parse JSON strings back to arrays
+        const parsedKapalMasuk = {
+            ...kapalMasuk,
+            listPersiapan: parseListPersiapan(kapalMasuk.listpersiapan),
+            isFinished: Boolean(kapalMasuk.isfinished)
+        };
+
+        res.status(201).json({
+            success: true,
+            message: 'Kapal Masuk created successfully',
+            data: parsedKapalMasuk
+        });
+    } catch (error) {
+        console.error('Create kapal masuk error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Failed to create kapal masuk'
+        });
+    }
+});
+
+app.put('/api/kapal-masuk/:id', authenticateToken, async (req, res) => {
+    try {
+        const { id } = req.params;
+        const kapalMasukData = req.body;
+
+        const result = await kapalMasukPool.query(`
+            UPDATE kapal_masuk_schema.kapal_masuk SET
+                nama = $1, namaPemilik = $2, tandaSelar = $3, tandaPengenal = $4,
+                beratKotor = $5, beratBersih = $6, merekMesin = $7, nomorSeriMesin = $8,
+                jenisAlatTangkap = $9, tanggalInput = $10, tanggalKeberangkatan = $11,
+                totalHariPersiapan = $12, tanggalBerangkat = $13, tanggalKembali = $14,
+                listPersiapan = $15, isFinished = $16, perkiraanKeberangkatan = $17,
+                durasiSelesaiPersiapan = $18, statusKerja = $19
+            WHERE id = $20
+        `, [
+            kapalMasukData.nama, kapalMasukData.namaPemilik, kapalMasukData.tandaSelar, kapalMasukData.tandaPengenal,
+            kapalMasukData.beratKotor, kapalMasukData.beratBersih, kapalMasukData.merekMesin, kapalMasukData.nomorSeriMesin,
+            kapalMasukData.jenisAlatTangkap, kapalMasukData.tanggalInput, kapalMasukData.tanggalKeberangkatan,
+            kapalMasukData.totalHariPersiapan, kapalMasukData.tanggalBerangkat, kapalMasukData.tanggalKembali,
+            JSON.stringify(kapalMasukData.listPersiapan || []), kapalMasukData.isFinished ? 1 : 0,
+            kapalMasukData.perkiraanKeberangkatan, kapalMasukData.durasiSelesaiPersiapan,
+            kapalMasukData.statusKerja, id
+        ]);
+
+        if (result.rowCount === 0) {
+            return res.status(404).json({
+                success: false,
+                message: 'Kapal Masuk not found'
+            });
+        }
+
+        res.json({
+            success: true,
+            message: 'Kapal Masuk updated successfully'
+        });
+    } catch (error) {
+        console.error('Update kapal masuk error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Failed to update kapal masuk'
+        });
+    }
+});
+
+app.delete('/api/kapal-masuk/:id', authenticateToken, async (req, res) => {
+    try {
+        const { id } = req.params;
+        const result = await kapalMasukPool.query('DELETE FROM kapal_masuk_schema.kapal_masuk WHERE id = $1', [id]);
+
+        if (result.rowCount === 0) {
+            return res.status(404).json({
+                success: false,
+                message: 'Kapal Masuk not found'
+            });
+        }
+
+        res.json({
+            success: true,
+            message: 'Kapal Masuk deleted successfully'
+        });
+    } catch (error) {
+        console.error('Delete kapal masuk error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Failed to delete kapal masuk'
         });
     }
 });
@@ -566,9 +939,17 @@ app.listen(PORT, () => {
 // Graceful shutdown
 process.on('SIGINT', () => {
     console.log('Shutting down gracefully...');
-    pool.end(() => {
-        console.log('Database connection closed.');
+    Promise.all([
+        usersPool.end(),
+        kapalPool.end(),
+        dokumenPool.end(),
+        kapalMasukPool.end()
+    ]).then(() => {
+        console.log('All database connections closed.');
         process.exit(0);
+    }).catch(err => {
+        console.error('Error closing database connections:', err);
+        process.exit(1);
     });
 });
 

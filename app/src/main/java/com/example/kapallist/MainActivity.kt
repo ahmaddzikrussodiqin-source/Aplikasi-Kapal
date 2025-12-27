@@ -34,7 +34,6 @@ class MainActivity : AppCompatActivity() {
     private lateinit var tvUserName: TextView
     private var currentDialogImageView: ImageView? = null  // Untuk update foto di dialog
     private lateinit var token: String
-    private lateinit var database: KapalDatabase
 
     // Activity Result Launcher untuk galeri
     private lateinit var galleryLauncher: ActivityResultLauncher<Intent>
@@ -77,7 +76,9 @@ class MainActivity : AppCompatActivity() {
 
         setContentView(R.layout.activity_main)
 
-        database = KapalDatabase.getDatabase(this)
+        // Get token from SharedPreferences
+        val sharedPref = getSharedPreferences("login_prefs", MODE_PRIVATE)
+        token = sharedPref.getString("token", "") ?: ""
 
         // Inisialisasi Activity Result Launcher untuk galeri
         galleryLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
@@ -216,23 +217,31 @@ class MainActivity : AppCompatActivity() {
 
     private fun showManageUsersDialog() {
         lifecycleScope.launch {
-            val users = database.userDao().getAllUsers()
-            if (users.isNotEmpty()) {
-                val userNames = users.map { it.userId }.toTypedArray()  // Hapus jabatan
-                val builder = AlertDialog.Builder(this@MainActivity)
-                builder.setTitle("Manage Users")
-                builder.setItems(userNames) { _, which ->
-                    val selectedUser = users[which]
-                    showEditUserDialog(selectedUser)
+            try {
+                val response = ApiClient.apiService.getAllUsers("Bearer $token")
+                if (response.isSuccessful) {
+                    val users = response.body()?.data ?: emptyList()
+                    if (users.isNotEmpty()) {
+                        val userNames = users.map { it.userId }.toTypedArray()
+                        val builder = AlertDialog.Builder(this@MainActivity)
+                        builder.setTitle("Manage Users")
+                        builder.setItems(userNames) { _, which ->
+                            val selectedUser = users[which]
+                            showEditUserDialog(selectedUser)
+                        }
+                        builder.setPositiveButton("Tambah User Baru") { _, _ ->
+                            showCreateAccountDialog()
+                        }
+                        builder.setNegativeButton("Batal", null)
+                        builder.show()
+                    } else {
+                        showCreateAccountDialog()
+                    }
+                } else {
+                    Toast.makeText(this@MainActivity, "Gagal memuat users", Toast.LENGTH_SHORT).show()
                 }
-                builder.setPositiveButton("Tambah User Baru") { _, _ ->
-                    showCreateAccountDialog()  // Panggil dialog buat user baru
-                }
-                builder.setNegativeButton("Batal", null)
-                builder.show()
-            } else {
-                // Jika tidak ada user, langsung tampilkan dialog tambah user
-                showCreateAccountDialog()
+            } catch (e: Exception) {
+                Toast.makeText(this@MainActivity, "Error: ${e.message}", Toast.LENGTH_SHORT).show()
             }
         }
     }
