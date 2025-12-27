@@ -31,6 +31,7 @@ import java.io.File
 import java.io.FileOutputStream
 
 class MainActivity : AppCompatActivity() {
+    private lateinit var database: KapalDatabase
     private lateinit var ivUserPhoto: ImageView
     private lateinit var tvUserName: TextView
     private var currentDialogImageView: ImageView? = null  // Untuk update foto di dialog

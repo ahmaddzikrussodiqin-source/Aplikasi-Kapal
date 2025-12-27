@@ -14,5 +14,10 @@ data class LoginRequest(
 data class RegisterRequest(
     val username: String,
     val password: String,
-    val nama: String
+    val nama: String? = null
+)
+
+data class LoginResponse(
+    val token: String,
+    val user: User
 )

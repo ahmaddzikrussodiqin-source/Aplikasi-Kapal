@@ -67,4 +67,11 @@ interface ApiService {
 
     @DELETE("api/users/{userId}")
     suspend fun deleteUser(@Header("Authorization") token: String, @Path("userId") userId: String): Response<ApiResponse<Unit>>
+
+    // Authentication
+    @POST("api/login")
+    suspend fun login(@Body loginRequest: LoginRequest): Response<ApiResponse<LoginResponse>>
+
+    @POST("api/register")
+    suspend fun register(@Body registerRequest: RegisterRequest): Response<ApiResponse<Unit>>
 }
