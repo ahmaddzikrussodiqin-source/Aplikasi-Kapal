@@ -25,6 +25,9 @@ interface ApiService {
     @GET("api/dokumen")
     suspend fun getAllDokumen(@Header("Authorization") token: String): Response<ApiResponse<List<DokumenEntity>>>
 
+    @GET("api/dokumen/kapal/{kapalId}")
+    suspend fun getDokumenByKapalId(@Header("Authorization") token: String, @Path("kapalId") kapalId: Int): Response<ApiResponse<List<DokumenEntity>>>
+
     @GET("api/dokumen/{id}")
     suspend fun getDokumenById(@Header("Authorization") token: String, @Path("id") id: Int): Response<ApiResponse<DokumenEntity>>
 

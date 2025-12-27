@@ -603,6 +603,24 @@ app.get('/api/dokumen', authenticateToken, async (req, res) => {
     }
 });
 
+app.get('/api/dokumen/kapal/:kapalId', authenticateToken, async (req, res) => {
+    try {
+        const { kapalId } = req.params;
+        const result = await dokumenPool.query('SELECT * FROM dokumen_schema.dokumen WHERE kapalId = $1 ORDER BY id DESC', [kapalId]);
+        res.json({
+            success: true,
+            message: 'Dokumen retrieved successfully',
+            data: result.rows
+        });
+    } catch (error) {
+        console.error('Get dokumen by kapalId error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Database error'
+        });
+    }
+});
+
 app.get('/api/dokumen/:id', authenticateToken, async (req, res) => {
     try {
         const { id } = req.params;

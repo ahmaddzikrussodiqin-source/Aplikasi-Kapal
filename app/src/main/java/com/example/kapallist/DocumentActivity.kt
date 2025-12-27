@@ -181,6 +181,7 @@ class DocumentActivity : AppCompatActivity() {
             if (jenis.isNotEmpty() && currentKapal != null) {
                 val newDokumen = DokumenEntity(
                     kapalId = currentKapal!!.id,
+                    nama = jenis, // Use jenis as nama for now
                     jenis = jenis,
                     tanggalKadaluarsa = tanggalExpired,
                     status = "aktif"
