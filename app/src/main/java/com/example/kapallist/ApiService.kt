@@ -1,23 +1,10 @@
-@GET("api/kapal")
-    suspend fun getAllKapal(@Header("Authorization") token: String): Response<ApiResponse<List<KapalEntity>>>
+package com.example.kapallist
 
-    @GET("api/kapal/{id}")
-    suspend fun getKapalById(@Header("Authorization") token: String, @Path("id") id: Int): Response<ApiResponse<KapalEntity>>
+import retrofit2.http.*
+import retrofit2.Response
+import okhttp3.MultipartBody
 
-    @POST("api/kapal")
-    suspend fun createKapal(@Header("Authorization") token: String, @Body kapal: KapalEntity): Response<ApiResponse<KapalEntity>>
-
-    @PUT("api/kapal/{id}")
-    suspend fun updateKapal(@Header("Authorization") token: String, @Path("id") id: Int, @Body kapal: KapalEntity): Response<ApiResponse<KapalEntity>>
-
-    @DELETE("api/kapal/{id}")
-    suspend fun deleteKapal(@Header("Authorization") token: String, @Path("id") id: Int): Response<ApiResponse<Unit>>
-
-    // File upload
-    @Multipart
-    @POST("api/upload")
-    suspend fun uploadFile(@Header("Authorization") token: String, @Part file: okhttp3.MultipartBody.Part): Response<ApiResponse<String>>
-=======
+interface ApiService {
     // Kapal
     @GET("api/kapal")
     suspend fun getAllKapal(@Header("Authorization") token: String): Response<ApiResponse<List<KapalEntity>>>
@@ -69,4 +56,5 @@
     // File upload
     @Multipart
     @POST("api/upload")
-    suspend fun uploadFile(@Header("Authorization") token: String, @Part file: okhttp3.MultipartBody.Part): Response<ApiResponse<String>>
+    suspend fun uploadFile(@Header("Authorization") token: String, @Part file: MultipartBody.Part): Response<ApiResponse<String>>
+}

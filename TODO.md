@@ -1,16 +1,19 @@
-# TODO: Separate Databases Implementation
-
 ## Backend Changes
-- [ ] Modify server.js to use 4 separate database connections (schemas)
-- [ ] Create separate tables for each schema: users, kapal, dokumen, kapal_masuk
-- [ ] Update API endpoints to use respective schemas
-- [ ] Update environment variables for multiple database URLs
+- [x] Modify server.js to use 4 separate database connections (schemas)
+- [x] Create separate tables for each schema: users, kapal, dokumen, kapal_masuk
+- [x] Update API endpoints to use respective schemas
+- [x] Update environment variables for multiple database URLs
 
 ## Android App Changes
-- [ ] Remove Room database usage from all activities
-- [ ] Update ApiService.kt to include all CRUD operations for each entity
+- [x] Update ApiService.kt to include all CRUD operations for each entity
+- [x] Create DokumenEntity.kt
+- [x] Create API request/response data classes (LoginRequest, RegisterRequest, etc.)
+- [x] Update MainActivity.kt to use API calls instead of local database
+- [x] Update LoginActivity.kt to remove database usage
+- [x] Update DaftarKapalActivity.kt to use API calls instead of local database
+- [x] Fix compilation errors in ApiService.kt
 - [ ] Update Config.kt with new API endpoints
-- [ ] Modify all activities to use API calls instead of local database
+- [ ] Modify remaining activities (InputActivity, DocumentActivity, ProfileActivity)
 - [ ] Update data models if needed for API communication
 
 ## Testing
