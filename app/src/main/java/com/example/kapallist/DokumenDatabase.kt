@@ -21,7 +21,7 @@ abstract class DokumenDatabase : RoomDatabase() {
                     context.applicationContext,
                     DokumenDatabase::class.java,
                     "dokumen_database"
-                ).build()
+                ).fallbackToDestructiveMigration().build()
                 INSTANCE = instance
                 instance
             }

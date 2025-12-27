@@ -22,7 +22,7 @@ abstract class KapalDatabase : RoomDatabase() {
                     context.applicationContext,
                     KapalDatabase::class.java,
                     "kapal_database"
-                ).build()
+                ).fallbackToDestructiveMigration().build()
                 INSTANCE = instance
                 instance
             }
