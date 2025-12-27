@@ -26,6 +26,7 @@ import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import kotlinx.coroutines.launch
+import com.example.kapallist.User
 import java.io.File
 import java.io.FileOutputStream
 
@@ -63,6 +64,8 @@ class MainActivity : AppCompatActivity() {
         Log.d("MainActivity", "onCreate started")  // Tambahkan log di awal
         supportActionBar?.hide()  // Sembunyikan ActionBar
 
+        database = KapalDatabase.getDatabase(this)
+
         // Check if user is logged in
         val sharedPref = getSharedPreferences("login_prefs", MODE_PRIVATE)
         val isLoggedIn = sharedPref.getBoolean("is_logged_in", false)
@@ -77,7 +80,6 @@ class MainActivity : AppCompatActivity() {
         setContentView(R.layout.activity_main)
 
         // Get token from SharedPreferences
-        val sharedPref = getSharedPreferences("login_prefs", MODE_PRIVATE)
         token = sharedPref.getString("token", "") ?: ""
 
         // Inisialisasi Activity Result Launcher untuk galeri
@@ -222,7 +224,7 @@ class MainActivity : AppCompatActivity() {
                 if (response.isSuccessful) {
                     val users = response.body()?.data ?: emptyList()
                     if (users.isNotEmpty()) {
-                        val userNames = users.map { it.userId }.toTypedArray()
+                    val userNames = users.map<User, String> { it.userId }.toTypedArray()
                         val builder = AlertDialog.Builder(this@MainActivity)
                         builder.setTitle("Manage Users")
                         builder.setItems(userNames) { _, which ->

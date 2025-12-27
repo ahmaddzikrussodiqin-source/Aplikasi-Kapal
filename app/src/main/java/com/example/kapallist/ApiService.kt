@@ -57,4 +57,14 @@ interface ApiService {
     @Multipart
     @POST("api/upload")
     suspend fun uploadFile(@Header("Authorization") token: String, @Part file: MultipartBody.Part): Response<ApiResponse<String>>
+
+    // User management
+    @GET("api/users")
+    suspend fun getAllUsers(@Header("Authorization") token: String): Response<ApiResponse<List<User>>>
+
+    @PUT("api/users/{userId}")
+    suspend fun updateUser(@Header("Authorization") token: String, @Path("userId") userId: String, @Body user: User): Response<ApiResponse<User>>
+
+    @DELETE("api/users/{userId}")
+    suspend fun deleteUser(@Header("Authorization") token: String, @Path("userId") userId: String): Response<ApiResponse<Unit>>
 }
