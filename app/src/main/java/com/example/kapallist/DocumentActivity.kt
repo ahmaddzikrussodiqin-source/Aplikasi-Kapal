@@ -78,8 +78,8 @@ class DocumentActivity : AppCompatActivity() {
         btnAddDokumen = findViewById(R.id.btn_add_dokumen)
         btnBack.setOnClickListener { finish() }
         btnAddDokumen.setOnClickListener {
-            currentKapal?.let { kapal ->
-                showTambahDokumenDialog(kapal.listDokumen.toMutableList(), currentDokumenAdapter!!)
+            if (currentKapal != null) {
+                showTambahDokumenDialog()
             }
         }
 
