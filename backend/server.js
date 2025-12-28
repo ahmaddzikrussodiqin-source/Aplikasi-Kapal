@@ -35,6 +35,11 @@ const storage = multer.diskStorage({
 const upload = multer({ storage: storage });
 
 // Database setup - Multiple schemas in one PostgreSQL instance
+console.log('🔧 Setting up database connections...');
+console.log('DATABASE_URL exists:', !!process.env.DATABASE_URL);
+console.log('USERS_DATABASE_URL exists:', !!process.env.USERS_DATABASE_URL);
+console.log('KAPAL_DATABASE_URL exists:', !!process.env.KAPAL_DATABASE_URL);
+
 const usersPool = new Pool({
     connectionString: process.env.USERS_DATABASE_URL || process.env.DATABASE_URL,
     ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
@@ -54,6 +59,8 @@ const kapalMasukPool = new Pool({
     connectionString: process.env.KAPAL_MASUK_DATABASE_URL || process.env.DATABASE_URL,
     ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
 });
+
+console.log('✅ Database pools created');
 
 // Initialize database schemas and tables
 async function initializeDatabase() {
