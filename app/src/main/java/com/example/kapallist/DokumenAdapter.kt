@@ -67,7 +67,7 @@ class DokumenAdapter(
 
     override fun getItemCount(): Int = dokumenList.size
 
-    fun getItem(position: Int): DokumenKapal {
+    public fun getItem(position: Int): DokumenKapal {
         return dokumenList[position]
     }
 
