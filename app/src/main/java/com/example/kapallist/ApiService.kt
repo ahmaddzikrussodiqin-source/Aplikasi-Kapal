@@ -77,4 +77,7 @@ interface ApiService {
 
     @POST("api/register")
     suspend fun register(@Body registerRequest: RegisterRequest): Response<ApiResponse<Unit>>
+
+    @POST("api/users")
+    suspend fun createUser(@Header("Authorization") token: String, @Body user: User): Response<ApiResponse<Unit>>
 }

@@ -454,6 +454,65 @@ app.delete('/api/users/:userId', authenticateToken, async (req, res) => {
     }
 });
 
+app.post('/api/users', authenticateToken, async (req, res) => {
+    try {
+        const { userId, password, nama, email } = req.body;
+        console.log('📝 Create user attempt for userId:', userId);
+
+        if (!userId || !password) {
+            console.log('❌ Create user failed: Missing userId or password');
+            return res.status(400).json({
+                success: false,
+                message: 'User ID and password are required'
+            });
+        }
+
+        // Check if user already exists
+        console.log('🔍 Checking if user exists...');
+        const existingResult = await usersPool.query('SELECT userId FROM users_schema.users WHERE userId = $1', [userId]);
+        console.log('Existing users found:', existingResult.rows.length);
+
+        if (existingResult.rows.length > 0) {
+            console.log('❌ Create user failed: User already exists');
+            return res.status(409).json({
+                success: false,
+                message: 'User already exists'
+            });
+        }
+
+        // Hash password
+        console.log('🔒 Hashing password...');
+        const hashedPassword = await bcrypt.hash(password, 10);
+
+        // Insert new user
+        console.log('💾 Inserting new user into database...');
+        const insertResult = await usersPool.query(
+            'INSERT INTO users_schema.users (userId, password, nama, email) VALUES ($1, $2, $3, $4)',
+            [userId, hashedPassword, nama, email]
+        );
+        console.log('✅ User inserted successfully, rowCount:', insertResult.rowCount);
+
+        console.log('🎉 Create user successful for userId:', userId);
+        res.status(201).json({
+            success: true,
+            message: 'User created successfully',
+            data: {
+                userId: userId,
+                nama: nama,
+                email: email
+            }
+        });
+    } catch (error) {
+        console.error('❌ Create user error:', error);
+        console.error('Error details:', error.message);
+        console.error('Stack trace:', error.stack);
+        res.status(500).json({
+            success: false,
+            message: 'Server error'
+        });
+    }
+});
+
 // Helper function to safely parse listPersiapan
 function parseListPersiapan(value) {
     if (!value) return [];
