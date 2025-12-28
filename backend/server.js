@@ -377,10 +377,17 @@ app.post('/api/register', async (req, res) => {
 app.get('/api/users', authenticateToken, async (req, res) => {
     try {
         const result = await usersPool.query('SELECT userId, nama, email, photoUri, created_at FROM users_schema.users');
+        const users = result.rows.map(row => ({
+            userId: row.userid,
+            nama: row.nama,
+            email: row.email,
+            photoUri: row.photouri,
+            created_at: row.created_at
+        }));
         res.json({
             success: true,
             message: 'Users retrieved successfully',
-            data: result.rows
+            data: users
         });
     } catch (error) {
         console.error('Get users error:', error);
