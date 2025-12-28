@@ -179,12 +179,14 @@ class DocumentActivity : AppCompatActivity() {
             val jenis = etJenisDokumen.text.toString()
             val tanggalExpired = etTanggalExpired.text.toString()
             if (jenis.isNotEmpty() && currentKapal != null) {
+                // For new documents, filePath can be empty or null
                 val newDokumen = DokumenEntity(
                     kapalId = currentKapal!!.id,
                     nama = jenis, // Use jenis as nama for now
                     jenis = jenis,
                     tanggalKadaluarsa = tanggalExpired,
-                    status = "aktif"
+                    status = "aktif",
+                    filePath = null // New documents start with no files
                 )
 
                 lifecycleScope.launch {
@@ -316,21 +318,55 @@ class DocumentActivity : AppCompatActivity() {
     private fun setupDokumenAdapter() {
         currentDokumenAdapter = DokumenAdapter(
             listDokumen.map { dokumenEntity ->
+                // Parse file paths from JSON
+                val pathGambar = mutableListOf<String>()
+                val pathPdf = mutableListOf<String>()
+
+                dokumenEntity.filePath?.let { filePathJson ->
+                    try {
+                        val moshi = com.squareup.moshi.Moshi.Builder().build()
+                        val adapter = moshi.adapter(Map::class.java)
+                        val fileData = adapter.fromJson(filePathJson) as? Map<*, *>
+                        fileData?.let { data ->
+                            (data["images"] as? List<*>)?.forEach { path ->
+                                path?.toString()?.let { pathGambar.add(it) }
+                            }
+                            (data["pdfs"] as? List<*>)?.forEach { path ->
+                                path?.toString()?.let { pathPdf.add(it) }
+                            }
+                        }
+                    } catch (e: Exception) {
+                        Log.e("DocumentActivity", "Error parsing file paths: ${e.message}")
+                    }
+                }
+
                 // Convert DokumenEntity to DokumenKapal for adapter
                 DokumenKapal(
                     jenis = dokumenEntity.jenis ?: "",
-                    pathGambar = mutableListOf(), // TODO: Handle file paths
-                    pathPdf = mutableListOf(), // TODO: Handle file paths
+                    pathGambar = pathGambar,
+                    pathPdf = pathPdf,
                     tanggalExpired = dokumenEntity.tanggalKadaluarsa ?: ""
                 )
             }.toMutableList(),
             onImagePreviewClick = { position ->
-                // TODO: Handle image preview from server
-                Toast.makeText(this, "Preview gambar belum diimplementasi", Toast.LENGTH_SHORT).show()
+                val dokumenKapal = currentDokumenAdapter?.getItem(position)
+                if (dokumenKapal?.pathGambar?.isNotEmpty() == true) {
+                    showImagePreviewDialog(dokumenKapal.pathGambar)
+                } else {
+                    Toast.makeText(this, "Tidak ada gambar untuk ditampilkan", Toast.LENGTH_SHORT).show()
+                }
             },
             onPdfPreviewClick = { position ->
-                // TODO: Handle PDF preview from server
-                Toast.makeText(this, "Preview PDF belum diimplementasi", Toast.LENGTH_SHORT).show()
+                val dokumenKapal = currentDokumenAdapter?.getItem(position)
+                if (dokumenKapal?.pathPdf?.isNotEmpty() == true) {
+                    if (dokumenKapal.pathPdf.size == 1) {
+                        openPdf(dokumenKapal.pathPdf[0])
+                    } else {
+                        showPdfSelectionDialog(dokumenKapal.pathPdf)
+                    }
+                } else {
+                    Toast.makeText(this, "Tidak ada PDF untuk ditampilkan", Toast.LENGTH_SHORT).show()
+                }
             },
             onEditClick = { position ->
                 showEditDokumenDialog(listDokumen[position])
@@ -424,14 +460,36 @@ class DocumentActivity : AppCompatActivity() {
         currentPendingGambarDeletions.clear()
         currentPendingPdfDeletions.clear()
 
+        // Parse existing file paths
+        val existingPathGambar = mutableListOf<String>()
+        val existingPathPdf = mutableListOf<String>()
+
+        dokumenEntity.filePath?.let { filePathJson ->
+            try {
+                val moshi = com.squareup.moshi.Moshi.Builder().build()
+                val adapter = moshi.adapter(Map::class.java)
+                val fileData = adapter.fromJson(filePathJson) as? Map<*, *>
+                fileData?.let { data ->
+                    (data["images"] as? List<*>)?.forEach { path ->
+                        path?.toString()?.let { existingPathGambar.add(it) }
+                    }
+                    (data["pdfs"] as? List<*>)?.forEach { path ->
+                        path?.toString()?.let { existingPathPdf.add(it) }
+                    }
+                }
+            } catch (e: Exception) {
+                Log.e("DocumentActivity", "Error parsing existing file paths: ${e.message}")
+            }
+        }
+
         // Set current references
         currentTvGambarList = tvGambarList
         currentTvPdfList = tvPdfList
         // Convert DokumenEntity to DokumenKapal for compatibility
         currentDokumen = DokumenKapal(
             jenis = dokumenEntity.jenis ?: "",
-            pathGambar = mutableListOf(), // TODO: Parse from filePath
-            pathPdf = mutableListOf(), // TODO: Parse from filePath
+            pathGambar = existingPathGambar,
+            pathPdf = existingPathPdf,
             tanggalExpired = dokumenEntity.tanggalKadaluarsa ?: ""
         )
 
@@ -471,10 +529,21 @@ class DocumentActivity : AppCompatActivity() {
             val jenis = etJenisDokumen.text.toString()
             val tanggalExpired = etTanggalExpired.text.toString()
             if (jenis.isNotEmpty()) {
+                // Merge existing files with new additions
+                val allImages = existingPathGambar + pendingGambarAdditions
+                val allPdfs = existingPathPdf + pendingPdfAdditions
+
+                // Serialize file paths as JSON for storage
+                val fileData = mapOf(
+                    "images" to allImages,
+                    "pdfs" to allPdfs
+                )
+                val filePathJson = com.squareup.moshi.Moshi.Builder().build().adapter(Map::class.java).toJson(fileData)
+
                 val updatedDokumen = dokumenEntity.copy(
                     jenis = jenis,
-                    tanggalKadaluarsa = tanggalExpired
-                    // TODO: Handle file updates
+                    tanggalKadaluarsa = tanggalExpired,
+                    filePath = filePathJson
                 )
 
                 lifecycleScope.launch {
