@@ -292,14 +292,13 @@ class DocumentActivity : AppCompatActivity() {
                     return@launch
                 }
 
-                val response = ApiClient.apiService.getAllDokumen("Bearer $token")
+                val response = ApiClient.apiService.getDokumenByKapalId("Bearer $token", kapalId)
                 if (response.isSuccessful) {
                     val apiResponse = response.body()
                     if (apiResponse?.success == true) {
-                        val allDokumen = apiResponse.data ?: emptyList()
-                        // Filter dokumen by kapalId
+                        val dokumenForKapal = apiResponse.data ?: emptyList()
                         listDokumen.clear()
-                        listDokumen.addAll(allDokumen.filter { it.kapalId == kapalId })
+                        listDokumen.addAll(dokumenForKapal)
                         setupDokumenAdapter()
                     } else {
                         Toast.makeText(this@DocumentActivity, "Gagal memuat data dokumen", Toast.LENGTH_LONG).show()
