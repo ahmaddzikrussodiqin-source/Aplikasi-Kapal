@@ -161,14 +161,20 @@ class InputActivity : AppCompatActivity() {
 
                         // Convert to KapalEntity for API
                         val kapalEntity = KapalEntity(
+                            id = selectedKapalId ?: 0,  // Use selectedKapalId if available, else 0 for new
                             nama = namaKapal,
                             tanggalKembali = tanggalKembali,
                             listPersiapan = listPersiapan,
                             tanggalInput = java.text.SimpleDateFormat("dd/MM/yyyy", java.util.Locale.getDefault()).format(java.util.Date())
                         )
 
-                        // Create new kapal
-                        val response = ApiClient.apiService.createKapal("Bearer $token", kapalEntity)
+                        val response = if (selectedKapalId != null) {
+                            // Update existing kapal
+                            ApiClient.apiService.updateKapal("Bearer $token", selectedKapalId!!, kapalEntity)
+                        } else {
+                            // Create new kapal
+                            ApiClient.apiService.createKapal("Bearer $token", kapalEntity)
+                        }
 
                         if (response.isSuccessful) {
                             Toast.makeText(this@InputActivity, "Kapal disimpan!", Toast.LENGTH_SHORT).show()

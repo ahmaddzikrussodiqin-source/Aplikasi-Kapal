@@ -1,24 +1,14 @@
-# TODO: Fix Manage Users Issue
+# TODO: Fix Ship Duplication Issue
 
 ## Problem
-When pressing "Manage Users", the app fails to load users and shows popup "Gagal memuat users".
+When completing ship status by selecting an existing ship (e.g., Kapal A) in InputActivity, duplicates appear in the ship list because the system always creates a new ship instead of updating the existing one.
 
-## Root Cause Analysis
-- API call to GET /api/users fails
-- Possible causes: token expired, server error, database not initialized
+## Solution
+Modify InputActivity.kt to check if a ship is selected (selectedKapalId != null). If selected, update the existing ship; otherwise, create a new one.
 
-## Fixes Applied
-- [x] Add timeout to ApiClient (30s read/connect)
-- [x] Handle 403 error in showManageUsersDialog by logging out user
-- [x] Show better error message with response.message()
-- [x] Ensure users table exists in backend GET /api/users endpoint
+## Tasks
+- [ ] Edit InputActivity.kt btnSimpan.setOnClickListener to conditionally call createKapal or updateKapal based on selectedKapalId
+- [ ] Test the fix: Select existing ship, ensure no duplicate; Create new ship, ensure it works
 
-## Testing
-- Test Manage Users functionality
-- Verify token expiration handling
-- Check database initialization
-
-## Next Steps
-- Deploy backend changes
-- Test on device
-- If still fails, check server logs for specific error
+## Files to Edit
+- app/src/main/java/com/example/kapallist/InputActivity.kt
