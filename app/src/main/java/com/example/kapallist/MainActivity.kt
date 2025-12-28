@@ -337,13 +337,9 @@ class MainActivity : AppCompatActivity() {
         val dialogView = layoutInflater.inflate(R.layout.dialog_create_account, null)
         val etNewUserId = dialogView.findViewById<EditText>(R.id.et_new_user_id)
         val etNewPassword = dialogView.findViewById<EditText>(R.id.et_new_password)
-        val spinnerRole = dialogView.findViewById<Spinner>(R.id.spinner_role)
+        val etNewNama = dialogView.findViewById<EditText>(R.id.et_new_nama)
+        val etNewEmail = dialogView.findViewById<EditText>(R.id.et_new_email)
         val btnCreate = dialogView.findViewById<Button>(R.id.btn_create)
-
-        // Setup spinner
-        val roles = arrayOf("Moderator", "Supervisi", "Member")
-        val adapter = ArrayAdapter(this, android.R.layout.simple_spinner_item, roles)
-        spinnerRole.adapter = adapter
 
         val dialog = AlertDialog.Builder(this)
             .setView(dialogView)
@@ -353,18 +349,34 @@ class MainActivity : AppCompatActivity() {
         btnCreate.setOnClickListener {
             val newUserId = etNewUserId.text.toString().trim()
             val newPassword = etNewPassword.text.toString().trim()
-            val selectedRole = spinnerRole.selectedItem.toString()
+            val newNama = etNewNama.text.toString().trim()
+            val newEmail = etNewEmail.text.toString().trim()
 
             if (newUserId.isNotEmpty() && newPassword.isNotEmpty()) {
-                // Simpan ke Room database
                 lifecycleScope.launch {
-                    val newUser = User(userId = newUserId, password = newPassword)
-                    database.userDao().insertUser(newUser)
-                    Toast.makeText(this@MainActivity, "Akun $newUserId berhasil dibuat", Toast.LENGTH_SHORT).show()
-                    dialog.dismiss()
+                    try {
+                        val newUser = User(
+                            userId = newUserId,
+                            password = newPassword,
+                            nama = if (newNama.isNotEmpty()) newNama else null,
+                            email = if (newEmail.isNotEmpty()) newEmail else null
+                        )
+                        val response = ApiClient.apiService.createUser("Bearer $token", newUser)
+                        if (response.isSuccessful) {
+                            Toast.makeText(this@MainActivity, "Akun $newUserId berhasil dibuat di Railway", Toast.LENGTH_SHORT).show()
+                            dialog.dismiss()
+                        } else {
+                            val errorBody = response.errorBody()?.string()
+                            Toast.makeText(this@MainActivity, "Gagal buat akun: ${response.message()}", Toast.LENGTH_SHORT).show()
+                            Log.e("CreateUser", "Error: ${response.code()} - ${errorBody}")
+                        }
+                    } catch (e: Exception) {
+                        Toast.makeText(this@MainActivity, "Error: ${e.message}", Toast.LENGTH_SHORT).show()
+                        Log.e("CreateUser", "Exception: ${e.message}")
+                    }
                 }
             } else {
-                Toast.makeText(this, "Isi semua field", Toast.LENGTH_SHORT).show()
+                Toast.makeText(this, "User ID dan Password harus diisi", Toast.LENGTH_SHORT).show()
             }
         }
 

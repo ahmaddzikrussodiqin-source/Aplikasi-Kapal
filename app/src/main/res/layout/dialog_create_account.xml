@@ -21,10 +21,19 @@
         android:inputType="textPassword"
         android:layout_marginBottom="16dp" />
 
-    <Spinner
-        android:id="@+id/spinner_role"
+    <EditText
+        android:id="@+id/et_new_nama"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
+        android:hint="Nama (Opsional)"
+        android:layout_marginBottom="16dp" />
+
+    <EditText
+        android:id="@+id/et_new_email"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:hint="Email (Opsional)"
+        android:inputType="textEmailAddress"
         android:layout_marginBottom="16dp" />
 
     <Button
