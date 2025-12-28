@@ -1,17 +1,24 @@
-# TODO: Fix Document Saving to Railway Database
+# TODO: Fix Manage Users Issue
 
-## Current Status
-- Documents are stored as JSON in kapal table instead of separate dokumen table
-- Need to integrate with Railway database via API
+## Problem
+When pressing "Manage Users", the app fails to load users and shows popup "Gagal memuat users".
 
-## Tasks
-- [ ] Update DokumenEntity.kt to match backend schema
-- [ ] Modify DocumentActivity.kt to use dokumen API endpoints
-- [ ] Handle file uploads via /api/upload endpoint
-- [ ] Test API integration
-- [ ] Update UI if needed
+## Root Cause Analysis
+- API call to GET /api/users fails
+- Possible causes: token expired, server error, database not initialized
 
-## Files to Modify
-- DokumenEntity.kt
-- DocumentActivity.kt
-- ApiService.kt (verify endpoints)
+## Fixes Applied
+- [x] Add timeout to ApiClient (30s read/connect)
+- [x] Handle 403 error in showManageUsersDialog by logging out user
+- [x] Show better error message with response.message()
+- [x] Ensure users table exists in backend GET /api/users endpoint
+
+## Testing
+- Test Manage Users functionality
+- Verify token expiration handling
+- Check database initialization
+
+## Next Steps
+- Deploy backend changes
+- Test on device
+- If still fails, check server logs for specific error

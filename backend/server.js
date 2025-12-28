@@ -401,12 +401,22 @@ app.get('/api/users', authenticateToken, async (req, res) => {
 app.put('/api/users/:userId', authenticateToken, async (req, res) => {
     try {
         const { userId } = req.params;
-        const { nama, role, photoUri } = req.body;
+        const { password, nama, role, photoUri } = req.body;
 
-        const result = await usersPool.query(
-            'UPDATE users_schema.users SET nama = $1, role = $2, photoUri = $3 WHERE userId = $4',
-            [nama, role, photoUri, userId]
-        );
+        let query = 'UPDATE users_schema.users SET nama = $1, role = $2, photoUri = $3';
+        let params = [nama, role, photoUri];
+
+        if (password) {
+            // Hash the new password
+            const hashedPassword = await bcrypt.hash(password, 10);
+            query += ', password = $4';
+            params.push(hashedPassword);
+        }
+
+        query += ' WHERE userId = $' + (params.length + 1);
+        params.push(userId);
+
+        const result = await usersPool.query(query, params);
 
         if (result.rowCount === 0) {
             return res.status(404).json({

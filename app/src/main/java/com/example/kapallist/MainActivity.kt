@@ -243,7 +243,12 @@ class MainActivity : AppCompatActivity() {
                         showCreateAccountDialog()
                     }
                 } else {
-                    Toast.makeText(this@MainActivity, "Gagal memuat users", Toast.LENGTH_SHORT).show()
+                    if (response.code() == 403) {
+                        Toast.makeText(this@MainActivity, "Sesi telah berakhir, silakan login kembali", Toast.LENGTH_SHORT).show()
+                        logout()
+                    } else {
+                        Toast.makeText(this@MainActivity, "Gagal memuat users: ${response.message()}", Toast.LENGTH_SHORT).show()
+                    }
                 }
             } catch (e: Exception) {
                 Toast.makeText(this@MainActivity, "Error: ${e.message}", Toast.LENGTH_SHORT).show()
