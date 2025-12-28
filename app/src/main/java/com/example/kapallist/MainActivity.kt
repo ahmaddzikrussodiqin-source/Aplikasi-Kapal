@@ -352,6 +352,12 @@ class MainActivity : AppCompatActivity() {
         val spinnerNewRole = dialogView.findViewById<Spinner>(R.id.spinner_new_role)
         val btnCreate = dialogView.findViewById<Button>(R.id.btn_create)
 
+        // Set up role spinner
+        val roles = arrayOf("Moderator", "Supervisi", "Member")
+        val adapter = ArrayAdapter(this, android.R.layout.simple_spinner_item, roles)
+        spinnerNewRole.adapter = adapter
+        spinnerNewRole.setSelection(2)  // Default to "Member"
+
         val dialog = AlertDialog.Builder(this)
             .setView(dialogView)
             .setCancelable(true)
@@ -361,6 +367,7 @@ class MainActivity : AppCompatActivity() {
             val newUserId = etNewUserId.text.toString().trim()
             val newPassword = etNewPassword.text.toString().trim()
             val newNama = etNewNama.text.toString().trim()
+            val newRole = spinnerNewRole.selectedItem.toString()
 
             if (newUserId.isNotEmpty() && newPassword.isNotEmpty()) {
                 lifecycleScope.launch {
@@ -368,7 +375,8 @@ class MainActivity : AppCompatActivity() {
                         val newUser = User(
                             userId = newUserId,
                             password = newPassword,
-                            nama = if (newNama.isNotEmpty()) newNama else null
+                            nama = if (newNama.isNotEmpty()) newNama else null,
+                            role = newRole
                         )
                         val response = ApiClient.apiService.createUser("Bearer $token", newUser)
                         if (response.isSuccessful) {
