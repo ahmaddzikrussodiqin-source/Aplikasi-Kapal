@@ -531,8 +531,7 @@ app.post('/api/users', authenticateToken, async (req, res) => {
             message: 'User created successfully',
             data: {
                 userId: userId,
-                nama: nama,
-                email: email
+                nama: nama
             }
         });
     } catch (error) {
