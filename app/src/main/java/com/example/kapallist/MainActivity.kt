@@ -226,8 +226,7 @@ class MainActivity : AppCompatActivity() {
                     val users = response.body()?.data ?: emptyList()
                     if (users.isNotEmpty()) {
                         val userInfos = users.map { user ->
-                            val displayName = user.nama ?: user.userId
-                            "${displayName}\nUserID: ${user.userId}\nEmail: ${user.email ?: "Tidak ada"}"
+                            user.userId
                         }.toTypedArray()
                         val builder = AlertDialog.Builder(this@MainActivity)
                         builder.setTitle("Manage Users - Informasi User Terdaftar")
