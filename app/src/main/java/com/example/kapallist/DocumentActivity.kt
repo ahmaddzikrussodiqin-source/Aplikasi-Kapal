@@ -83,8 +83,6 @@ class DocumentActivity : AppCompatActivity() {
             }
         }
 
-        loadKapalList()
-
         kapalAdapter = DocumentKapalAdapter(listKapal) { kapal ->
             showDocumentList(kapal)
         }
@@ -92,6 +90,11 @@ class DocumentActivity : AppCompatActivity() {
         rvKapalList.layoutManager = LinearLayoutManager(this)
         rvKapalList.adapter = kapalAdapter
         rvKapalList.addItemDecoration(DividerItemDecoration(this, LinearLayoutManager.VERTICAL))
+    }
+
+    override fun onResume() {
+        super.onResume()
+        loadKapalList()
     }
 
     private fun loadKapalList() {
@@ -545,6 +548,7 @@ class DocumentActivity : AppCompatActivity() {
                     jenis = jenis,
                     tanggalKadaluarsa = tanggalExpired,
                     filePath = filePathJson
+                    // tanggalTerbit is preserved from the original dokumenEntity
                 )
 
                 lifecycleScope.launch {
