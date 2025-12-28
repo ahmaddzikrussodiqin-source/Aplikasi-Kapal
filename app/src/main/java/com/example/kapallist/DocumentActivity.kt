@@ -201,8 +201,11 @@ class DocumentActivity : AppCompatActivity() {
                             val apiResponse = response.body()
                             if (apiResponse?.success == true) {
                                 Toast.makeText(this@DocumentActivity, "Dokumen berhasil ditambahkan", Toast.LENGTH_SHORT).show()
-                                // Reload dokumen list
-                                loadDokumenForKapal(currentKapal!!.id)
+                                // Add the created document to the list and update adapter immediately
+                                apiResponse.data?.let { createdDokumen ->
+                                    listDokumen.add(createdDokumen)
+                                    setupDokumenAdapter()
+                                }
                                 dialog.dismiss()
                             } else {
                                 Toast.makeText(this@DocumentActivity, "Gagal menambah dokumen", Toast.LENGTH_SHORT).show()
@@ -489,8 +492,12 @@ class DocumentActivity : AppCompatActivity() {
                             val apiResponse = response.body()
                             if (apiResponse?.success == true) {
                                 Toast.makeText(this@DocumentActivity, "Dokumen berhasil diperbarui", Toast.LENGTH_SHORT).show()
-                                // Reload dokumen list
-                                loadDokumenForKapal(currentKapal!!.id)
+                                // Update the document in the list and refresh adapter immediately
+                                val index = listDokumen.indexOfFirst { it.id == dokumenEntity.id }
+                                if (index != -1) {
+                                    listDokumen[index] = updatedDokumen
+                                    setupDokumenAdapter()
+                                }
                                 dialog.dismiss()
                             } else {
                                 Toast.makeText(this@DocumentActivity, "Gagal memperbarui dokumen", Toast.LENGTH_SHORT).show()
