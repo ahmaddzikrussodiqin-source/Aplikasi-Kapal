@@ -55,7 +55,7 @@ class LoginActivity : AppCompatActivity() {
                             editor.putString("user_id", userId)
                             editor.putString("user_name", userId)
                             editor.putString("token", loginResponse.data.token)
-                            editor.putString("role", "Moderator")  // Set default role
+                            editor.putString("role", loginResponse.data.user.role ?: "Member")
                             editor.putString("photo_uri", loginResponse.data.user.photoUri)
                             editor.apply()
 

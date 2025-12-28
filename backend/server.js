@@ -82,7 +82,7 @@ async function initializeDatabase() {
                 userId TEXT PRIMARY KEY,
                 password TEXT NOT NULL,
                 nama TEXT,
-                email TEXT,
+                role TEXT DEFAULT 'Member',
                 photoUri TEXT,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
@@ -230,7 +230,7 @@ app.get('/debug/database', async (req, res) => {
 
             if (usersTableExists) {
                 // Get users data
-                const usersResult = await usersPool.query('SELECT userId, nama, email, created_at FROM users_schema.users ORDER BY created_at DESC');
+                const usersResult = await usersPool.query('SELECT userId, nama, role, created_at FROM users_schema.users ORDER BY created_at DESC');
                 usersData = usersResult.rows;
                 console.log('Users in database:', usersData.length);
             }
@@ -302,7 +302,7 @@ app.post('/api/login', async (req, res) => {
                 user: {
                     userId: user.userid,
                     nama: user.nama,
-                    email: user.email,
+                    role: user.role,
                     photoUri: user.photouri
                 }
             }
@@ -376,11 +376,11 @@ app.post('/api/register', async (req, res) => {
 // User routes (protected)
 app.get('/api/users', authenticateToken, async (req, res) => {
     try {
-        const result = await usersPool.query('SELECT userId, nama, email, photoUri, created_at FROM users_schema.users');
+        const result = await usersPool.query('SELECT userId, nama, role, photoUri, created_at FROM users_schema.users');
         const users = result.rows.map(row => ({
             userId: row.userid,
             nama: row.nama,
-            email: row.email,
+            role: row.role,
             photoUri: row.photouri,
             created_at: row.created_at
         }));
@@ -401,11 +401,11 @@ app.get('/api/users', authenticateToken, async (req, res) => {
 app.put('/api/users/:userId', authenticateToken, async (req, res) => {
     try {
         const { userId } = req.params;
-        const { nama, email, photoUri } = req.body;
+        const { nama, role, photoUri } = req.body;
 
         const result = await usersPool.query(
-            'UPDATE users_schema.users SET nama = $1, email = $2, photoUri = $3 WHERE userId = $4',
-            [nama, email, photoUri, userId]
+            'UPDATE users_schema.users SET nama = $1, role = $2, photoUri = $3 WHERE userId = $4',
+            [nama, role, photoUri, userId]
         );
 
         if (result.rowCount === 0) {
@@ -456,7 +456,7 @@ app.delete('/api/users/:userId', authenticateToken, async (req, res) => {
 
 app.post('/api/users', authenticateToken, async (req, res) => {
     try {
-        const { userId, password, nama, email } = req.body;
+        const { userId, password, nama, role } = req.body;
         console.log('📝 Create user attempt for userId:', userId);
 
         if (!userId || !password) {
@@ -487,8 +487,8 @@ app.post('/api/users', authenticateToken, async (req, res) => {
         // Insert new user
         console.log('💾 Inserting new user into database...');
         const insertResult = await usersPool.query(
-            'INSERT INTO users_schema.users (userId, password, nama, email) VALUES ($1, $2, $3, $4)',
-            [userId, hashedPassword, nama, email]
+            'INSERT INTO users_schema.users (userId, password, nama, role) VALUES ($1, $2, $3, $4)',
+            [userId, hashedPassword, nama, role]
         );
         console.log('✅ User inserted successfully, rowCount:', insertResult.rowCount);
 

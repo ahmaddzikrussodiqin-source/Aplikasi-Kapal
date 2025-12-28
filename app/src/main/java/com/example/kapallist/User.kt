@@ -8,6 +8,6 @@ data class User(
     @PrimaryKey val userId: String,
     val password: String,
     val nama: String? = null,
-    val email: String? = null,
+    val role: String? = null,
     val photoUri: String? = null
 )

@@ -226,7 +226,7 @@ class MainActivity : AppCompatActivity() {
                     val users = response.body()?.data ?: emptyList()
                     if (users.isNotEmpty()) {
                         val userInfos = users.map { user ->
-                            "${user.userId}\nNama: ${user.nama ?: "Tidak ada"}\nEmail: ${user.email ?: "Tidak ada"}"
+                            "${user.userId}\nNama: ${user.nama ?: "Tidak ada"}\nRole: ${user.role ?: "Member"}"
                         }.toTypedArray()
                         val builder = AlertDialog.Builder(this@MainActivity)
                         builder.setTitle("Manage Users - Informasi User Terdaftar")
@@ -285,7 +285,7 @@ class MainActivity : AppCompatActivity() {
                             return@launch
                         }
 
-                        val updatedUser = user.copy(userId = newUserId, password = newPassword)
+                        val updatedUser = user.copy(userId = newUserId, password = newPassword, role = newRole)
                         val response = ApiClient.apiService.updateUser("Bearer $token", user.userId, updatedUser)
                         if (response.isSuccessful) {
                             // Update role di SharedPreferences jika user saat ini
@@ -338,7 +338,7 @@ class MainActivity : AppCompatActivity() {
         val etNewUserId = dialogView.findViewById<EditText>(R.id.et_new_user_id)
         val etNewPassword = dialogView.findViewById<EditText>(R.id.et_new_password)
         val etNewNama = dialogView.findViewById<EditText>(R.id.et_new_nama)
-        val etNewEmail = dialogView.findViewById<EditText>(R.id.et_new_email)
+        val spinnerNewRole = dialogView.findViewById<Spinner>(R.id.spinner_new_role)
         val btnCreate = dialogView.findViewById<Button>(R.id.btn_create)
 
         val dialog = AlertDialog.Builder(this)
