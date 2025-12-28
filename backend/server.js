@@ -58,13 +58,18 @@ const kapalMasukPool = new Pool({
 // Initialize database schemas and tables
 async function initializeDatabase() {
     try {
+        console.log('🔄 Initializing database schemas and tables...');
+
         // Create schemas if they don't exist
+        console.log('📝 Creating schemas...');
         await usersPool.query(`CREATE SCHEMA IF NOT EXISTS users_schema`);
         await kapalPool.query(`CREATE SCHEMA IF NOT EXISTS kapal_schema`);
         await dokumenPool.query(`CREATE SCHEMA IF NOT EXISTS dokumen_schema`);
         await kapalMasukPool.query(`CREATE SCHEMA IF NOT EXISTS kapal_masuk_schema`);
+        console.log('✅ Schemas created successfully');
 
         // Users table in users_schema
+        console.log('📝 Creating users table...');
         await usersPool.query(`
             CREATE TABLE IF NOT EXISTS users_schema.users (
                 userId TEXT PRIMARY KEY,
@@ -75,6 +80,7 @@ async function initializeDatabase() {
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         `);
+        console.log('✅ Users table created successfully');
 
         // Kapal table in kapal_schema
         await kapalPool.query(`
@@ -254,8 +260,10 @@ app.post('/api/login', async (req, res) => {
 app.post('/api/register', async (req, res) => {
     try {
         const { userId, password } = req.body;
+        console.log('📝 Register attempt for userId:', userId);
 
         if (!userId || !password) {
+            console.log('❌ Register failed: Missing userId or password');
             return res.status(400).json({
                 success: false,
                 message: 'User ID and password are required'
@@ -263,8 +271,12 @@ app.post('/api/register', async (req, res) => {
         }
 
         // Check if user already exists
+        console.log('🔍 Checking if user exists...');
         const existingResult = await usersPool.query('SELECT userId FROM users_schema.users WHERE userId = $1', [userId]);
+        console.log('Existing users found:', existingResult.rows.length);
+
         if (existingResult.rows.length > 0) {
+            console.log('❌ Register failed: User already exists');
             return res.status(409).json({
                 success: false,
                 message: 'User already exists'
@@ -272,14 +284,18 @@ app.post('/api/register', async (req, res) => {
         }
 
         // Hash password
+        console.log('🔒 Hashing password...');
         const hashedPassword = await bcrypt.hash(password, 10);
 
         // Insert new user
-        await usersPool.query(
+        console.log('💾 Inserting new user into database...');
+        const insertResult = await usersPool.query(
             'INSERT INTO users_schema.users (userId, password) VALUES ($1, $2)',
             [userId, hashedPassword]
         );
+        console.log('✅ User inserted successfully, rowCount:', insertResult.rowCount);
 
+        console.log('🎉 Register successful for userId:', userId);
         res.status(201).json({
             success: true,
             message: 'User created successfully',
@@ -288,7 +304,9 @@ app.post('/api/register', async (req, res) => {
             }
         });
     } catch (error) {
-        console.error('Register error:', error);
+        console.error('❌ Register error:', error);
+        console.error('Error details:', error.message);
+        console.error('Stack trace:', error.stack);
         res.status(500).json({
             success: false,
             message: 'Server error'
