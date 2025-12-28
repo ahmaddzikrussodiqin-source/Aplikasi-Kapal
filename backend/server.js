@@ -206,6 +206,58 @@ app.get('/', (req, res) => {
     });
 });
 
+// Debug endpoint to check database (temporary)
+app.get('/debug/database', async (req, res) => {
+    try {
+        console.log('🔍 Debug: Checking database contents...');
+
+        // Check schemas
+        const schemasResult = await usersPool.query('SELECT schema_name FROM information_schema.schemata ORDER BY schema_name');
+        console.log('Schemas found:', schemasResult.rows);
+
+        // Check users_schema specifically
+        const usersSchemaResult = await usersPool.query('SELECT schema_name FROM information_schema.schemata WHERE schema_name = $1', ['users_schema']);
+        console.log('users_schema exists:', usersSchemaResult.rows.length > 0);
+
+        let usersData = [];
+        let usersTableExists = false;
+
+        if (usersSchemaResult.rows.length > 0) {
+            // Check if users table exists
+            const tablesResult = await usersPool.query('SELECT table_name FROM information_schema.tables WHERE table_schema = $1 AND table_name = $2', ['users_schema', 'users']);
+            usersTableExists = tablesResult.rows.length > 0;
+            console.log('users table exists:', usersTableExists);
+
+            if (usersTableExists) {
+                // Get users data
+                const usersResult = await usersPool.query('SELECT userId, nama, email, created_at FROM users_schema.users ORDER BY created_at DESC');
+                usersData = usersResult.rows;
+                console.log('Users in database:', usersData.length);
+            }
+        }
+
+        res.json({
+            success: true,
+            message: 'Database debug info',
+            data: {
+                schemas: schemasResult.rows,
+                usersSchemaExists: usersSchemaResult.rows.length > 0,
+                usersTableExists: usersTableExists,
+                usersCount: usersData.length,
+                users: usersData,
+                timestamp: new Date().toISOString()
+            }
+        });
+    } catch (error) {
+        console.error('Debug database error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Database debug error',
+            error: error.message
+        });
+    }
+});
+
 // Authentication routes
 app.post('/api/login', async (req, res) => {
     try {
