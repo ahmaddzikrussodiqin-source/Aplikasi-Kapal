@@ -285,7 +285,13 @@ class MainActivity : AppCompatActivity() {
                             return@launch
                         }
 
-                        val updatedUser = user.copy(userId = newUserId, password = newPassword, role = newRole)
+                        val updatedUser = User(
+                            userId = newUserId,
+                            password = newPassword,
+                            nama = user.nama,
+                            role = newRole,
+                            photoUri = user.photoUri
+                        )
                         val response = ApiClient.apiService.updateUser("Bearer $token", user.userId, updatedUser)
                         if (response.isSuccessful) {
                             // Update role di SharedPreferences jika user saat ini
@@ -350,7 +356,6 @@ class MainActivity : AppCompatActivity() {
             val newUserId = etNewUserId.text.toString().trim()
             val newPassword = etNewPassword.text.toString().trim()
             val newNama = etNewNama.text.toString().trim()
-            val newEmail = etNewEmail.text.toString().trim()
 
             if (newUserId.isNotEmpty() && newPassword.isNotEmpty()) {
                 lifecycleScope.launch {
@@ -358,8 +363,7 @@ class MainActivity : AppCompatActivity() {
                         val newUser = User(
                             userId = newUserId,
                             password = newPassword,
-                            nama = if (newNama.isNotEmpty()) newNama else null,
-                            email = if (newEmail.isNotEmpty()) newEmail else null
+                            nama = if (newNama.isNotEmpty()) newNama else null
                         )
                         val response = ApiClient.apiService.createUser("Bearer $token", newUser)
                         if (response.isSuccessful) {
