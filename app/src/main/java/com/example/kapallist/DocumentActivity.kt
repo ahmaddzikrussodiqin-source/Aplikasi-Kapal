@@ -544,6 +544,7 @@ class DocumentActivity : AppCompatActivity() {
                 val filePathJson = com.squareup.moshi.Moshi.Builder().build().adapter(Map::class.java).toJson(fileData)
 
                 val updatedDokumen = dokumenEntity.copy(
+                    kapalId = dokumenEntity.kapalId ?: currentKapal?.id,
                     nama = jenis,
                     jenis = jenis,
                     tanggalKadaluarsa = tanggalExpired,
