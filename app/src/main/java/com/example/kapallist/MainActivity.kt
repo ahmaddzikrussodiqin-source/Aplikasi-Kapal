@@ -225,10 +225,12 @@ class MainActivity : AppCompatActivity() {
                 if (response.isSuccessful) {
                     val users = response.body()?.data ?: emptyList()
                     if (users.isNotEmpty()) {
-                    val userNames = users.map<User, String> { it.userId }.toTypedArray()
+                        val userInfos = users.map { user ->
+                            "${user.userId}\nNama: ${user.nama ?: "Tidak ada"}\nEmail: ${user.email ?: "Tidak ada"}"
+                        }.toTypedArray()
                         val builder = AlertDialog.Builder(this@MainActivity)
-                        builder.setTitle("Manage Users")
-                        builder.setItems(userNames) { _, which ->
+                        builder.setTitle("Manage Users - Informasi User Terdaftar")
+                        builder.setItems(userInfos) { _, which ->
                             val selectedUser = users[which]
                             showEditUserDialog(selectedUser)
                         }

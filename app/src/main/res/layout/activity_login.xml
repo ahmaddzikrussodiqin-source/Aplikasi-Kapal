@@ -50,6 +50,7 @@
         android:layout_height="wrap_content"
         android:text="Create Account"
         android:textColor="@color/on_primary"
-        app:backgroundTint="@color/secondary" />
+        app:backgroundTint="@color/secondary"
+        android:visibility="gone" />
 
 </LinearLayout>

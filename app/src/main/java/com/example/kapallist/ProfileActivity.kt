@@ -289,40 +289,68 @@ class ProfileActivity : AppCompatActivity() {
                     if (kapal.isFinished) {
                         // Undo finish jika tombol "Batal" dan role memungkinkan
                         if (userRole == "Moderator" || userRole == "Supervisi") {
-                            kapal.isFinished = false
-                            kapal.perkiraanKeberangkatan = null
-                            kapal.durasiSelesaiPersiapan = null
-                            // Reset checkbox states untuk kapal ini
-                            items.forEach { checkBoxStates[it] = false }
-                            // Reset checkbox dates untuk kapal ini
-                            items.forEach { checkBoxDates.remove(it) }
-                            // Simpan perubahan ke SharedPreferences
-                            val sharedPref = getSharedPreferences("kapal_data", MODE_PRIVATE)
-                            val gson = Gson()
-                            val json = sharedPref.getString("list_kapal", "[]")
-                            val type = object : TypeToken<MutableList<KapalEntity>>() {}.type
-                            val kapalList: MutableList<KapalEntity> = try {
-                                gson.fromJson(json, type) ?: mutableListOf()
-                            } catch (e: Exception) {
-                                mutableListOf()
+                            // Show confirmation dialog for undo
+                            val alertDialog = AlertDialog.Builder(this@ProfileActivity)
+                            alertDialog.setMessage("Yakin ingin membatalkan proses finish?")
+                            alertDialog.setPositiveButton("Ya") { _, _ ->
+                                val updatedKapal = kapal.copy(
+                                    isFinished = false,
+                                    perkiraanKeberangkatan = null,
+                                    durasiSelesaiPersiapan = null
+                                )
+                                // Reset checkbox states untuk kapal ini
+                                items.forEach { checkBoxStates[it] = false }
+                                // Reset checkbox dates untuk kapal ini
+                                items.forEach { checkBoxDates.remove(it) }
+                                // Update via API
+                                lifecycleScope.launch {
+                                    try {
+                                        val sharedPref = getSharedPreferences("login_prefs", MODE_PRIVATE)
+                                        val token = sharedPref.getString("token", "") ?: ""
+                                        if (token.isEmpty()) {
+                                            Toast.makeText(this@ProfileActivity, "Token tidak ditemukan", Toast.LENGTH_SHORT).show()
+                                            return@launch
+                                        }
+
+                                        Log.d("ProfileActivity", "Undoing finish for kapal id: ${kapal.id}, updatedKapal: $updatedKapal")
+                                        val response = ApiClient.apiService.updateKapal("Bearer $token", kapal.id, updatedKapal)
+                                        Log.d("ProfileActivity", "Response code: ${response.code()}, message: ${response.message()}")
+                                        if (response.isSuccessful) {
+                                            val apiResponse = response.body()
+                                            Log.d("ProfileActivity", "API response: $apiResponse")
+                                            if (apiResponse?.success == true) {
+                                                // Simpan state checkbox yang direset
+                                                val editor = getSharedPreferences("kapal_data", MODE_PRIVATE).edit()
+                                                val updatedStateJson = Gson().toJson(checkBoxStates)
+                                                editor.putString("checkbox_states", updatedStateJson)
+                                                val updatedDateJson = Gson().toJson(checkBoxDates)
+                                                editor.putString("checkbox_dates", updatedDateJson)
+                                                editor.apply()
+                                                loadDataAndBuildUI()  // Reload UI
+                                                Toast.makeText(this@ProfileActivity, "Proses finish dibatalkan", Toast.LENGTH_SHORT).show()
+                                            } else {
+                                                Toast.makeText(this@ProfileActivity, "Gagal membatalkan finish: ${apiResponse?.message}", Toast.LENGTH_SHORT).show()
+                                            }
+                                        } else {
+                                            if (response.code() == 403) {
+                                                val intent = Intent(this@ProfileActivity, LoginActivity::class.java)
+                                                startActivity(intent)
+                                                finish()
+                                                Toast.makeText(this@ProfileActivity, "Token expired, please login again", Toast.LENGTH_SHORT).show()
+                                            } else {
+                                                Toast.makeText(this@ProfileActivity, "Gagal membatalkan finish: ${response.message()}", Toast.LENGTH_SHORT).show()
+                                            }
+                                        }
+                                    } catch (e: Exception) {
+                                        Toast.makeText(this@ProfileActivity, "Error: ${e.message}", Toast.LENGTH_SHORT).show()
+                                    }
+                                }
                             }
-                            val index = listKapal.indexOf(kapal)
-                            if (index >= 0) {
-                                kapalList[index] = kapal
-                                val editor = sharedPref.edit()
-                                val updatedJson = gson.toJson(kapalList)
-                                editor.putString("list_kapal", updatedJson)
-                                editor.apply()
+                            alertDialog.setNegativeButton("Tidak") { _, _ ->
+                                // Do nothing, just dismiss the dialog
                             }
-                            // Simpan state checkbox yang direset
-                            val editor = sharedPref.edit()
-                            val updatedStateJson = Gson().toJson(checkBoxStates)
-                            editor.putString("checkbox_states", updatedStateJson)
-                            val updatedDateJson = Gson().toJson(checkBoxDates)
-                            editor.putString("checkbox_dates", updatedDateJson)
-                            editor.apply()
-                            loadDataAndBuildUI()  // Reload UI
-                            Toast.makeText(this@ProfileActivity, "Proses finish dibatalkan", Toast.LENGTH_SHORT).show()
+                            alertDialog.setCancelable(true)
+                            alertDialog.show()
                         } else {
                             Toast.makeText(this@ProfileActivity, "Akses tidak diizinkan untuk membatalkan finish", Toast.LENGTH_SHORT).show()
                         }
