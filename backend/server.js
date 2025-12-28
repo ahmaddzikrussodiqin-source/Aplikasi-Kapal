@@ -376,6 +376,29 @@ app.post('/api/register', async (req, res) => {
 // User routes (protected)
 app.get('/api/users', authenticateToken, async (req, res) => {
     try {
+        // Ensure schema and table exist with all required columns
+        await usersPool.query(`CREATE SCHEMA IF NOT EXISTS users_schema`);
+        await usersPool.query(`
+            CREATE TABLE IF NOT EXISTS users_schema.users (
+                userId TEXT PRIMARY KEY,
+                password TEXT NOT NULL,
+                nama TEXT,
+                role TEXT DEFAULT 'Member',
+                photoUri TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        `);
+
+        // Add missing columns if they don't exist (for existing tables)
+        try {
+            await usersPool.query(`ALTER TABLE users_schema.users ADD COLUMN IF NOT EXISTS nama TEXT`);
+            await usersPool.query(`ALTER TABLE users_schema.users ADD COLUMN IF NOT EXISTS role TEXT DEFAULT 'Member'`);
+            await usersPool.query(`ALTER TABLE users_schema.users ADD COLUMN IF NOT EXISTS photoUri TEXT`);
+            await usersPool.query(`ALTER TABLE users_schema.users ADD COLUMN IF NOT EXISTS created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP`);
+        } catch (alterError) {
+            console.log('Some columns might already exist, continuing...');
+        }
+
         const result = await usersPool.query('SELECT userId, nama, role, photoUri, created_at FROM users_schema.users');
         const users = result.rows.map(row => ({
             userId: row.userid,
