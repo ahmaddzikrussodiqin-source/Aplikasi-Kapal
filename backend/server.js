@@ -666,7 +666,20 @@ app.get('/api/kapal/:id', authenticateToken, async (req, res) => {
     try {
         const { id } = req.params;
 
-        const result = await kapalPool.query('SELECT * FROM kapal_schema.kapal WHERE id = $1', [id]);
+        // Join kapal_info and kapal_status tables like the GET /api/kapal route
+        const result = await kapalPool.query(`
+            SELECT
+                ki.id, ki.nama, ki.namaPemilik, ki.tandaSelar, ki.tandaPengenal,
+                ki.beratKotor, ki.beratBersih, ki.merekMesin, ki.nomorSeriMesin,
+                ki.jenisAlatTangkap, ki.tanggalInput, ki.listDokumen,
+                ks.tanggalKeberangkatan, ks.totalHariPersiapan, ks.tanggalBerangkat,
+                ks.tanggalKembali, ks.listPersiapan as statusListPersiapan,
+                ks.isFinished, ks.perkiraanKeberangkatan, ks.durasiSelesaiPersiapan
+            FROM kapal_schema.kapal_info ki
+            LEFT JOIN kapal_schema.kapal_status ks ON ki.id = ks.kapalId
+            WHERE ki.id = $1
+        `, [id]);
+
         const kapal = result.rows[0];
 
         if (!kapal) {
@@ -676,12 +689,28 @@ app.get('/api/kapal/:id', authenticateToken, async (req, res) => {
             });
         }
 
-        // Parse JSON strings back to arrays
+        // Parse JSON strings back to arrays and convert isFinished to boolean
         const parsedKapal = {
-            ...kapal,
-            listPersiapan: parseListPersiapan(kapal.listpersiapan),
+            id: kapal.id,
+            nama: kapal.nama,
+            namaPemilik: kapal.namapemilik,
+            tandaSelar: kapal.tandaselar,
+            tandaPengenal: kapal.tandapengenal,
+            beratKotor: kapal.beratkotor,
+            beratBersih: kapal.beratbersih,
+            merekMesin: kapal.merekmesin,
+            nomorSeriMesin: kapal.nomorserimesin,
+            jenisAlatTangkap: kapal.jenisalattangkap,
+            tanggalInput: kapal.tanggalinput,
+            tanggalKeberangkatan: kapal.tanggalkeberangkatan,
+            totalHariPersiapan: kapal.totalharipersiapan,
+            tanggalBerangkat: kapal.tanggalberangkat,
+            tanggalKembali: kapal.tanggalkembali,
+            listPersiapan: parseListPersiapan(kapal.statuslistpersiapan || kapal.listpersiapan),
             listDokumen: JSON.parse(kapal.listdokumen || '[]'),
-            isFinished: Boolean(kapal.isfinished)
+            isFinished: Boolean(kapal.isfinished),
+            perkiraanKeberangkatan: kapal.perkiraankeberangkatan,
+            durasiSelesaiPersiapan: kapal.durasiselesaiPersiapan
         };
 
         res.json({

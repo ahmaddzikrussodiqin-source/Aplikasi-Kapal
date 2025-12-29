@@ -66,11 +66,14 @@ class ProfileActivity : AppCompatActivity() {
                     if (apiResponse?.success == true) {
                         val kapalList = apiResponse.data ?: emptyList()
                         listKapal.clear()
-                        listKapal.addAll(kapalList)
+                        // Convert KapalEntity to Kapal for backward compatibility
+                        listKapal.addAll(kapalList.map { kapalEntity ->
+                            Kapal(kapalEntity)
+                        })
                         runOnUiThread {
                             buildUI(llChecklist)
                         }
-                    } else {
+                    }
                         Toast.makeText(this@ProfileActivity, "Gagal memuat data kapal", Toast.LENGTH_SHORT).show()
                     }
                 } else {
