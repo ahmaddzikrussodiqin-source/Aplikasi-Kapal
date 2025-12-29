@@ -1,3 +1,5 @@
+package com.example.kapallist
+
 import androidx.room.*
 import kotlinx.coroutines.flow.Flow
 
@@ -29,7 +31,53 @@ interface KapalStatusDao {
 
     @Query("DELETE FROM kapal_status_table")
     suspend fun deleteAllKapalStatus()
+
+    // New method to get kapal status with kapal info joined
+    @Query("""
+        SELECT ks.*, ki.nama, ki.namaPemilik, ki.tandaSelar, ki.tandaPengenal,
+               ki.beratKotor, ki.beratBersih, ki.merekMesin, ki.nomorSeriMesin,
+               ki.jenisAlatTangkap, ki.tanggalInput, ki.listDokumen
+        FROM kapal_status_table ks
+        LEFT JOIN kapal_info_table ki ON ks.kapalId = ki.id
+        ORDER BY ks.id DESC
+    """)
+    fun getAllKapalStatusWithInfo(): Flow<List<KapalStatusWithInfo>>
+
+    @Query("""
+        SELECT ks.*, ki.nama, ki.namaPemilik, ki.tandaSelar, ki.tandaPengenal,
+               ki.beratKotor, ki.beratBersih, ki.merekMesin, ki.nomorSeriMesin,
+               ki.jenisAlatTangkap, ki.tanggalInput, ki.listDokumen
+        FROM kapal_status_table ks
+        LEFT JOIN kapal_info_table ki ON ks.kapalId = ki.id
+        WHERE ks.kapalId = :kapalId
+    """)
+    suspend fun getKapalStatusWithInfoByKapalId(kapalId: Int): KapalStatusWithInfo?
 }
+
+// Data class for joined query results
+data class KapalStatusWithInfo(
+    val id: Int,
+    val kapalId: Int,
+    val tanggalKeberangkatan: String?,
+    val totalHariPersiapan: Int?,
+    val tanggalBerangkat: String?,
+    val tanggalKembali: String?,
+    val listPersiapan: List<String>,
+    val isFinished: Boolean,
+    val perkiraanKeberangkatan: String?,
+    val durasiSelesaiPersiapan: String?,
+    val nama: String?,
+    val namaPemilik: String,
+    val tandaSelar: String,
+    val tandaPengenal: String,
+    val beratKotor: String,
+    val beratBersih: String,
+    val merekMesin: String,
+    val nomorSeriMesin: String,
+    val jenisAlatTangkap: String,
+    val tanggalInput: String?,
+    val listDokumen: List<DokumenKapal>
+)
 =======
 package com.example.kapallist
 

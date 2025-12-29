@@ -73,7 +73,7 @@ class ProfileActivity : AppCompatActivity() {
                         runOnUiThread {
                             buildUI(llChecklist)
                         }
-                    }
+                    } else {
                         Toast.makeText(this@ProfileActivity, "Gagal memuat data kapal", Toast.LENGTH_SHORT).show()
                     }
                 } else {
