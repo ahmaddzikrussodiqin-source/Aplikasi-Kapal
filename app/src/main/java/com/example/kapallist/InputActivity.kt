@@ -94,7 +94,43 @@ class InputActivity : AppCompatActivity() {
             }
         }
 
-        // Edit mode removed for online version - would need kapal ID tracking
+        // Load existing kapal data if in edit mode
+        if (editMode && kapalIdFromIntent != -1) {
+            selectedKapalId = kapalIdFromIntent
+            lifecycleScope.launch {
+                try {
+                    val sharedPref = getSharedPreferences("login_prefs", MODE_PRIVATE)
+                    val token = sharedPref.getString("token", "") ?: ""
+                    if (token.isEmpty()) {
+                        Toast.makeText(this@InputActivity, "Token tidak ditemukan", Toast.LENGTH_SHORT).show()
+                        return@launch
+                    }
+
+                    val response = ApiClient.apiService.getKapalById("Bearer $token", kapalIdFromIntent)
+                    if (response.isSuccessful) {
+                        val apiResponse = response.body()
+                        if (apiResponse?.success == true) {
+                            val kapal = apiResponse.data
+                            if (kapal != null) {
+                                runOnUiThread {
+                                    etNamaKapal.setText(kapal.nama)
+                                    etTanggalKembali.setText(kapal.tanggalKembali)
+                                    listPersiapan.clear()
+                                    listPersiapan.addAll(kapal.listPersiapan ?: emptyList())
+                                    updatePersiapanListUI(llPersiapanList)
+                                }
+                            }
+                        } else {
+                            Toast.makeText(this@InputActivity, "Gagal memuat data kapal", Toast.LENGTH_SHORT).show()
+                        }
+                    } else {
+                        Toast.makeText(this@InputActivity, "Gagal memuat data kapal: ${response.message()}", Toast.LENGTH_SHORT).show()
+                    }
+                } catch (e: Exception) {
+                    Toast.makeText(this@InputActivity, "Error: ${e.message}", Toast.LENGTH_SHORT).show()
+                }
+            }
+        }
 
         etPersiapan.setOnKeyListener { _, keyCode, event ->
             if (event.action == KeyEvent.ACTION_DOWN && keyCode == KeyEvent.KEYCODE_ENTER) {
