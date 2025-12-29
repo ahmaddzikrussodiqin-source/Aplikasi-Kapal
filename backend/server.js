@@ -111,7 +111,7 @@ async function initializeDatabase() {
         await kapalPool.query(`
             CREATE TABLE IF NOT EXISTS kapal_schema.kapal_status (
                 id SERIAL PRIMARY KEY,
-                kapalId INTEGER NOT NULL REFERENCES kapal_schema.kapal_info(id) ON DELETE CASCADE,
+                kapalId INTEGER NOT NULL UNIQUE REFERENCES kapal_schema.kapal_info(id) ON DELETE CASCADE,
                 tanggalKeberangkatan TEXT,
                 totalHariPersiapan INTEGER,
                 tanggalBerangkat TEXT,
