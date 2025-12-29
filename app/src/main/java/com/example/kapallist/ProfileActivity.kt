@@ -277,7 +277,7 @@ class ProfileActivity : AppCompatActivity() {
                     if (!kapal.isFinished) {
                         val intent = Intent(this@ProfileActivity, InputActivity::class.java)
                         intent.putExtra("edit_mode", true)
-                        intent.putExtra("kapal_index", listKapal.indexOf(kapal))
+                        intent.putExtra("kapal_id", kapal.id)
                         startActivity(intent)
                     } else {
                         Toast.makeText(this@ProfileActivity, "Kapal sudah selesai, tidak bisa diedit", Toast.LENGTH_SHORT).show()

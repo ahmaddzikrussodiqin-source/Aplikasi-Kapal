@@ -39,6 +39,7 @@ class InputActivity : AppCompatActivity() {
 
         editMode = intent.getBooleanExtra("edit_mode", false)
         kapalIndex = intent.getIntExtra("kapal_index", -1)
+        val kapalIdFromIntent = intent.getIntExtra("kapal_id", -1)
         val namaKapalFromIntent = intent.getStringExtra("nama_kapal")
 
         val etNamaKapal = findViewById<EditText>(R.id.et_nama_kapal)
