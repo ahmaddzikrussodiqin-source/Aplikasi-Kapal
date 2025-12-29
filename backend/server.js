@@ -107,11 +107,11 @@ async function initializeDatabase() {
             )
         `);
 
-        // Kapal Status table in kapal_schema
+        // Kapal Status table in kapal_schema (independent from kapal_info)
         await kapalPool.query(`
             CREATE TABLE IF NOT EXISTS kapal_schema.kapal_status (
                 id SERIAL PRIMARY KEY,
-                kapalId INTEGER NOT NULL UNIQUE REFERENCES kapal_schema.kapal_info(id) ON DELETE CASCADE,
+                kapalId INTEGER UNIQUE,  -- Nullable and no CASCADE constraint
                 tanggalKeberangkatan TEXT,
                 totalHariPersiapan INTEGER,
                 tanggalBerangkat TEXT,
@@ -123,13 +123,21 @@ async function initializeDatabase() {
             )
         `);
 
-          // Add UNIQUE constraint to kapalId if it doesn't exist
-                try {
-                    await kapalPool.query(`ALTER TABLE kapal_schema.kapal_status ADD CONSTRAINT kapal_status_kapalid_unique UNIQUE (kapalId)`);
-                    console.log('✅ UNIQUE constraint added to kapal_status.kapalId');
-                } catch (alterError) {
-                    console.log('UNIQUE constraint on kapalId already exists or could not be added');
-                }
+        // Remove old foreign key constraint if exists (for migration)
+        try {
+            await kapalPool.query(`ALTER TABLE kapal_schema.kapal_status DROP CONSTRAINT IF EXISTS kapal_status_kapalid_fkey`);
+            console.log('✅ Old foreign key constraint removed');
+        } catch (alterError) {
+            console.log('No old foreign key constraint to remove');
+        }
+
+        // Add UNIQUE constraint to kapalId if it doesn't exist
+        try {
+            await kapalPool.query(`ALTER TABLE kapal_schema.kapal_status ADD CONSTRAINT kapal_status_kapalid_unique UNIQUE (kapalId)`);
+            console.log('✅ UNIQUE constraint added to kapal_status.kapalId');
+        } catch (alterError) {
+            console.log('UNIQUE constraint on kapalId already exists or could not be added');
+        }
 
         // Dokumen table in dokumen_schema
         await dokumenPool.query(`
@@ -999,6 +1007,169 @@ app.delete('/api/dokumen/:id', authenticateToken, async (req, res) => {
         res.status(500).json({
             success: false,
             message: 'Failed to delete dokumen'
+        });
+    }
+});
+
+// Kapal Status routes (protected) - Independent from kapal_info
+app.get('/api/kapal-status', authenticateToken, async (req, res) => {
+    try {
+        const result = await kapalPool.query('SELECT * FROM kapal_schema.kapal_status ORDER BY id DESC');
+        const kapalStatus = result.rows;
+
+        // Parse JSON strings back to arrays and convert isFinished to boolean
+        const parsedKapalStatus = kapalStatus.map(k => ({
+            ...k,
+            listPersiapan: parseListPersiapan(k.listpersiapan),
+            isFinished: Boolean(k.isfinished)
+        }));
+
+        res.json({
+            success: true,
+            message: 'Kapal Status retrieved successfully',
+            data: parsedKapalStatus
+        });
+    } catch (error) {
+        console.error('Get kapal status error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Database error'
+        });
+    }
+});
+
+app.get('/api/kapal-status/:id', authenticateToken, async (req, res) => {
+    try {
+        const { id } = req.params;
+        const result = await kapalPool.query('SELECT * FROM kapal_schema.kapal_status WHERE id = $1', [id]);
+        const kapalStatus = result.rows[0];
+
+        if (!kapalStatus) {
+            return res.status(404).json({
+                success: false,
+                message: 'Kapal Status not found'
+            });
+        }
+
+        // Parse JSON strings back to arrays
+        const parsedKapalStatus = {
+            ...kapalStatus,
+            listPersiapan: parseListPersiapan(kapalStatus.listpersiapan),
+            isFinished: Boolean(kapalStatus.isfinished)
+        };
+
+        res.json({
+            success: true,
+            message: 'Kapal Status retrieved successfully',
+            data: parsedKapalStatus
+        });
+    } catch (error) {
+        console.error('Get kapal status by id error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Database error'
+        });
+    }
+});
+
+app.post('/api/kapal-status', authenticateToken, async (req, res) => {
+    try {
+        const kapalStatusData = req.body;
+        const result = await kapalPool.query(`
+            INSERT INTO kapal_schema.kapal_status (
+                kapalId, tanggalKeberangkatan, totalHariPersiapan, tanggalBerangkat,
+                tanggalKembali, listPersiapan, isFinished, perkiraanKeberangkatan, durasiSelesaiPersiapan
+            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+            RETURNING *
+        `, [
+            kapalStatusData.kapalId, kapalStatusData.tanggalKeberangkatan, kapalStatusData.totalHariPersiapan,
+            kapalStatusData.tanggalBerangkat, kapalStatusData.tanggalKembali,
+            JSON.stringify(kapalStatusData.listPersiapan || []), kapalStatusData.isFinished ? 1 : 0,
+            kapalStatusData.perkiraanKeberangkatan, kapalStatusData.durasiSelesaiPersiapan
+        ]);
+
+        const kapalStatus = result.rows[0];
+
+        // Parse JSON strings back to arrays
+        const parsedKapalStatus = {
+            ...kapalStatus,
+            listPersiapan: parseListPersiapan(kapalStatus.listpersiapan),
+            isFinished: Boolean(kapalStatus.isfinished)
+        };
+
+        res.status(201).json({
+            success: true,
+            message: 'Kapal Status created successfully',
+            data: parsedKapalStatus
+        });
+    } catch (error) {
+        console.error('Create kapal status error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Failed to create kapal status'
+        });
+    }
+});
+
+app.put('/api/kapal-status/:id', authenticateToken, async (req, res) => {
+    try {
+        const { id } = req.params;
+        const kapalStatusData = req.body;
+
+        const result = await kapalPool.query(`
+            UPDATE kapal_schema.kapal_status SET
+                kapalId = $1, tanggalKeberangkatan = $2, totalHariPersiapan = $3,
+                tanggalBerangkat = $4, tanggalKembali = $5, listPersiapan = $6,
+                isFinished = $7, perkiraanKeberangkatan = $8, durasiSelesaiPersiapan = $9
+            WHERE id = $10
+        `, [
+            kapalStatusData.kapalId, kapalStatusData.tanggalKeberangkatan, kapalStatusData.totalHariPersiapan,
+            kapalStatusData.tanggalBerangkat, kapalStatusData.tanggalKembali,
+            JSON.stringify(kapalStatusData.listPersiapan || []), kapalStatusData.isFinished ? 1 : 0,
+            kapalStatusData.perkiraanKeberangkatan, kapalStatusData.durasiSelesaiPersiapan, id
+        ]);
+
+        if (result.rowCount === 0) {
+            return res.status(404).json({
+                success: false,
+                message: 'Kapal Status not found'
+            });
+        }
+
+        res.json({
+            success: true,
+            message: 'Kapal Status updated successfully'
+        });
+    } catch (error) {
+        console.error('Update kapal status error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Failed to update kapal status'
+        });
+    }
+});
+
+app.delete('/api/kapal-status/:id', authenticateToken, async (req, res) => {
+    try {
+        const { id } = req.params;
+        const result = await kapalPool.query('DELETE FROM kapal_schema.kapal_status WHERE id = $1', [id]);
+
+        if (result.rowCount === 0) {
+            return res.status(404).json({
+                success: false,
+                message: 'Kapal Status not found'
+            });
+        }
+
+        res.json({
+            success: true,
+            message: 'Kapal Status deleted successfully'
+        });
+    } catch (error) {
+        console.error('Delete kapal status error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Failed to delete kapal status'
         });
     }
 });
