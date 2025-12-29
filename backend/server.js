@@ -89,9 +89,9 @@ async function initializeDatabase() {
         `);
         console.log('✅ Users table created successfully');
 
-        // Kapal table in kapal_schema
+        // Kapal Info table in kapal_schema
         await kapalPool.query(`
-            CREATE TABLE IF NOT EXISTS kapal_schema.kapal (
+            CREATE TABLE IF NOT EXISTS kapal_schema.kapal_info (
                 id SERIAL PRIMARY KEY,
                 nama TEXT,
                 namaPemilik TEXT NOT NULL DEFAULT '',
@@ -103,12 +103,20 @@ async function initializeDatabase() {
                 nomorSeriMesin TEXT NOT NULL DEFAULT '',
                 jenisAlatTangkap TEXT NOT NULL DEFAULT '',
                 tanggalInput TEXT,
+                listDokumen TEXT NOT NULL DEFAULT '[]'
+            )
+        `);
+
+        // Kapal Status table in kapal_schema
+        await kapalPool.query(`
+            CREATE TABLE IF NOT EXISTS kapal_schema.kapal_status (
+                id SERIAL PRIMARY KEY,
+                kapalId INTEGER NOT NULL REFERENCES kapal_schema.kapal_info(id) ON DELETE CASCADE,
                 tanggalKeberangkatan TEXT,
                 totalHariPersiapan INTEGER,
                 tanggalBerangkat TEXT,
                 tanggalKembali TEXT,
                 listPersiapan TEXT NOT NULL DEFAULT '[]',
-                listDokumen TEXT NOT NULL DEFAULT '[]',
                 isFinished INTEGER NOT NULL DEFAULT 0,
                 perkiraanKeberangkatan TEXT,
                 durasiSelesaiPersiapan TEXT
@@ -584,15 +592,44 @@ function parseListPersiapan(value) {
 // Kapal routes (protected)
 app.get('/api/kapal', authenticateToken, async (req, res) => {
     try {
-        const result = await kapalPool.query('SELECT * FROM kapal_schema.kapal ORDER BY id DESC');
+        // Join kapal_info and kapal_status tables
+        const result = await kapalPool.query(`
+            SELECT
+                ki.id, ki.nama, ki.namaPemilik, ki.tandaSelar, ki.tandaPengenal,
+                ki.beratKotor, ki.beratBersih, ki.merekMesin, ki.nomorSeriMesin,
+                ki.jenisAlatTangkap, ki.tanggalInput, ki.listDokumen,
+                ks.tanggalKeberangkatan, ks.totalHariPersiapan, ks.tanggalBerangkat,
+                ks.tanggalKembali, ks.listPersiapan as statusListPersiapan,
+                ks.isFinished, ks.perkiraanKeberangkatan, ks.durasiSelesaiPersiapan
+            FROM kapal_schema.kapal_info ki
+            LEFT JOIN kapal_schema.kapal_status ks ON ki.id = ks.kapalId
+            ORDER BY ki.id DESC
+        `);
+
         const kapal = result.rows;
 
         // Parse JSON strings back to arrays and convert isFinished to boolean
         const parsedKapal = kapal.map(k => ({
-            ...k,
-            listPersiapan: parseListPersiapan(k.listpersiapan),
+            id: k.id,
+            nama: k.nama,
+            namaPemilik: k.namapemilik,
+            tandaSelar: k.tandaselar,
+            tandaPengenal: k.tandapengenal,
+            beratKotor: k.beratkotor,
+            beratBersih: k.beratbersih,
+            merekMesin: k.merekmesin,
+            nomorSeriMesin: k.nomorserimesin,
+            jenisAlatTangkap: k.jenisalattangkap,
+            tanggalInput: k.tanggalinput,
+            tanggalKeberangkatan: k.tanggalkeberangkatan,
+            totalHariPersiapan: k.totalharipersiapan,
+            tanggalBerangkat: k.tanggalberangkat,
+            tanggalKembali: k.tanggalkembali,
+            listPersiapan: parseListPersiapan(k.statuslistpersiapan || k.listpersiapan),
             listDokumen: JSON.parse(k.listdokumen || '[]'),
-            isFinished: Boolean(k.isfinished)
+            isFinished: Boolean(k.isfinished),
+            perkiraanKeberangkatan: k.perkiraankeberangkatan,
+            durasiSelesaiPersiapan: k.durasiselesaiPersiapan
         }));
 
         res.json({
@@ -649,31 +686,59 @@ app.post('/api/kapal', authenticateToken, async (req, res) => {
     try {
         const kapalData = req.body;
 
-        const result = await kapalPool.query(`
-            INSERT INTO kapal_schema.kapal (
+        // Insert into kapal_info first
+        const infoResult = await kapalPool.query(`
+            INSERT INTO kapal_schema.kapal_info (
                 nama, namaPemilik, tandaSelar, tandaPengenal, beratKotor, beratBersih,
-                merekMesin, nomorSeriMesin, jenisAlatTangkap, tanggalInput, tanggalKeberangkatan,
-                totalHariPersiapan, tanggalBerangkat, tanggalKembali, listPersiapan, listDokumen,
-                isFinished, perkiraanKeberangkatan, durasiSelesaiPersiapan
-            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19)
+                merekMesin, nomorSeriMesin, jenisAlatTangkap, tanggalInput, listDokumen
+            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
             RETURNING *
         `, [
             kapalData.nama, kapalData.namaPemilik, kapalData.tandaSelar, kapalData.tandaPengenal,
             kapalData.beratKotor, kapalData.beratBersih, kapalData.merekMesin, kapalData.nomorSeriMesin,
-            kapalData.jenisAlatTangkap, kapalData.tanggalInput, kapalData.tanggalKeberangkatan,
-            kapalData.totalHariPersiapan, kapalData.tanggalBerangkat, kapalData.tanggalKembali,
-            JSON.stringify(kapalData.listPersiapan || []), JSON.stringify(kapalData.listDokumen || []),
-            kapalData.isFinished ? 1 : 0, kapalData.perkiraanKeberangkatan, kapalData.durasiSelesaiPersiapan
+            kapalData.jenisAlatTangkap, kapalData.tanggalInput, JSON.stringify(kapalData.listDokumen || [])
         ]);
 
-        const kapal = result.rows[0];
+        const kapalInfo = infoResult.rows[0];
 
-        // Parse JSON strings back to arrays
+        // Insert into kapal_status
+        const statusResult = await kapalPool.query(`
+            INSERT INTO kapal_schema.kapal_status (
+                kapalId, tanggalKeberangkatan, totalHariPersiapan, tanggalBerangkat,
+                tanggalKembali, listPersiapan, isFinished, perkiraanKeberangkatan, durasiSelesaiPersiapan
+            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+            RETURNING *
+        `, [
+            kapalInfo.id, kapalData.tanggalKeberangkatan, kapalData.totalHariPersiapan,
+            kapalData.tanggalBerangkat, kapalData.tanggalKembali,
+            JSON.stringify(kapalData.listPersiapan || []), kapalData.isFinished ? 1 : 0,
+            kapalData.perkiraanKeberangkatan, kapalData.durasiSelesaiPersiapan
+        ]);
+
+        const kapalStatus = statusResult.rows[0];
+
+        // Combine the data for response
         const parsedKapal = {
-            ...kapal,
-            listPersiapan: parseListPersiapan(kapal.listpersiapan),
-            listDokumen: JSON.parse(kapal.listdokumen || '[]'),
-            isFinished: Boolean(kapal.isfinished)
+            id: kapalInfo.id,
+            nama: kapalInfo.nama,
+            namaPemilik: kapalInfo.namapemilik,
+            tandaSelar: kapalInfo.tandaselar,
+            tandaPengenal: kapalInfo.tandapengenal,
+            beratKotor: kapalInfo.beratkotor,
+            beratBersih: kapalInfo.beratbersih,
+            merekMesin: kapalInfo.merekmesin,
+            nomorSeriMesin: kapalInfo.nomorserimesin,
+            jenisAlatTangkap: kapalInfo.jenisalattangkap,
+            tanggalInput: kapalInfo.tanggalinput,
+            listDokumen: JSON.parse(kapalInfo.listdokumen || '[]'),
+            tanggalKeberangkatan: kapalStatus.tanggalkeberangkatan,
+            totalHariPersiapan: kapalStatus.totalharipersiapan,
+            tanggalBerangkat: kapalStatus.tanggalberangkat,
+            tanggalKembali: kapalStatus.tanggalkembali,
+            listPersiapan: parseListPersiapan(kapalStatus.listpersiapan),
+            isFinished: Boolean(kapalStatus.isfinished),
+            perkiraanKeberangkatan: kapalStatus.perkiraankeberangkatan,
+            durasiSelesaiPersiapan: kapalStatus.durasiselesaiPersiapan
         };
 
         res.status(201).json({
@@ -695,26 +760,43 @@ app.put('/api/kapal/:id', authenticateToken, async (req, res) => {
         const { id } = req.params;
         const kapalData = req.body;
 
-        const result = await kapalPool.query(`
-            UPDATE kapal_schema.kapal SET
+        // Update kapal_info
+        const infoResult = await kapalPool.query(`
+            UPDATE kapal_schema.kapal_info SET
                 nama = $1, namaPemilik = $2, tandaSelar = $3, tandaPengenal = $4,
                 beratKotor = $5, beratBersih = $6, merekMesin = $7, nomorSeriMesin = $8,
-                jenisAlatTangkap = $9, tanggalInput = $10, tanggalKeberangkatan = $11,
-                totalHariPersiapan = $12, tanggalBerangkat = $13, tanggalKembali = $14,
-                listPersiapan = $15, listDokumen = $16, isFinished = $17,
-                perkiraanKeberangkatan = $18, durasiSelesaiPersiapan = $19
-            WHERE id = $20
+                jenisAlatTangkap = $9, tanggalInput = $10, listDokumen = $11
+            WHERE id = $12
         `, [
             kapalData.nama, kapalData.namaPemilik, kapalData.tandaSelar, kapalData.tandaPengenal,
             kapalData.beratKotor, kapalData.beratBersih, kapalData.merekMesin, kapalData.nomorSeriMesin,
-            kapalData.jenisAlatTangkap, kapalData.tanggalInput, kapalData.tanggalKeberangkatan,
-            kapalData.totalHariPersiapan, kapalData.tanggalBerangkat, kapalData.tanggalKembali,
-            JSON.stringify(kapalData.listPersiapan || []), JSON.stringify(kapalData.listDokumen || []),
-            kapalData.isFinished ? 1 : 0, kapalData.perkiraanKeberangkatan, kapalData.durasiSelesaiPersiapan,
+            kapalData.jenisAlatTangkap, kapalData.tanggalInput, JSON.stringify(kapalData.listDokumen || []),
             id
         ]);
 
-        if (result.rowCount === 0) {
+        // Update or insert kapal_status
+        const statusResult = await kapalPool.query(`
+            INSERT INTO kapal_schema.kapal_status (
+                kapalId, tanggalKeberangkatan, totalHariPersiapan, tanggalBerangkat,
+                tanggalKembali, listPersiapan, isFinished, perkiraanKeberangkatan, durasiSelesaiPersiapan
+            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+            ON CONFLICT (kapalId) DO UPDATE SET
+                tanggalKeberangkatan = EXCLUDED.tanggalKeberangkatan,
+                totalHariPersiapan = EXCLUDED.totalHariPersiapan,
+                tanggalBerangkat = EXCLUDED.tanggalBerangkat,
+                tanggalKembali = EXCLUDED.tanggalKembali,
+                listPersiapan = EXCLUDED.listPersiapan,
+                isFinished = EXCLUDED.isFinished,
+                perkiraanKeberangkatan = EXCLUDED.perkiraanKeberangkatan,
+                durasiSelesaiPersiapan = EXCLUDED.durasiSelesaiPersiapan
+        `, [
+            id, kapalData.tanggalKeberangkatan, kapalData.totalHariPersiapan,
+            kapalData.tanggalBerangkat, kapalData.tanggalKembali,
+            JSON.stringify(kapalData.listPersiapan || []), kapalData.isFinished ? 1 : 0,
+            kapalData.perkiraanKeberangkatan, kapalData.durasiSelesaiPersiapan
+        ]);
+
+        if (infoResult.rowCount === 0) {
             return res.status(404).json({
                 success: false,
                 message: 'Kapal not found'
@@ -738,7 +820,8 @@ app.delete('/api/kapal/:id', authenticateToken, async (req, res) => {
     try {
         const { id } = req.params;
 
-        const result = await kapalPool.query('DELETE FROM kapal_schema.kapal WHERE id = $1', [id]);
+        // Delete from kapal_info (kapal_status will be deleted automatically due to CASCADE)
+        const result = await kapalPool.query('DELETE FROM kapal_schema.kapal_info WHERE id = $1', [id]);
 
         if (result.rowCount === 0) {
             return res.status(404).json({
