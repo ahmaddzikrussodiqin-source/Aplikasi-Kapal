@@ -123,6 +123,14 @@ async function initializeDatabase() {
             )
         `);
 
+          // Add UNIQUE constraint to kapalId if it doesn't exist
+                try {
+                    await kapalPool.query(`ALTER TABLE kapal_schema.kapal_status ADD CONSTRAINT kapal_status_kapalid_unique UNIQUE (kapalId)`);
+                    console.log('✅ UNIQUE constraint added to kapal_status.kapalId');
+                } catch (alterError) {
+                    console.log('UNIQUE constraint on kapalId already exists or could not be added');
+                }
+
         // Dokumen table in dokumen_schema
         await dokumenPool.query(`
             CREATE TABLE IF NOT EXISTS dokumen_schema.dokumen (
