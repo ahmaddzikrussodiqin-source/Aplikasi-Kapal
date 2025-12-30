@@ -530,13 +530,181 @@ class MainActivity : AppCompatActivity() {
                             showUpdateRequiredDialog(serverVersion, currentVersion)
                             return@launch
                         }
+                    } else {
+                        // Server didn't return version, assume update required for safety
+                        showUpdateRequiredDialog("terbaru", packageManager.getPackageInfo(packageName, 0).versionName)
+                        return@launch
                     }
                 } else {
-                    Log.w("MainActivity", "Failed to check app version: ${response.message()}")
+                    // Failed to check version, show error and close app for safety
+                    showConnectionErrorDialog()
+                    return@launch
                 }
             } catch (e: Exception) {
                 Log.e("MainActivity", "Error checking app version: ${e.message}")
+                // Network error, show error and close app for safety
+                showConnectionErrorDialog()
+                return@launch
             }
+            // Version check passed, continue with app initialization
+            proceedWithAppInitialization()
+        }
+    }
+
+    private fun showConnectionErrorDialog() {
+        val builder = AlertDialog.Builder(this)
+        builder.setTitle("Koneksi Gagal")
+        builder.setMessage("Tidak dapat memeriksa versi aplikasi. Pastikan koneksi internet aktif dan coba lagi.")
+        builder.setCancelable(false)
+        builder.setPositiveButton("Coba Lagi") { _, _ ->
+            checkAppVersion() // Retry version check
+        }
+        builder.setNegativeButton("Keluar") { _, _ ->
+            finish() // Close app
+        }
+        builder.show()
+    }
+
+    private fun proceedWithAppInitialization() {
+        // Continue with the rest of onCreate logic after version check
+        val sharedPref = getSharedPreferences("login_prefs", MODE_PRIVATE)
+        val isLoggedIn = sharedPref.getBoolean("is_logged_in", false)
+        if (!isLoggedIn) {
+            val intent = Intent(this, LoginActivity::class.java)
+            startActivity(intent)
+            finish()
+            return
+        }
+
+        setContentView(R.layout.activity_main)
+
+        // Get token from SharedPreferences
+        token = sharedPref.getString("token", "") ?: ""
+
+        // Inisialisasi Activity Result Launcher untuk galeri
+        galleryLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+            if (result.resultCode == RESULT_OK) {
+                val selectedImageUri = result.data?.data
+                if (selectedImageUri != null) {
+                    // Copy gambar ke internal storage
+                    val internalPath = copyImageToInternalStorage(selectedImageUri)
+                    if (internalPath != null) {
+                        // Update UI di MainActivity
+                        ivUserPhoto.setImageURI(Uri.fromFile(File(internalPath)))
+                        // Update UI di dialog jika masih terbuka
+                        currentDialogImageView?.setImageURI(Uri.fromFile(File(internalPath)))
+                        val sharedPref = getSharedPreferences("login_prefs", MODE_PRIVATE)
+                        try {
+                            val editor = sharedPref.edit()
+                            editor.putString("photo_uri", internalPath)  // Simpan path internal
+                            editor.apply()
+                        } catch (e: Exception) {
+                            Log.e("MainActivity", "Error saving photo_uri: ${e.message}")
+                        }
+
+                        // Note: Photo is stored locally, no need to update server
+
+                        Toast.makeText(this, "Foto profil berhasil diganti", Toast.LENGTH_SHORT).show()
+                    } else {
+                        Toast.makeText(this, "Gagal menyimpan foto", Toast.LENGTH_SHORT).show()
+                    }
+                }
+            }
+        }
+
+        // Load user data from SharedPreferences (since we have token, user data should be available)
+        val userId = sharedPref.getString("user_id", "") ?: ""
+        val userRole = sharedPref.getString("role", "Member") ?: "Member"
+        val userName = userId
+
+        Log.d("MainActivity", "userId: $userId, userRole: $userRole")
+
+        // Kontrol akses berdasarkan role
+        val btnInput = findViewById<Button>(R.id.btn_input_status)
+        val btnProfile = findViewById<Button>(R.id.btn_view_profile)
+        val btnDokumen = findViewById<Button>(R.id.btn_dokumen_kapal)
+        val btnDaftarKapal = findViewById<Button>(R.id.btn_daftar_kapal)  // Tambah tombol baru
+
+        when (userRole) {
+            "Moderator" -> {
+                // Akses penuh
+                btnInput.isEnabled = true
+                btnProfile.isEnabled = true
+                btnDokumen.isEnabled = true
+                btnDaftarKapal.isEnabled = true  // Enable tombol baru
+                // Tampilkan fitur buat akun dan manage users
+                showCreateAccountButton()
+                showManageUsersButton()
+            }
+            "Supervisi" -> {
+                // Akses ke Input dan Profile
+                btnInput.isEnabled = true
+                btnProfile.isEnabled = true
+                btnDokumen.isEnabled = false
+                btnDokumen.alpha = 0.5f  // Visual hint disabled
+                btnDaftarKapal.isEnabled = true  // Enable tombol baru
+            }
+            "Member" -> {
+                // Akses ke Input dan Profile
+                btnInput.isEnabled = true
+                btnProfile.isEnabled = true
+                btnDokumen.isEnabled = false
+                btnDokumen.alpha = 0.5f
+                btnDaftarKapal.isEnabled = true  // Enable tombol baru
+            }
+        }
+
+        btnInput.setOnClickListener {
+            val intent = Intent(this@MainActivity, InputActivity::class.java)
+            startActivity(intent)
+        }
+
+        btnProfile.setOnClickListener {
+            val intent = Intent(this@MainActivity, ProfileActivity::class.java)
+            startActivity(intent)
+        }
+
+        btnDokumen.setOnClickListener {
+            if (btnDokumen.isEnabled) {
+                val intent = Intent(this@MainActivity, DocumentActivity::class.java)
+                startActivity(intent)
+            } else {
+                Toast.makeText(this@MainActivity, "Akses tidak diizinkan", Toast.LENGTH_SHORT).show()
+            }
+        }
+
+        // Tambah onClick untuk tombol Daftar Kapal
+        btnDaftarKapal.setOnClickListener {
+            val intent = Intent(this@MainActivity, DaftarKapalActivity::class.java)
+            startActivity(intent)
+        }
+
+        // Tampilkan nama user
+        tvUserName = findViewById(R.id.tv_user_name)
+        tvUserName.text = userName
+
+        // Tampilkan foto jika ada
+        ivUserPhoto = findViewById(R.id.iv_user_photo)
+        val userPhotoUri = sharedPref.getString("photo_uri", null)
+        if (userPhotoUri != null) {
+            val file = File(userPhotoUri)
+            if (file.exists()) {
+                ivUserPhoto.setImageURI(Uri.fromFile(file))
+            }
+        }
+
+        // Klik foto untuk buka dialog info user
+        ivUserPhoto.setOnClickListener {
+            showUserInfoDialog(userName, userRole)
+        }
+
+        // Set app version
+        val tvAppVersion = findViewById<TextView>(R.id.tv_app_version)
+        try {
+            val packageInfo = packageManager.getPackageInfo(packageName, 0)
+            tvAppVersion.text = "Version: ${packageInfo.versionName}"
+        } catch (e: Exception) {
+            tvAppVersion.text = "Version: 1.00.00"
         }
     }
 
