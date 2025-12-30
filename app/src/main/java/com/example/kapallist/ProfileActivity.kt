@@ -60,24 +60,24 @@ class ProfileActivity : AppCompatActivity() {
                     return@launch
                 }
 
-                val response = ApiClient.apiService.getAllKapal("Bearer $token")
+                val response = ApiClient.apiService.getAllKapalMasuk("Bearer $token")
                 if (response.isSuccessful) {
                     val apiResponse = response.body()
                     if (apiResponse?.success == true) {
-                        val kapalList = apiResponse.data ?: emptyList()
+                        val kapalMasukList = apiResponse.data ?: emptyList()
                         listKapal.clear()
-                        // Convert KapalEntity to Kapal for backward compatibility
-                        listKapal.addAll(kapalList.map { kapalEntity ->
-                            Kapal(kapalEntity)
+                        // Convert KapalMasukEntity to Kapal
+                        listKapal.addAll(kapalMasukList.map { kapalMasukEntity ->
+                            Kapal(kapalMasukEntity)
                         })
                         runOnUiThread {
                             buildUI(llChecklist)
                         }
                     } else {
-                        Toast.makeText(this@ProfileActivity, "Gagal memuat data kapal", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(this@ProfileActivity, "Gagal memuat data kapal masuk", Toast.LENGTH_SHORT).show()
                     }
                 } else {
-                    Toast.makeText(this@ProfileActivity, "Gagal memuat data kapal: ${response.message()}", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(this@ProfileActivity, "Gagal memuat data kapal masuk: ${response.message()}", Toast.LENGTH_SHORT).show()
                 }
             } catch (e: Exception) {
                 Toast.makeText(this@ProfileActivity, "Error: ${e.message}", Toast.LENGTH_SHORT).show()
@@ -316,7 +316,7 @@ class ProfileActivity : AppCompatActivity() {
                                         }
 
                                         Log.d("ProfileActivity", "Undoing finish for kapal id: ${kapal.id}, updatedKapal: $updatedKapal")
-                                        val response = ApiClient.apiService.updateKapal("Bearer $token", kapal.id, updatedKapal.toKapalEntity())
+                                        val response = ApiClient.apiService.updateKapalMasuk("Bearer $token", kapal.id, updatedKapal.toKapalMasukEntity())
                                         Log.d("ProfileActivity", "Response code: ${response.code()}, message: ${response.message()}")
                                         if (response.isSuccessful) {
                                             val apiResponse = response.body()

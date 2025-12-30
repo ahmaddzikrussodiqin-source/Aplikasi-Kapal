@@ -38,9 +38,6 @@ class InputActivity : AppCompatActivity() {
 
         sharedPref = getSharedPreferences("kapal_data", MODE_PRIVATE)
 
-        editMode = intent.getBooleanExtra("edit_mode", false)
-        kapalIndex = intent.getIntExtra("kapal_index", -1)
-        val kapalIdFromIntent = intent.getIntExtra("kapal_id", -1)
         val namaKapalFromIntent = intent.getStringExtra("nama_kapal")
 
         val etNamaKapal = findViewById<EditText>(R.id.et_nama_kapal)
@@ -54,7 +51,7 @@ class InputActivity : AppCompatActivity() {
             etNamaKapal.setText(namaKapalFromIntent)
         }
 
-        // Load kapal names from API
+        // Load kapal names from API (daftar kapal untuk referensi)
         etNamaKapal.setOnClickListener {
             lifecycleScope.launch {
                 try {
@@ -73,53 +70,15 @@ class InputActivity : AppCompatActivity() {
                             val namaKapalList = kapalList.mapNotNull { it.nama }
                             if (namaKapalList.isNotEmpty()) {
                                 val builder = AlertDialog.Builder(this@InputActivity)
-                                builder.setTitle("Pilih Nama Kapal")
+                                builder.setTitle("Pilih Nama Kapal (Referensi)")
                                 builder.setItems(namaKapalList.toTypedArray()) { _, which ->
                                     etNamaKapal.setText(namaKapalList[which])
-                                    selectedKapalId = kapalList[which].id
+                                    // Tidak set selectedKapalId karena ini untuk kapal masuk baru
                                 }
                                 builder.setNegativeButton("Batal", null)
                                 builder.show()
                             } else {
                                 Toast.makeText(this@InputActivity, "Tidak ada kapal tersimpan", Toast.LENGTH_SHORT).show()
-                            }
-                        } else {
-                            Toast.makeText(this@InputActivity, "Gagal memuat data kapal", Toast.LENGTH_SHORT).show()
-                        }
-                    } else {
-                        Toast.makeText(this@InputActivity, "Gagal memuat data kapal: ${response.message()}", Toast.LENGTH_SHORT).show()
-                    }
-                } catch (e: Exception) {
-                    Toast.makeText(this@InputActivity, "Error: ${e.message}", Toast.LENGTH_SHORT).show()
-                }
-            }
-        }
-
-        // Load existing kapal data if in edit mode
-        if (editMode && kapalIdFromIntent != -1) {
-            selectedKapalId = kapalIdFromIntent
-            lifecycleScope.launch {
-                try {
-                    val sharedPref = getSharedPreferences("login_prefs", MODE_PRIVATE)
-                    val token = sharedPref.getString("token", "") ?: ""
-                    if (token.isEmpty()) {
-                        Toast.makeText(this@InputActivity, "Token tidak ditemukan", Toast.LENGTH_SHORT).show()
-                        return@launch
-                    }
-
-                    val response = ApiClient.apiService.getKapalById("Bearer $token", kapalIdFromIntent)
-                    if (response.isSuccessful) {
-                        val apiResponse = response.body()
-                        if (apiResponse?.success == true) {
-                            val kapal = apiResponse.data
-                            if (kapal != null) {
-                                runOnUiThread {
-                                    etNamaKapal.setText(kapal.nama)
-                                    etTanggalKembali.setText(kapal.tanggalKembali)
-                                    listPersiapan.clear()
-                                    listPersiapan.addAll(kapal.listPersiapan ?: emptyList())
-                                    updatePersiapanListUI(llPersiapanList)
-                                }
                             }
                         } else {
                             Toast.makeText(this@InputActivity, "Gagal memuat data kapal", Toast.LENGTH_SHORT).show()
@@ -197,28 +156,24 @@ class InputActivity : AppCompatActivity() {
                             return@launch
                         }
 
-                        // Convert to KapalEntity for API
-                        val kapalEntity = KapalEntity(
-                            id = selectedKapalId ?: 0,  // Use selectedKapalId if available, else 0 for new
+                        // Convert to KapalMasukEntity for API (selalu buat entry baru di kapal_masuk_schema)
+                        val kapalMasukEntity = KapalMasukEntity(
+                            id = 0,  // Selalu 0 untuk entry baru
                             nama = namaKapal,
                             tanggalKembali = tanggalKembali,
                             listPersiapan = listPersiapan,
-                            tanggalInput = java.text.SimpleDateFormat("dd/MM/yyyy", java.util.Locale.getDefault()).format(java.util.Date())
+                            tanggalInput = java.text.SimpleDateFormat("dd/MM/yyyy", java.util.Locale.getDefault()).format(java.util.Date()),
+                            statusKerja = "persiapan"  // Default status
                         )
 
-                        val response = if (selectedKapalId != null) {
-                            // Update existing kapal
-                            ApiClient.apiService.updateKapal("Bearer $token", selectedKapalId!!, kapalEntity)
-                        } else {
-                            // Create new kapal
-                            ApiClient.apiService.createKapal("Bearer $token", kapalEntity)
-                        }
+                        // Selalu create new kapal masuk (tidak pernah update existing)
+                        val response = ApiClient.apiService.createKapalMasuk("Bearer $token", kapalMasukEntity)
 
                         if (response.isSuccessful) {
-                            Toast.makeText(this@InputActivity, "Kapal disimpan!", Toast.LENGTH_SHORT).show()
+                            Toast.makeText(this@InputActivity, "Kapal Masuk disimpan!", Toast.LENGTH_SHORT).show()
                             finish()
                         } else {
-                            Toast.makeText(this@InputActivity, "Gagal menyimpan kapal: ${response.message()}", Toast.LENGTH_SHORT).show()
+                            Toast.makeText(this@InputActivity, "Gagal menyimpan kapal masuk: ${response.message()}", Toast.LENGTH_SHORT).show()
                         }
                     } catch (e: Exception) {
                         Toast.makeText(this@InputActivity, "Error: ${e.message}", Toast.LENGTH_SHORT).show()

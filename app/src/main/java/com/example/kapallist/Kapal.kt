@@ -29,6 +29,21 @@ data class Kapal(
         id = kapalEntity.id
     )
 
+    constructor(kapalMasukEntity: KapalMasukEntity) : this(
+        nama = kapalMasukEntity.nama,
+        tanggalInput = kapalMasukEntity.tanggalInput,
+        tanggalKeberangkatan = kapalMasukEntity.tanggalKeberangkatan,
+        totalHariPersiapan = kapalMasukEntity.totalHariPersiapan,
+        tanggalBerangkat = kapalMasukEntity.tanggalBerangkat,
+        tanggalKembali = kapalMasukEntity.tanggalKembali,
+        listPersiapan = kapalMasukEntity.listPersiapan.toMutableList(),
+        listDokumen = mutableListOf(), // KapalMasukEntity doesn't have this
+        isFinished = kapalMasukEntity.isFinished,
+        perkiraanKeberangkatan = kapalMasukEntity.perkiraanKeberangkatan,
+        durasiSelesaiPersiapan = kapalMasukEntity.durasiSelesaiPersiapan,
+        id = kapalMasukEntity.id
+    )
+
     fun toKapalEntity(): KapalEntity {
         return KapalEntity(
             id = this.id,
@@ -43,6 +58,31 @@ data class Kapal(
             isFinished = this.isFinished,
             perkiraanKeberangkatan = this.perkiraanKeberangkatan,
             durasiSelesaiPersiapan = this.durasiSelesaiPersiapan
+        )
+    }
+
+    fun toKapalMasukEntity(): KapalMasukEntity {
+        return KapalMasukEntity(
+            id = this.id,
+            nama = this.nama,
+            namaPemilik = "", // Kapal doesn't have this
+            tandaSelar = "",
+            tandaPengenal = "",
+            beratKotor = "",
+            beratBersih = "",
+            merekMesin = "",
+            nomorSeriMesin = "",
+            jenisAlatTangkap = "",
+            tanggalInput = this.tanggalInput,
+            tanggalKeberangkatan = this.tanggalKeberangkatan,
+            totalHariPersiapan = this.totalHariPersiapan,
+            tanggalBerangkat = this.tanggalBerangkat,
+            tanggalKembali = this.tanggalKembali,
+            listPersiapan = this.listPersiapan,
+            isFinished = this.isFinished,
+            perkiraanKeberangkatan = this.perkiraanKeberangkatan,
+            durasiSelesaiPersiapan = this.durasiSelesaiPersiapan,
+            statusKerja = "persiapan" // default
         )
     }
 }
