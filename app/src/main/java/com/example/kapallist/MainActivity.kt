@@ -540,10 +540,10 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun showUpdateRequiredDialog(serverVersion: String, currentVersion: String) {
+    private fun showUpdateRequiredDialog(serverVersion: String, currentVersion: String?) {
         val builder = AlertDialog.Builder(this)
         builder.setTitle("Update Diperlukan")
-        builder.setMessage("Versi aplikasi Anda ($currentVersion) sudah lama. Versi terbaru adalah $serverVersion. Silakan update aplikasi untuk melanjutkan.")
+        builder.setMessage("Versi aplikasi Anda (${currentVersion ?: "tidak diketahui"}) sudah lama. Versi terbaru adalah $serverVersion. Silakan update aplikasi untuk melanjutkan.")
         builder.setCancelable(false) // Prevent dismissing
         builder.setPositiveButton("Update Sekarang") { _, _ ->
             // Open Play Store or app store link
