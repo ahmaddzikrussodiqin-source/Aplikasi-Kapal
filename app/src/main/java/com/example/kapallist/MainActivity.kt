@@ -67,6 +67,9 @@ class MainActivity : AppCompatActivity() {
 
         database = KapalDatabase.getDatabase(this)
 
+        // Check app version first
+        checkAppVersion()
+
         // Check if user is logged in
         val sharedPref = getSharedPreferences("login_prefs", MODE_PRIVATE)
         val isLoggedIn = sharedPref.getBoolean("is_logged_in", false)
@@ -198,6 +201,15 @@ class MainActivity : AppCompatActivity() {
         // Klik foto untuk buka dialog info user
         ivUserPhoto.setOnClickListener {
             showUserInfoDialog(userName, userRole)
+        }
+
+        // Set app version
+        val tvAppVersion = findViewById<TextView>(R.id.tv_app_version)
+        try {
+            val packageInfo = packageManager.getPackageInfo(packageName, 0)
+            tvAppVersion.text = "Version: ${packageInfo.versionName}"
+        } catch (e: Exception) {
+            tvAppVersion.text = "Version: 1.00.00"
         }
     }
 

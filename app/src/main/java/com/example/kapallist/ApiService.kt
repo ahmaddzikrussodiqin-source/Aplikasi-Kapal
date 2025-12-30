@@ -80,4 +80,8 @@ interface ApiService {
 
     @POST("api/users")
     suspend fun createUser(@Header("Authorization") token: String, @Body user: User): Response<ApiResponse<Unit>>
+
+    // Version check
+    @GET("/")
+    suspend fun getVersion(): Response<ApiResponse<Map<String, Any>>>
 }
