@@ -13,7 +13,22 @@ data class Kapal(
     var perkiraanKeberangkatan: String? = null,
     var durasiSelesaiPersiapan: String? = null,
     var id: Int = 0
-)
+) {
+    constructor(kapalEntity: KapalEntity) : this(
+        nama = kapalEntity.nama,
+        tanggalInput = kapalEntity.tanggalInput,
+        tanggalKeberangkatan = kapalEntity.tanggalKeberangkatan,
+        totalHariPersiapan = kapalEntity.totalHariPersiapan,
+        tanggalBerangkat = kapalEntity.tanggalBerangkat,
+        tanggalKembali = kapalEntity.tanggalKembali,
+        listPersiapan = kapalEntity.listPersiapan.toMutableList(),
+        listDokumen = kapalEntity.listDokumen.toMutableList(),
+        isFinished = kapalEntity.isFinished,
+        perkiraanKeberangkatan = kapalEntity.perkiraanKeberangkatan,
+        durasiSelesaiPersiapan = kapalEntity.durasiSelesaiPersiapan,
+        id = kapalEntity.id
+    )
+}
 
 data class DokumenKapal(
     var jenis: String? = null,
