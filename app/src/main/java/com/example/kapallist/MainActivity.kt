@@ -37,7 +37,7 @@ class MainActivity : AppCompatActivity() {
     private var currentDialogImageView: ImageView? = null  // Untuk update foto di dialog
     private lateinit var token: String
 
-    // Activity Result Launcher untuk galeri
+    // Activity Result Launcher untuk galeri - initialize early
     private lateinit var galleryLauncher: ActivityResultLauncher<Intent>
 
     // Tambahkan method untuk copy gambar ke internal storage (fallback untuk versi lama)
@@ -66,6 +66,41 @@ class MainActivity : AppCompatActivity() {
         supportActionBar?.hide()  // Sembunyikan ActionBar
 
         database = KapalDatabase.getDatabase(this)
+
+        // Initialize views early for gallery launcher callback
+        setContentView(R.layout.activity_main)
+        ivUserPhoto = findViewById(R.id.iv_user_photo)
+
+        // Initialize Activity Result Launcher early (before version check)
+        galleryLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+            if (result.resultCode == RESULT_OK) {
+                val selectedImageUri = result.data?.data
+                if (selectedImageUri != null) {
+                    // Copy gambar ke internal storage
+                    val internalPath = copyImageToInternalStorage(selectedImageUri)
+                    if (internalPath != null) {
+                        // Update UI di MainActivity
+                        ivUserPhoto.setImageURI(Uri.fromFile(File(internalPath)))
+                        // Update UI di dialog jika masih terbuka
+                        currentDialogImageView?.setImageURI(Uri.fromFile(File(internalPath)))
+                        val sharedPref = getSharedPreferences("login_prefs", MODE_PRIVATE)
+                        try {
+                            val editor = sharedPref.edit()
+                            editor.putString("photo_uri", internalPath)  // Simpan path internal
+                            editor.apply()
+                        } catch (e: Exception) {
+                            Log.e("MainActivity", "Error saving photo_uri: ${e.message}")
+                        }
+
+                        // Note: Photo is stored locally, no need to update server
+
+                        Toast.makeText(this, "Foto profil berhasil diganti", Toast.LENGTH_SHORT).show()
+                    } else {
+                        Toast.makeText(this, "Gagal menyimpan foto", Toast.LENGTH_SHORT).show()
+                    }
+                }
+            }
+        }
 
         // Check app version first
         checkAppVersion()
