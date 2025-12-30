@@ -28,6 +28,23 @@ data class Kapal(
         durasiSelesaiPersiapan = kapalEntity.durasiSelesaiPersiapan,
         id = kapalEntity.id
     )
+
+    fun toKapalEntity(): KapalEntity {
+        return KapalEntity(
+            id = this.id,
+            nama = this.nama,
+            tanggalInput = this.tanggalInput,
+            tanggalKeberangkatan = this.tanggalKeberangkatan,
+            totalHariPersiapan = this.totalHariPersiapan,
+            tanggalBerangkat = this.tanggalBerangkat,
+            tanggalKembali = this.tanggalKembali,
+            listPersiapan = this.listPersiapan,
+            listDokumen = this.listDokumen,
+            isFinished = this.isFinished,
+            perkiraanKeberangkatan = this.perkiraanKeberangkatan,
+            durasiSelesaiPersiapan = this.durasiSelesaiPersiapan
+        )
+    }
 }
 
 data class DokumenKapal(

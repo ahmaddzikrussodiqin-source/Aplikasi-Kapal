@@ -26,7 +26,7 @@ import java.util.Date
 class ProfileActivity : AppCompatActivity() {
     private val checkBoxStates = mutableMapOf<String, Boolean>()
     private val checkBoxDates = mutableMapOf<String, String>()
-    private val listKapal = mutableListOf<KapalEntity>()
+    private val listKapal = mutableListOf<Kapal>()
     private lateinit var userRole: String
     private var isProgrammaticChange = false
 
@@ -316,7 +316,7 @@ class ProfileActivity : AppCompatActivity() {
                                         }
 
                                         Log.d("ProfileActivity", "Undoing finish for kapal id: ${kapal.id}, updatedKapal: $updatedKapal")
-                                        val response = ApiClient.apiService.updateKapal("Bearer $token", kapal.id, updatedKapal)
+                                        val response = ApiClient.apiService.updateKapal("Bearer $token", kapal.id, updatedKapal.toKapalEntity())
                                         Log.d("ProfileActivity", "Response code: ${response.code()}, message: ${response.message()}")
                                         if (response.isSuccessful) {
                                             val apiResponse = response.body()
@@ -390,7 +390,7 @@ class ProfileActivity : AppCompatActivity() {
                                             }
 
                                             Log.d("ProfileActivity", "Updating kapal id: ${kapal.id}, updatedKapal: $updatedKapal")
-                                            val response = ApiClient.apiService.updateKapal("Bearer $token", kapal.id, updatedKapal)
+                                            val response = ApiClient.apiService.updateKapal("Bearer $token", kapal.id, updatedKapal.toKapalEntity())
                                             Log.d("ProfileActivity", "Response code: ${response.code()}, message: ${response.message()}")
                                             if (response.isSuccessful) {
                                                 val apiResponse = response.body()

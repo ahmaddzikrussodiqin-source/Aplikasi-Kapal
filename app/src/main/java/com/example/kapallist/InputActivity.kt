@@ -232,14 +232,17 @@ class InputActivity : AppCompatActivity() {
     private fun updatePersiapanListUI(llPersiapanList: LinearLayout) {
         llPersiapanList.removeAllViews()
         for ((index, persiapan) in listPersiapan.withIndex()) {
-            val tv = TextView(this)
-            tv.text = "${index + 1}. $persiapan"
-            tv.setOnLongClickListener {
+            val itemView = layoutInflater.inflate(R.layout.item_persiapan, llPersiapanList, false)
+            val tvItem = itemView.findViewById<TextView>(R.id.tv_item)
+            val ivDelete = itemView.findViewById<ImageView>(R.id.iv_delete)
+
+            tvItem.text = "${index + 1}. $persiapan"
+            ivDelete.setOnClickListener {
                 listPersiapan.removeAt(index)
                 updatePersiapanListUI(llPersiapanList)
-                true
             }
-            llPersiapanList.addView(tv)
+
+            llPersiapanList.addView(itemView)
         }
     }
 }
