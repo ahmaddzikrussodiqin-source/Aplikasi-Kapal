@@ -519,24 +519,36 @@ class MainActivity : AppCompatActivity() {
     private fun checkAppVersion() {
         lifecycleScope.launch {
             try {
+                Log.d("VersionCheck", "Starting version check...")
                 val response = ApiClient.apiService.getVersion()
+                Log.d("VersionCheck", "Response received: ${response.isSuccessful}")
                 if (response.isSuccessful) {
-                    val serverVersion = response.body()?.data?.get("version") as? String
+                    val body = response.body()
+                    Log.d("VersionCheck", "Response body: $body")
+                    val serverVersion = body?.get("version") as? String
+                    Log.d("VersionCheck", "Server version: $serverVersion")
                     if (serverVersion != null) {
                         val packageInfo = packageManager.getPackageInfo(packageName, 0)
                         val currentVersion = packageInfo.versionName
+                        Log.d("VersionCheck", "Current app version: $currentVersion")
+                        Log.d("VersionCheck", "Versions equal: ${serverVersion == currentVersion}")
                         if (serverVersion != currentVersion) {
                             // Version mismatch, show dialog to force update
+                            Log.d("VersionCheck", "Versions don't match, showing update dialog")
                             showUpdateRequiredDialog(serverVersion, currentVersion)
                             return@launch
+                        } else {
+                            Log.d("VersionCheck", "Versions match, proceeding with app initialization")
                         }
                     } else {
                         // Server didn't return version, assume update required for safety
+                        Log.d("VersionCheck", "Server version is null, showing update dialog")
                         showUpdateRequiredDialog("terbaru", packageManager.getPackageInfo(packageName, 0).versionName)
                         return@launch
                     }
                 } else {
                     // Failed to check version, show error and close app for safety
+                    Log.d("VersionCheck", "Response not successful: ${response.code()}")
                     showConnectionErrorDialog()
                     return@launch
                 }
@@ -547,6 +559,7 @@ class MainActivity : AppCompatActivity() {
                 return@launch
             }
             // Version check passed, continue with app initialization
+            Log.d("VersionCheck", "Version check passed, calling proceedWithAppInitialization")
             proceedWithAppInitialization()
         }
     }
