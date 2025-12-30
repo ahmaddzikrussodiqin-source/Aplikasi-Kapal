@@ -83,5 +83,5 @@ interface ApiService {
 
     // Version check
     @GET("/")
-    suspend fun getVersion(): Response<ApiResponse<Map<String, Any>>>
+    suspend fun getVersion(): Response<Map<String, Any>>
 }
