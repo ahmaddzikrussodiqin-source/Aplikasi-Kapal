@@ -624,41 +624,8 @@ class MainActivity : AppCompatActivity() {
             return
         }
 
-        setContentView(R.layout.activity_main)
-
         // Get token from SharedPreferences
         token = sharedPref.getString("token", "") ?: ""
-
-        // Inisialisasi Activity Result Launcher untuk galeri
-        galleryLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
-            if (result.resultCode == RESULT_OK) {
-                val selectedImageUri = result.data?.data
-                if (selectedImageUri != null) {
-                    // Copy gambar ke internal storage
-                    val internalPath = copyImageToInternalStorage(selectedImageUri)
-                    if (internalPath != null) {
-                        // Update UI di MainActivity
-                        ivUserPhoto.setImageURI(Uri.fromFile(File(internalPath)))
-                        // Update UI di dialog jika masih terbuka
-                        currentDialogImageView?.setImageURI(Uri.fromFile(File(internalPath)))
-                        val sharedPref = getSharedPreferences("login_prefs", MODE_PRIVATE)
-                        try {
-                            val editor = sharedPref.edit()
-                            editor.putString("photo_uri", internalPath)  // Simpan path internal
-                            editor.apply()
-                        } catch (e: Exception) {
-                            Log.e("MainActivity", "Error saving photo_uri: ${e.message}")
-                        }
-
-                        // Note: Photo is stored locally, no need to update server
-
-                        Toast.makeText(this, "Foto profil berhasil diganti", Toast.LENGTH_SHORT).show()
-                    } else {
-                        Toast.makeText(this, "Gagal menyimpan foto", Toast.LENGTH_SHORT).show()
-                    }
-                }
-            }
-        }
 
         // Load user data from SharedPreferences (since we have token, user data should be available)
         val userId = sharedPref.getString("user_id", "") ?: ""
