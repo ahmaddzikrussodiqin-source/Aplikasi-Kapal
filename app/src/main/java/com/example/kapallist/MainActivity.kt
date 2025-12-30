@@ -516,6 +516,51 @@ class MainActivity : AppCompatActivity() {
         dialog.show()
     }
 
+    private fun checkAppVersion() {
+        lifecycleScope.launch {
+            try {
+                val response = ApiClient.apiService.getVersion()
+                if (response.isSuccessful) {
+                    val serverVersion = response.body()?.data?.get("version") as? String
+                    if (serverVersion != null) {
+                        val packageInfo = packageManager.getPackageInfo(packageName, 0)
+                        val currentVersion = packageInfo.versionName
+                        if (serverVersion != currentVersion) {
+                            // Version mismatch, show dialog to force update
+                            showUpdateRequiredDialog(serverVersion, currentVersion)
+                            return@launch
+                        }
+                    }
+                } else {
+                    Log.w("MainActivity", "Failed to check app version: ${response.message()}")
+                }
+            } catch (e: Exception) {
+                Log.e("MainActivity", "Error checking app version: ${e.message}")
+            }
+        }
+    }
+
+    private fun showUpdateRequiredDialog(serverVersion: String, currentVersion: String) {
+        val builder = AlertDialog.Builder(this)
+        builder.setTitle("Update Diperlukan")
+        builder.setMessage("Versi aplikasi Anda ($currentVersion) sudah lama. Versi terbaru adalah $serverVersion. Silakan update aplikasi untuk melanjutkan.")
+        builder.setCancelable(false) // Prevent dismissing
+        builder.setPositiveButton("Update Sekarang") { _, _ ->
+            // Open Play Store or app store link
+            try {
+                startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("market://details?id=$packageName")))
+            } catch (e: Exception) {
+                // Fallback to browser
+                startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://play.google.com/store/apps/details?id=$packageName")))
+            }
+            finish() // Close app
+        }
+        builder.setNegativeButton("Keluar") { _, _ ->
+            finish() // Close app
+        }
+        builder.show()
+    }
+
     private fun logout() {
         // Clear status login
         val sharedPref = getSharedPreferences("login_prefs", MODE_PRIVATE)
