@@ -172,6 +172,14 @@ async function initializeDatabase() {
             )
         `);
 
+        // Rename column if it exists with the old name (migration)
+        try {
+            await dbPool.query(`ALTER TABLE kapal_masuk_schema.kapal_masuk RENAME COLUMN durasiberlayar TO durasiBerlayar`);
+            console.log('✅ Renamed column durasiberlayar to durasiBerlayar');
+        } catch (alterError) {
+            console.log('Column durasiberlayar does not exist or already renamed');
+        }
+
         console.log('Database schemas and tables initialized.');
     } catch (err) {
         console.error('Error initializing database:', err);
