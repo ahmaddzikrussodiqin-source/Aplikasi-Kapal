@@ -512,7 +512,7 @@ app.delete('/api/users/:userId', authenticateToken, async (req, res) => {
     try {
         const { userId } = req.params;
 
-        const result = await usersPool.query('DELETE FROM users_schema.users WHERE userId = $1', [userId]);
+        const result = await dbPool.query('DELETE FROM users_schema.users WHERE userId = $1', [userId]);
 
         if (result.rowCount === 0) {
             return res.status(404).json({
@@ -632,7 +632,7 @@ function parseListPersiapan(value) {
 app.get('/api/kapal', authenticateToken, async (req, res) => {
     try {
         // Join kapal_info and kapal_status tables
-        const result = await kapalPool.query(`
+        const result = await dbPool.query(`
             SELECT
                 ki.id, ki.nama, ki.namaPemilik, ki.tandaSelar, ki.tandaPengenal,
                 ki.beratKotor, ki.beratBersih, ki.merekMesin, ki.nomorSeriMesin,
@@ -690,7 +690,7 @@ app.get('/api/kapal/:id', authenticateToken, async (req, res) => {
         const { id } = req.params;
 
         // Join kapal_info and kapal_status tables like the GET /api/kapal route
-        const result = await kapalPool.query(`
+        const result = await dbPool.query(`
             SELECT
                 ki.id, ki.nama, ki.namaPemilik, ki.tandaSelar, ki.tandaPengenal,
                 ki.beratKotor, ki.beratBersih, ki.merekMesin, ki.nomorSeriMesin,
@@ -755,7 +755,7 @@ app.post('/api/kapal', authenticateToken, async (req, res) => {
         const kapalData = req.body;
 
         // Insert into kapal_info first
-        const infoResult = await kapalPool.query(`
+        const infoResult = await dbPool.query(`
             INSERT INTO kapal_schema.kapal_info (
                 nama, namaPemilik, tandaSelar, tandaPengenal, beratKotor, beratBersih,
                 merekMesin, nomorSeriMesin, jenisAlatTangkap, tanggalInput, listDokumen
@@ -770,7 +770,7 @@ app.post('/api/kapal', authenticateToken, async (req, res) => {
         const kapalInfo = infoResult.rows[0];
 
         // Insert into kapal_status
-        const statusResult = await kapalPool.query(`
+        const statusResult = await dbPool.query(`
             INSERT INTO kapal_schema.kapal_status (
                 kapalId, tanggalKeberangkatan, totalHariPersiapan, tanggalBerangkat,
                 tanggalKembali, listPersiapan, isFinished, perkiraanKeberangkatan, durasiSelesaiPersiapan
@@ -829,7 +829,7 @@ app.put('/api/kapal/:id', authenticateToken, async (req, res) => {
         const kapalData = req.body;
 
         // Update kapal_info
-        const infoResult = await kapalPool.query(`
+        const infoResult = await dbPool.query(`
             UPDATE kapal_schema.kapal_info SET
                 nama = $1, namaPemilik = $2, tandaSelar = $3, tandaPengenal = $4,
                 beratKotor = $5, beratBersih = $6, merekMesin = $7, nomorSeriMesin = $8,
@@ -843,7 +843,7 @@ app.put('/api/kapal/:id', authenticateToken, async (req, res) => {
         ]);
 
         // Update or insert kapal_status
-        const statusResult = await kapalPool.query(`
+        const statusResult = await dbPool.query(`
             INSERT INTO kapal_schema.kapal_status (
                 kapalId, tanggalKeberangkatan, totalHariPersiapan, tanggalBerangkat,
                 tanggalKembali, listPersiapan, isFinished, perkiraanKeberangkatan, durasiSelesaiPersiapan
@@ -889,7 +889,7 @@ app.delete('/api/kapal/:id', authenticateToken, async (req, res) => {
         const { id } = req.params;
 
         // Delete from kapal_info (kapal_status will be deleted automatically due to CASCADE)
-        const result = await kapalPool.query('DELETE FROM kapal_schema.kapal_info WHERE id = $1', [id]);
+        const result = await dbPool.query('DELETE FROM kapal_schema.kapal_info WHERE id = $1', [id]);
 
         if (result.rowCount === 0) {
             return res.status(404).json({
@@ -914,7 +914,7 @@ app.delete('/api/kapal/:id', authenticateToken, async (req, res) => {
 // Dokumen routes (protected)
 app.get('/api/dokumen', authenticateToken, async (req, res) => {
     try {
-        const result = await dokumenPool.query('SELECT * FROM dokumen_schema.dokumen ORDER BY id DESC');
+        const result = await dbPool.query('SELECT * FROM dokumen_schema.dokumen ORDER BY id DESC');
         res.json({
             success: true,
             message: 'Dokumen retrieved successfully',
@@ -932,7 +932,7 @@ app.get('/api/dokumen', authenticateToken, async (req, res) => {
 app.get('/api/dokumen/kapal/:kapalId', authenticateToken, async (req, res) => {
     try {
         const { kapalId } = req.params;
-        const result = await dokumenPool.query('SELECT * FROM dokumen_schema.dokumen WHERE kapalId = $1 ORDER BY id DESC', [kapalId]);
+        const result = await dbPool.query('SELECT * FROM dokumen_schema.dokumen WHERE kapalId = $1 ORDER BY id DESC', [kapalId]);
         res.json({
             success: true,
             message: 'Dokumen retrieved successfully',
@@ -950,7 +950,7 @@ app.get('/api/dokumen/kapal/:kapalId', authenticateToken, async (req, res) => {
 app.get('/api/dokumen/:id', authenticateToken, async (req, res) => {
     try {
         const { id } = req.params;
-        const result = await dokumenPool.query('SELECT * FROM dokumen_schema.dokumen WHERE id = $1', [id]);
+        const result = await dbPool.query('SELECT * FROM dokumen_schema.dokumen WHERE id = $1', [id]);
         const dokumen = result.rows[0];
 
         if (!dokumen) {
