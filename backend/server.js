@@ -1236,9 +1236,27 @@ app.get('/api/kapal-masuk', authenticateToken, async (req, res) => {
 
         // Parse JSON strings back to arrays and convert isFinished to boolean
         const parsedKapalMasuk = kapalMasuk.map(k => ({
-            ...k,
+            id: k.id,
+            nama: k.nama,
+            namaPemilik: k.namapemilik,
+            tandaSelar: k.tandaselar,
+            tandaPengenal: k.tandapengenal,
+            beratKotor: k.beratkotor,
+            beratBersih: k.beratbersih,
+            merekMesin: k.merekmesin,
+            nomorSeriMesin: k.nomorserimesin,
+            jenisAlatTangkap: k.jenisalattangkap,
+            tanggalInput: k.tanggalinput,
+            tanggalKeberangkatan: k.tanggalkeberangkatan,
+            totalHariPersiapan: k.totalharipersiapan,
+            tanggalBerangkat: k.tanggalberangkat,
+            tanggalKembali: k.tanggalkembali,
             listPersiapan: parseListPersiapan(k.listpersiapan),
-            isFinished: Boolean(k.isfinished)
+            isFinished: Boolean(k.isfinished),
+            perkiraanKeberangkatan: k.perkiraankeberangkatan,
+            durasiSelesaiPersiapan: k.durasiselesaiPersiapan,
+            durasiBerlayar: k.durasiberlayar,
+            statusKerja: k.statuskerja
         }));
 
         console.log('📤 Sending parsed kapal masuk data:', JSON.stringify(parsedKapalMasuk, null, 2));
