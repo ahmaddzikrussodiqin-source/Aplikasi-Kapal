@@ -38,6 +38,10 @@ class InputActivity : AppCompatActivity() {
 
         sharedPref = getSharedPreferences("kapal_data", MODE_PRIVATE)
 
+        // Check for edit mode
+        editMode = intent.getBooleanExtra("edit_mode", false)
+        selectedKapalId = intent.getIntExtra("kapal_id", -1).takeIf { it != -1 }
+
         val namaKapalFromIntent = intent.getStringExtra("nama_kapal")
 
         val etNamaKapal = findViewById<EditText>(R.id.et_nama_kapal)
@@ -47,8 +51,13 @@ class InputActivity : AppCompatActivity() {
         val llPersiapanList = findViewById<LinearLayout>(R.id.ll_persiapan_list)
         val btnSimpan = findViewById<Button>(R.id.btn_simpan)
 
-        if (namaKapalFromIntent != null) {
-            etNamaKapal.setText(namaKapalFromIntent)
+        if (editMode && selectedKapalId != null) {
+            // Load existing kapal data for editing
+            loadKapalDataForEdit(selectedKapalId!!, etNamaKapal, etTanggalKembali, llPersiapanList)
+        } else {
+            if (namaKapalFromIntent != null) {
+                etNamaKapal.setText(namaKapalFromIntent)
+            }
         }
 
         // Load kapal names from API (daftar kapal untuk referensi)
@@ -199,6 +208,42 @@ class InputActivity : AppCompatActivity() {
             }
 
             llPersiapanList.addView(itemView)
+        }
+    }
+
+    private fun loadKapalDataForEdit(kapalId: Int, etNamaKapal: EditText, etTanggalKembali: EditText, llPersiapanList: LinearLayout) {
+        lifecycleScope.launch {
+            try {
+                val sharedPref = getSharedPreferences("login_prefs", MODE_PRIVATE)
+                val token = sharedPref.getString("token", "") ?: ""
+                if (token.isEmpty()) {
+                    Toast.makeText(this@InputActivity, "Token tidak ditemukan", Toast.LENGTH_SHORT).show()
+                    return@launch
+                }
+
+                val response = ApiClient.apiService.getKapalMasukById("Bearer $token", kapalId)
+                if (response.isSuccessful) {
+                    val apiResponse = response.body()
+                    if (apiResponse?.success == true) {
+                        val kapal = apiResponse.data
+                        if (kapal != null) {
+                            etNamaKapal.setText(kapal.nama)
+                            etTanggalKembali.setText(kapal.tanggalKembali)
+                            listPersiapan.clear()
+                            listPersiapan.addAll(kapal.listPersiapan ?: emptyList())
+                            updatePersiapanListUI(llPersiapanList)
+                        } else {
+                            Toast.makeText(this@InputActivity, "Data kapal tidak ditemukan", Toast.LENGTH_SHORT).show()
+                        }
+                    } else {
+                        Toast.makeText(this@InputActivity, "Gagal memuat data kapal", Toast.LENGTH_SHORT).show()
+                    }
+                } else {
+                    Toast.makeText(this@InputActivity, "Gagal memuat data kapal: ${response.message()}", Toast.LENGTH_SHORT).show()
+                }
+            } catch (e: Exception) {
+                Toast.makeText(this@InputActivity, "Error: ${e.message}", Toast.LENGTH_SHORT).show()
+            }
         }
     }
 }
