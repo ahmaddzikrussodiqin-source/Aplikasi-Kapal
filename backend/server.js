@@ -644,7 +644,7 @@ app.get('/api/kapal', authenticateToken, async (req, res) => {
             listPersiapan: parseListPersiapan(k.statuslistpersiapan || k.listpersiapan),
             listDokumen: JSON.parse(k.listdokumen || '[]'),
             isFinished: Boolean(k.isfinished),
-            perkiraanKeberangkatan: k.perkiraankeberangkatan,
+            perkiraanKeberangkatan: k.perkiraanKeberangkatan,
             durasiSelesaiPersiapan: k.durasiselesaiPersiapan
         }));
 
@@ -709,7 +709,7 @@ app.get('/api/kapal/:id', authenticateToken, async (req, res) => {
             listPersiapan: parseListPersiapan(kapal.statuslistpersiapan || kapal.listpersiapan),
             listDokumen: JSON.parse(kapal.listdokumen || '[]'),
             isFinished: Boolean(kapal.isfinished),
-            perkiraanKeberangkatan: kapal.perkiraankeberangkatan,
+            perkiraanKeberangkatan: kapal.perkiraanKeberangkatan,
             durasiSelesaiPersiapan: kapal.durasiselesaiPersiapan
         };
 
@@ -1276,7 +1276,7 @@ app.post('/api/kapal-masuk', authenticateToken, async (req, res) => {
                 nama, namaPemilik, tandaSelar, tandaPengenal, beratKotor, beratBersih,
                 merekMesin, nomorSeriMesin, jenisAlatTangkap, tanggalInput, tanggalKeberangkatan,
                 totalHariPersiapan, tanggalBerangkat, tanggalKembali, listPersiapan,
-                isFinished, perkiraankeberangkatan, durasiSelesaiPersiapan, statusKerja
+                isFinished, perkiraanKeberangkatan, durasiSelesaiPersiapan, statusKerja
             ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19)
             RETURNING *
         `, [
