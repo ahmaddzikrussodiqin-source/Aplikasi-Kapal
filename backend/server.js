@@ -174,10 +174,39 @@ async function initializeDatabase() {
 
         // Rename column if it exists with the old name (migration)
         try {
-            await dbPool.query(`ALTER TABLE kapal_masuk_schema.kapal_masuk RENAME COLUMN durasiberlayar TO durasiBerlayar`);
-            console.log('✅ Renamed column durasiberlayar to durasiBerlayar');
+            // Check if old column exists
+            const oldColumnCheck = await dbPool.query(`
+                SELECT column_name
+                FROM information_schema.columns
+                WHERE table_schema = 'kapal_masuk_schema'
+                AND table_name = 'kapal_masuk'
+                AND column_name = 'durasiberlayar'
+            `);
+
+            if (oldColumnCheck.rows.length > 0) {
+                await dbPool.query(`ALTER TABLE kapal_masuk_schema.kapal_masuk RENAME COLUMN durasiberlayar TO durasiBerlayar`);
+                console.log('✅ Renamed column durasiberlayar to durasiBerlayar');
+            } else {
+                console.log('Column durasiberlayar does not exist, checking if durasiBerlayar exists...');
+                // Check if new column exists
+                const newColumnCheck = await dbPool.query(`
+                    SELECT column_name
+                    FROM information_schema.columns
+                    WHERE table_schema = 'kapal_masuk_schema'
+                    AND table_name = 'kapal_masuk'
+                    AND column_name = 'durasiBerlayar'
+                `);
+
+                if (newColumnCheck.rows.length === 0) {
+                    // Add the column if it doesn't exist
+                    await dbPool.query(`ALTER TABLE kapal_masuk_schema.kapal_masuk ADD COLUMN durasiBerlayar TEXT`);
+                    console.log('✅ Added missing column durasiBerlayar');
+                } else {
+                    console.log('Column durasiBerlayar already exists');
+                }
+            }
         } catch (alterError) {
-            console.log('Column durasiberlayar does not exist or already renamed');
+            console.log('Migration error (this may be expected):', alterError.message);
         }
 
         console.log('Database schemas and tables initialized.');
