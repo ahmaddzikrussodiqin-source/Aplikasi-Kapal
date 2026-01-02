@@ -3,6 +3,7 @@ package com.example.kapallist
 import androidx.room.Entity
 import androidx.room.PrimaryKey
 import androidx.room.ColumnInfo
+import java.time.LocalDate
 
 @Entity(tableName = "kapal_masuk_table")
 data class KapalMasukEntity(
@@ -20,10 +21,10 @@ data class KapalMasukEntity(
     var tanggalKeberangkatan: String? = null,
     var totalHariPersiapan: Int? = null,
     var tanggalBerangkat: String? = null,
-    var tanggalKembali: String? = null,
+    var tanggalKembali: LocalDate? = null,
     @ColumnInfo(defaultValue = "[]") var listPersiapan: List<String> = emptyList(),
     @ColumnInfo(defaultValue = "0") var isFinished: Boolean = false,
-    var perkiraanKeberangkatan: String? = null,
+    var perkiraanKeberangkatan: LocalDate? = null,
     var durasiSelesaiPersiapan: String? = null,
     @ColumnInfo(defaultValue = "persiapan") var statusKerja: String = "persiapan"
 )

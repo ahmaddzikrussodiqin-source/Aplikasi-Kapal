@@ -172,10 +172,10 @@ async function initializeDatabase() {
                 tanggalKeberangkatan TEXT,
                 totalHariPersiapan INTEGER,
                 tanggalBerangkat TEXT,
-                tanggalKembali TEXT,
+                tanggalKembali DATE,
                 listPersiapan TEXT NOT NULL DEFAULT '[]',
                 isFinished INTEGER NOT NULL DEFAULT 0,
-                perkiraanKeberangkatan TEXT,
+                perkiraanKeberangkatan DATE,
                 durasiSelesaiPersiapan TEXT,
                 statusKerja TEXT NOT NULL DEFAULT 'persiapan'
             )
