@@ -65,6 +65,10 @@ class ProfileActivity : AppCompatActivity() {
                     val apiResponse = response.body()
                     if (apiResponse?.success == true) {
                         val kapalMasukList = apiResponse.data ?: emptyList()
+                        Log.d("ProfileActivity", "Received kapal masuk data: ${kapalMasukList.size} items")
+                        kapalMasukList.forEach { kapalMasuk ->
+                            Log.d("ProfileActivity", "Kapal: ${kapalMasuk.nama}, tanggalKeberangkatan: ${kapalMasuk.tanggalKeberangkatan}")
+                        }
                         listKapal.clear()
                         // Convert KapalMasukEntity to Kapal
                         listKapal.addAll(kapalMasukList.map { kapalMasukEntity ->
@@ -102,17 +106,44 @@ class ProfileActivity : AppCompatActivity() {
 
         if (listKapal.isNotEmpty()) {
             for (kapal in listKapal) {
+                // Create a horizontal layout for ship name and departure date
+                val shipInfoLayout = LinearLayout(this)
+                shipInfoLayout.orientation = LinearLayout.HORIZONTAL
+                shipInfoLayout.layoutParams = LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.MATCH_PARENT,
+                    LinearLayout.LayoutParams.WRAP_CONTENT
+                )
+                shipInfoLayout.setPadding(0, 16, 0, 8)
+
                 val tvKapal = TextView(this)
                 val formattedKembali = formatTanggal(kapal.tanggalKembali ?: "")  // Handle null dengan Elvis
                 val namaKapal = kapal.nama ?: ""
+                val formattedKeberangkatan = formatTanggal(kapal.tanggalKeberangkatan ?: "")  // Format tanggal keberangkatan from database
                 tvKapal.text = if (formattedKembali.isNotEmpty()) {
                     "Nama: $namaKapal, Kembali: $formattedKembali"
                 } else {
                     "Nama: $namaKapal"
                 }
                 tvKapal.textSize = 16f
-                tvKapal.setPadding(0, 16, 0, 8)
-                llChecklist.addView(tvKapal)
+                tvKapal.layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
+                shipInfoLayout.addView(tvKapal)
+
+                // Display departure date from database on the right side
+                val tvKeberangkatan = TextView(this)
+                tvKeberangkatan.text = if (formattedKeberangkatan.isNotEmpty()) {
+                    "Keberangkatan: $formattedKeberangkatan"
+                } else {
+                    "Keberangkatan: -"
+                }
+                tvKeberangkatan.textSize = 14f
+                tvKeberangkatan.setTextColor(android.graphics.Color.BLUE)
+                tvKeberangkatan.layoutParams = LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.WRAP_CONTENT,
+                    LinearLayout.LayoutParams.WRAP_CONTENT
+                ).apply { gravity = android.view.Gravity.END }
+                shipInfoLayout.addView(tvKeberangkatan)
+
+                llChecklist.addView(shipInfoLayout)
 
                 val tvStatus = TextView(this)
                 tvStatus.text = if (kapal.isFinished) "Completed" else "Not Complete"
@@ -490,6 +521,21 @@ class ProfileActivity : AppCompatActivity() {
 
     private fun formatTanggal(tanggal: String): String {
         if (tanggal.isEmpty()) return ""
+
+        // Handle YYYY-MM-DD format (from database)
+        if (tanggal.contains("-")) {
+            val parts = tanggal.split("-")
+            if (parts.size == 3) {
+                val year = parts[0]
+                val monthNum = parts[1].toIntOrNull() ?: 1
+                val day = parts[2]
+                val monthNames = arrayOf("Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember")
+                val month = if (monthNum in 1..12) monthNames[monthNum - 1] else "Invalid"
+                return "$day $month $year"
+            }
+        }
+
+        // Handle DD/MM/YYYY format (existing format)
         val parts = tanggal.split("/")
         if (parts.size == 3) {
             val day = parts[0]

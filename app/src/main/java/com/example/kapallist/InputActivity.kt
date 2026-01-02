@@ -187,22 +187,35 @@ class InputActivity : AppCompatActivity() {
                         }
 
                         if (editMode && selectedKapalId != null) {
-                            // Update existing kapal masuk
-                            val kapalMasukEntity = KapalMasukEntity(
-                                id = selectedKapalId!!,
-                                nama = namaKapal,
-                                tanggalKembali = tanggalKembali,
-                                listPersiapan = listPersiapan,
-                                statusKerja = "persiapan"
-                            )
+                            // Fetch existing kapal masuk to preserve other fields
+                            val existingResponse = ApiClient.apiService.getKapalMasukById("Bearer $token", selectedKapalId!!)
+                            if (existingResponse.isSuccessful) {
+                                val apiResponse = existingResponse.body()
+                                if (apiResponse?.success == true) {
+                                    val existingKapal = apiResponse.data
+                                    if (existingKapal != null) {
+                                        // Update only the edited fields
+                                        val updatedKapalMasukEntity = existingKapal.copy(
+                                            nama = namaKapal,
+                                            tanggalKembali = tanggalKembali,
+                                            listPersiapan = listPersiapan
+                                        )
 
-                            val response = ApiClient.apiService.updateKapalMasuk("Bearer $token", selectedKapalId!!, kapalMasukEntity)
-
-                            if (response.isSuccessful) {
-                                Toast.makeText(this@InputActivity, "Kapal Masuk diperbarui!", Toast.LENGTH_SHORT).show()
-                                finish()
+                                        val response = ApiClient.apiService.updateKapalMasuk("Bearer $token", selectedKapalId!!, updatedKapalMasukEntity)
+                                        if (response.isSuccessful) {
+                                            Toast.makeText(this@InputActivity, "Kapal Masuk diperbarui!", Toast.LENGTH_SHORT).show()
+                                            finish()
+                                        } else {
+                                            Toast.makeText(this@InputActivity, "Gagal memperbarui kapal masuk: ${response.message()}", Toast.LENGTH_SHORT).show()
+                                        }
+                                    } else {
+                                        Toast.makeText(this@InputActivity, "Data kapal tidak ditemukan", Toast.LENGTH_SHORT).show()
+                                    }
+                                } else {
+                                    Toast.makeText(this@InputActivity, "Gagal memuat data kapal: ${apiResponse?.message}", Toast.LENGTH_SHORT).show()
+                                }
                             } else {
-                                Toast.makeText(this@InputActivity, "Gagal memperbarui kapal masuk: ${response.message()}", Toast.LENGTH_SHORT).show()
+                                Toast.makeText(this@InputActivity, "Gagal memuat data kapal: ${existingResponse.message()}", Toast.LENGTH_SHORT).show()
                             }
                         } else {
                             // Create new kapal masuk
