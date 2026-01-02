@@ -12,8 +12,8 @@ android {
         applicationId = "com.example.kapallist"
         minSdk = 23
         targetSdk = 35
-        versionCode = 2
-        versionName = "1.01.00"
+        versionCode = 3
+        versionName = "1.02.00"
     }
 
     buildTypes {
