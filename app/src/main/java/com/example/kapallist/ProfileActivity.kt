@@ -104,7 +104,12 @@ class ProfileActivity : AppCompatActivity() {
             for (kapal in listKapal) {
                 val tvKapal = TextView(this)
                 val formattedKembali = formatTanggal(kapal.tanggalKembali ?: "")  // Handle null dengan Elvis
-                tvKapal.text = getString(R.string.kapal_info, kapal.nama ?: "", formattedKembali)  // PERBAIKAN: Handle null dengan Elvis
+                val namaKapal = kapal.nama ?: ""
+                tvKapal.text = if (formattedKembali.isNotEmpty()) {
+                    "Nama: $namaKapal, Kembali: $formattedKembali"
+                } else {
+                    "Nama: $namaKapal"
+                }
                 tvKapal.textSize = 16f
                 tvKapal.setPadding(0, 16, 0, 8)
                 llChecklist.addView(tvKapal)
@@ -119,7 +124,20 @@ class ProfileActivity : AppCompatActivity() {
                 ).apply { gravity = android.view.Gravity.END }
                 llChecklist.addView(tvStatus)
 
-                if (kapal.isFinished && !kapal.perkiraanKeberangkatan.isNullOrEmpty()) {
+                val tvDurasiBerlayar = TextView(this)
+                val durasiBerlayar = if (!kapal.perkiraanKeberangkatan.isNullOrEmpty()) {
+                    hitungDurasiBerlayar(kapal.perkiraanKeberangkatan)
+                } else {
+                    "Belum ada tanggal keberangkatan"
+                }
+                Log.d("ProfileActivity", "Kapal ${kapal.nama} - perkiraanKeberangkatan: ${kapal.perkiraanKeberangkatan}, durasiBerlayar: $durasiBerlayar")
+                tvDurasiBerlayar.text = "Durasi Berlayar: $durasiBerlayar"
+                tvDurasiBerlayar.textSize = 16f
+                tvDurasiBerlayar.setTypeface(null, android.graphics.Typeface.BOLD)
+                tvDurasiBerlayar.setTextColor(android.graphics.Color.RED)
+                llChecklist.addView(tvDurasiBerlayar)
+
+                if (!kapal.perkiraanKeberangkatan.isNullOrEmpty()) {
                     val tvPerkiraan = TextView(this)
                     tvPerkiraan.text = "Keberangkatan: ${kapal.perkiraanKeberangkatan}"
                     tvPerkiraan.textSize = 14f
@@ -130,13 +148,6 @@ class ProfileActivity : AppCompatActivity() {
                     tvDurasi.textSize = 12f
                     tvDurasi.setTextColor(android.graphics.Color.BLUE)
                     llChecklist.addView(tvDurasi)
-
-                    val tvDurasiBerlayar = TextView(this)
-                    val durasiBerlayar = hitungDurasiBerlayar(kapal.perkiraanKeberangkatan)
-                    tvDurasiBerlayar.text = "Durasi Berlayar: $durasiBerlayar"
-                    tvDurasiBerlayar.textSize = 12f
-                    tvDurasiBerlayar.setTextColor(android.graphics.Color.MAGENTA)
-                    llChecklist.addView(tvDurasiBerlayar)
                 }
 
                 val items = kapal.listPersiapan
@@ -374,6 +385,8 @@ class ProfileActivity : AppCompatActivity() {
                                         set(selectedYear, selectedMonth, selectedDay, 0, 0, 0)
                                     }.timeInMillis
                                     val durasi = hitungDurasiSelesaiPersiapan(kapal.tanggalKembali, tanggalSelesaiMillis)
+                                    val durasiBerlayar = hitungDurasiBerlayar(selectedDate)
+                                    Toast.makeText(this@ProfileActivity, "Durasi berlayar dari tanggal keberangkatan hingga hari ini: $durasiBerlayar", Toast.LENGTH_LONG).show()
                                     val updatedKapal = kapal.copy(
                                         isFinished = true,
                                         perkiraanKeberangkatan = selectedDate,
@@ -390,7 +403,7 @@ class ProfileActivity : AppCompatActivity() {
                                             }
 
                                             Log.d("ProfileActivity", "Updating kapal id: ${kapal.id}, updatedKapal: $updatedKapal")
-                                            val response = ApiClient.apiService.updateKapal("Bearer $token", kapal.id, updatedKapal.toKapalEntity())
+                                            val response = ApiClient.apiService.updateKapalMasuk("Bearer $token", kapal.id, updatedKapal.toKapalMasukEntity())
                                             Log.d("ProfileActivity", "Response code: ${response.code()}, message: ${response.message()}")
                                             if (response.isSuccessful) {
                                                 val apiResponse = response.body()
@@ -467,7 +480,7 @@ class ProfileActivity : AppCompatActivity() {
 
                 val diffMillis = today.timeInMillis - keberangkatanCalendar.timeInMillis
                 val diffDays = (diffMillis / (1000 * 60 * 60 * 24)).toInt()
-                return if (diffDays >= 0) "$diffDays hari" else "Belum berlayar"
+                return "$diffDays hari"
             }
         } catch (e: Exception) {
             Log.e("ProfileActivity", "Error calculating sailing duration: ${e.message}")

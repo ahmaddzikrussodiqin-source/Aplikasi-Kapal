@@ -123,10 +123,31 @@ class InputActivity : AppCompatActivity() {
         }
 
         etTanggalKembali.setOnClickListener {
-            val calendar = Calendar.getInstance()
-            val year = calendar.get(Calendar.YEAR)
-            val month = calendar.get(Calendar.MONTH)
-            val day = calendar.get(Calendar.DAY_OF_MONTH)
+            // Try to parse existing date from EditText, fallback to current date
+            val existingDateText = etTanggalKembali.text.toString().trim()
+            val (year, month, day) = if (existingDateText.isNotEmpty()) {
+                try {
+                    val parts = existingDateText.split("/")
+                    if (parts.size == 3) {
+                        val day = parts[0].toInt()
+                        val month = parts[1].toInt() - 1 // DatePicker uses 0-based months
+                        val year = parts[2].toInt()
+                        Triple(year, month, day)
+                    } else {
+                        // Fallback to current date if parsing fails
+                        val calendar = Calendar.getInstance()
+                        Triple(calendar.get(Calendar.YEAR), calendar.get(Calendar.MONTH), calendar.get(Calendar.DAY_OF_MONTH))
+                    }
+                } catch (e: Exception) {
+                    // Fallback to current date if parsing fails
+                    val calendar = Calendar.getInstance()
+                    Triple(calendar.get(Calendar.YEAR), calendar.get(Calendar.MONTH), calendar.get(Calendar.DAY_OF_MONTH))
+                }
+            } else {
+                // No existing date, use current date
+                val calendar = Calendar.getInstance()
+                Triple(calendar.get(Calendar.YEAR), calendar.get(Calendar.MONTH), calendar.get(Calendar.DAY_OF_MONTH))
+            }
 
             val datePickerDialog = DatePickerDialog(this, { _, selectedYear, selectedMonth, selectedDay ->
                 val selectedDate = "$selectedDay/${selectedMonth + 1}/$selectedYear"
@@ -165,24 +186,43 @@ class InputActivity : AppCompatActivity() {
                             return@launch
                         }
 
-                        // Convert to KapalMasukEntity for API (selalu buat entry baru di kapal_masuk_schema)
-                        val kapalMasukEntity = KapalMasukEntity(
-                            id = 0,  // Selalu 0 untuk entry baru
-                            nama = namaKapal,
-                            tanggalKembali = tanggalKembali,
-                            listPersiapan = listPersiapan,
-                            tanggalInput = java.text.SimpleDateFormat("dd/MM/yyyy", java.util.Locale.getDefault()).format(java.util.Date()),
-                            statusKerja = "persiapan"  // Default status
-                        )
+                        if (editMode && selectedKapalId != null) {
+                            // Update existing kapal masuk
+                            val kapalMasukEntity = KapalMasukEntity(
+                                id = selectedKapalId!!,
+                                nama = namaKapal,
+                                tanggalKembali = tanggalKembali,
+                                listPersiapan = listPersiapan,
+                                statusKerja = "persiapan"
+                            )
 
-                        // Selalu create new kapal masuk (tidak pernah update existing)
-                        val response = ApiClient.apiService.createKapalMasuk("Bearer $token", kapalMasukEntity)
+                            val response = ApiClient.apiService.updateKapalMasuk("Bearer $token", selectedKapalId!!, kapalMasukEntity)
 
-                        if (response.isSuccessful) {
-                            Toast.makeText(this@InputActivity, "Kapal Masuk disimpan!", Toast.LENGTH_SHORT).show()
-                            finish()
+                            if (response.isSuccessful) {
+                                Toast.makeText(this@InputActivity, "Kapal Masuk diperbarui!", Toast.LENGTH_SHORT).show()
+                                finish()
+                            } else {
+                                Toast.makeText(this@InputActivity, "Gagal memperbarui kapal masuk: ${response.message()}", Toast.LENGTH_SHORT).show()
+                            }
                         } else {
-                            Toast.makeText(this@InputActivity, "Gagal menyimpan kapal masuk: ${response.message()}", Toast.LENGTH_SHORT).show()
+                            // Create new kapal masuk
+                            val kapalMasukEntity = KapalMasukEntity(
+                                id = 0,  // Selalu 0 untuk entry baru
+                                nama = namaKapal,
+                                tanggalKembali = tanggalKembali,
+                                listPersiapan = listPersiapan,
+                                tanggalInput = java.text.SimpleDateFormat("dd/MM/yyyy", java.util.Locale.getDefault()).format(java.util.Date()),
+                                statusKerja = "persiapan"  // Default status
+                            )
+
+                            val response = ApiClient.apiService.createKapalMasuk("Bearer $token", kapalMasukEntity)
+
+                            if (response.isSuccessful) {
+                                Toast.makeText(this@InputActivity, "Kapal Masuk disimpan!", Toast.LENGTH_SHORT).show()
+                                finish()
+                            } else {
+                                Toast.makeText(this@InputActivity, "Gagal menyimpan kapal masuk: ${response.message()}", Toast.LENGTH_SHORT).show()
+                            }
                         }
                     } catch (e: Exception) {
                         Toast.makeText(this@InputActivity, "Error: ${e.message}", Toast.LENGTH_SHORT).show()

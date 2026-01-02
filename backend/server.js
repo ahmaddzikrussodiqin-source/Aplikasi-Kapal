@@ -1209,12 +1209,16 @@ app.get('/api/kapal-masuk', authenticateToken, async (req, res) => {
         const result = await kapalMasukPool.query('SELECT * FROM kapal_masuk_schema.kapal_masuk ORDER BY id DESC');
         const kapalMasuk = result.rows;
 
+        console.log('📤 Retrieved kapal masuk data from DB:', JSON.stringify(kapalMasuk, null, 2));
+
         // Parse JSON strings back to arrays and convert isFinished to boolean
         const parsedKapalMasuk = kapalMasuk.map(k => ({
             ...k,
             listPersiapan: parseListPersiapan(k.listpersiapan),
             isFinished: Boolean(k.isfinished)
         }));
+
+        console.log('📤 Sending parsed kapal masuk data:', JSON.stringify(parsedKapalMasuk, null, 2));
 
         res.json({
             success: true,
@@ -1313,6 +1317,9 @@ app.put('/api/kapal-masuk/:id', authenticateToken, async (req, res) => {
         const { id } = req.params;
         const kapalMasukData = req.body;
 
+        console.log('🔄 Updating kapal masuk id:', id);
+        console.log('📥 Received data:', JSON.stringify(kapalMasukData, null, 2));
+
         const result = await kapalMasukPool.query(`
             UPDATE kapal_masuk_schema.kapal_masuk SET
                 nama = $1, namaPemilik = $2, tandaSelar = $3, tandaPengenal = $4,
@@ -1331,6 +1338,8 @@ app.put('/api/kapal-masuk/:id', authenticateToken, async (req, res) => {
             kapalMasukData.perkiraanKeberangkatan, kapalMasukData.durasiSelesaiPersiapan,
             kapalMasukData.statusKerja, id
         ]);
+
+        console.log('✅ Update result rowCount:', result.rowCount);
 
         if (result.rowCount === 0) {
             return res.status(404).json({
