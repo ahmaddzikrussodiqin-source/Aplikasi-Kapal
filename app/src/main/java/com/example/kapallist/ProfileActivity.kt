@@ -317,10 +317,6 @@ class ProfileActivity : AppCompatActivity() {
                                     durasiSelesaiPersiapan = null,
                                     durasiBerlayar = null
                                 )
-                                // Reset checkbox states untuk kapal ini
-                                items.forEach { checkBoxStates[it] = false }
-                                // Reset checkbox dates untuk kapal ini
-                                items.forEach { checkBoxDates.remove(it) }
                                 // Update via API
                                 lifecycleScope.launch {
                                     try {
