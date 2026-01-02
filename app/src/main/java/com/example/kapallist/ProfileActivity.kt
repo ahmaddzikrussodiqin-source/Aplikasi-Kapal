@@ -118,7 +118,9 @@ class ProfileActivity : AppCompatActivity() {
                 val tvKapal = TextView(this)
                 val formattedKembali = formatTanggal(kapal.tanggalKembali ?: "")  // Handle null dengan Elvis
                 val namaKapal = kapal.nama ?: ""
-                val formattedKeberangkatan = formatTanggal(kapal.tanggalKeberangkatan ?: "")  // Format tanggal keberangkatan from database
+                // Prioritize perkiraanKeberangkatan over tanggalKeberangkatan for display
+                val departureDate = kapal.perkiraanKeberangkatan ?: kapal.tanggalKeberangkatan ?: ""
+                val formattedKeberangkatan = formatTanggal(departureDate)
                 tvKapal.text = if (formattedKembali.isNotEmpty()) {
                     "Nama: $namaKapal, Kembali: $formattedKembali"
                 } else {
@@ -128,7 +130,7 @@ class ProfileActivity : AppCompatActivity() {
                 tvKapal.layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
                 shipInfoLayout.addView(tvKapal)
 
-                // Display departure date from database on the right side
+                // Display departure date on the right side
                 val tvKeberangkatan = TextView(this)
                 tvKeberangkatan.text = if (formattedKeberangkatan.isNotEmpty()) {
                     "Keberangkatan: $formattedKeberangkatan"
@@ -169,11 +171,6 @@ class ProfileActivity : AppCompatActivity() {
                 llChecklist.addView(tvDurasiBerlayar)
 
                 if (!kapal.perkiraanKeberangkatan.isNullOrEmpty()) {
-                    val tvPerkiraan = TextView(this)
-                    tvPerkiraan.text = "Keberangkatan: ${kapal.perkiraanKeberangkatan}"
-                    tvPerkiraan.textSize = 14f
-                    llChecklist.addView(tvPerkiraan)
-
                     val tvDurasi = TextView(this)
                     tvDurasi.text = "Durasi Selesai Persiapan: ${kapal.durasiSelesaiPersiapan ?: "Belum selesai"}"  // Handle null dengan Elvis
                     tvDurasi.textSize = 12f
@@ -411,7 +408,7 @@ class ProfileActivity : AppCompatActivity() {
                                 val month = calendar.get(Calendar.MONTH)
                                 val day = calendar.get(Calendar.DAY_OF_MONTH)
                                 val datePickerDialog = DatePickerDialog(this@ProfileActivity, { _, selectedYear, selectedMonth, selectedDay ->
-                                    val selectedDate = "$selectedDay ${getMonthName(selectedMonth)} $selectedYear"
+                                    val selectedDate = String.format("%04d-%02d-%02d", selectedYear, selectedMonth + 1, selectedDay)
                                     val tanggalSelesaiMillis = Calendar.getInstance().apply {
                                         set(selectedYear, selectedMonth, selectedDay, 0, 0, 0)
                                     }.timeInMillis
@@ -490,6 +487,31 @@ class ProfileActivity : AppCompatActivity() {
     private fun hitungDurasiBerlayar(perkiraanKeberangkatan: String?): String {
         if (perkiraanKeberangkatan.isNullOrEmpty()) return "Belum berlayar"
         try {
+            // Handle YYYY-MM-DD format (ISO_LOCAL_DATE)
+            if (perkiraanKeberangkatan.contains("-")) {
+                val parts = perkiraanKeberangkatan.split("-")
+                if (parts.size == 3) {
+                    val year = parts[0].toInt()
+                    val month = parts[1].toInt() - 1 // Calendar months are 0-based
+                    val day = parts[2].toInt()
+
+                    val keberangkatanCalendar = Calendar.getInstance().apply {
+                        set(year, month, day, 0, 0, 0)
+                    }
+                    val today = Calendar.getInstance().apply {
+                        set(Calendar.HOUR_OF_DAY, 0)
+                        set(Calendar.MINUTE, 0)
+                        set(Calendar.SECOND, 0)
+                        set(Calendar.MILLISECOND, 0)
+                    }
+
+                    val diffMillis = today.timeInMillis - keberangkatanCalendar.timeInMillis
+                    val diffDays = (diffMillis / (1000 * 60 * 60 * 24)).toInt()
+                    return "$diffDays hari"
+                }
+            }
+
+            // Fallback for old format (DD Month YYYY)
             val parts = perkiraanKeberangkatan.split(" ")
             if (parts.size == 3) {
                 val day = parts[0].toInt()

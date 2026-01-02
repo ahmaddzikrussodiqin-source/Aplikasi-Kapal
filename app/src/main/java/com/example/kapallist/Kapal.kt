@@ -1,5 +1,8 @@
 package com.example.kapallist
 
+import java.time.LocalDate
+import java.time.format.DateTimeFormatter
+
 data class Kapal(
     var nama: String? = null,
     var tanggalInput: String? = null,
@@ -35,11 +38,11 @@ data class Kapal(
         tanggalKeberangkatan = kapalMasukEntity.tanggalKeberangkatan,
         totalHariPersiapan = kapalMasukEntity.totalHariPersiapan,
         tanggalBerangkat = kapalMasukEntity.tanggalBerangkat,
-        tanggalKembali = kapalMasukEntity.tanggalKembali,
+        tanggalKembali = kapalMasukEntity.tanggalKembali?.format(DateTimeFormatter.ISO_LOCAL_DATE),
         listPersiapan = kapalMasukEntity.listPersiapan.toMutableList(),
         listDokumen = mutableListOf(), // KapalMasukEntity doesn't have this
         isFinished = kapalMasukEntity.isFinished,
-        perkiraanKeberangkatan = kapalMasukEntity.perkiraanKeberangkatan,
+        perkiraanKeberangkatan = kapalMasukEntity.perkiraanKeberangkatan?.format(DateTimeFormatter.ISO_LOCAL_DATE),
         durasiSelesaiPersiapan = kapalMasukEntity.durasiSelesaiPersiapan,
         id = kapalMasukEntity.id
     )
@@ -77,10 +80,10 @@ data class Kapal(
             tanggalKeberangkatan = this.tanggalKeberangkatan,
             totalHariPersiapan = this.totalHariPersiapan,
             tanggalBerangkat = this.tanggalBerangkat,
-            tanggalKembali = this.tanggalKembali,
+            tanggalKembali = this.tanggalKembali?.let { LocalDate.parse(it, DateTimeFormatter.ISO_LOCAL_DATE) },
             listPersiapan = this.listPersiapan,
             isFinished = this.isFinished,
-            perkiraanKeberangkatan = this.perkiraanKeberangkatan,
+            perkiraanKeberangkatan = this.perkiraanKeberangkatan?.let { LocalDate.parse(it, DateTimeFormatter.ISO_LOCAL_DATE) },
             durasiSelesaiPersiapan = this.durasiSelesaiPersiapan,
             statusKerja = "persiapan" // default
         )

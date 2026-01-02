@@ -175,7 +175,7 @@ async function initializeDatabase() {
                 tanggalKembali DATE,
                 listPersiapan TEXT NOT NULL DEFAULT '[]',
                 isFinished INTEGER NOT NULL DEFAULT 0,
-                perkiraanKeberangkatan DATE,
+                perkiraankeberangkatan DATE,
                 durasiSelesaiPersiapan TEXT,
                 statusKerja TEXT NOT NULL DEFAULT 'persiapan'
             )
@@ -1276,7 +1276,7 @@ app.post('/api/kapal-masuk', authenticateToken, async (req, res) => {
                 nama, namaPemilik, tandaSelar, tandaPengenal, beratKotor, beratBersih,
                 merekMesin, nomorSeriMesin, jenisAlatTangkap, tanggalInput, tanggalKeberangkatan,
                 totalHariPersiapan, tanggalBerangkat, tanggalKembali, listPersiapan,
-                isFinished, perkiraanKeberangkatan, durasiSelesaiPersiapan, statusKerja
+                isFinished, perkiraankeberangkatan, durasiSelesaiPersiapan, statusKerja
             ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19)
             RETURNING *
         `, [

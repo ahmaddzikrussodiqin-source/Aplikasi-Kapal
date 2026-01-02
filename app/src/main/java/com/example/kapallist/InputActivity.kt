@@ -17,6 +17,8 @@ import androidx.lifecycle.lifecycleScope
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
 import kotlinx.coroutines.launch
+import java.time.LocalDate
+import java.time.format.DateTimeFormatter
 import java.util.Calendar
 
 class InputActivity : AppCompatActivity() {
@@ -197,7 +199,7 @@ class InputActivity : AppCompatActivity() {
                                         // Update only the edited fields
                                         val updatedKapalMasukEntity = existingKapal.copy(
                                             nama = namaKapal,
-                                            tanggalKembali = tanggalKembali,
+                                            tanggalKembali = LocalDate.parse(tanggalKembali, DateTimeFormatter.ofPattern("d/M/yyyy")),
                                             listPersiapan = listPersiapan
                                         )
 
@@ -222,7 +224,7 @@ class InputActivity : AppCompatActivity() {
                             val kapalMasukEntity = KapalMasukEntity(
                                 id = 0,  // Selalu 0 untuk entry baru
                                 nama = namaKapal,
-                                tanggalKembali = tanggalKembali,
+                                tanggalKembali = LocalDate.parse(tanggalKembali, DateTimeFormatter.ofPattern("d/M/yyyy")),
                                 listPersiapan = listPersiapan,
                                 tanggalInput = java.text.SimpleDateFormat("dd/MM/yyyy", java.util.Locale.getDefault()).format(java.util.Date()),
                                 statusKerja = "persiapan"  // Default status
@@ -281,7 +283,7 @@ class InputActivity : AppCompatActivity() {
                         val kapal = apiResponse.data
                         if (kapal != null) {
                             etNamaKapal.setText(kapal.nama)
-                            etTanggalKembali.setText(kapal.tanggalKembali)
+                            etTanggalKembali.setText(kapal.tanggalKembali?.format(DateTimeFormatter.ofPattern("d/M/yyyy")) ?: "")
                             listPersiapan.clear()
                             listPersiapan.addAll(kapal.listPersiapan ?: emptyList())
                             updatePersiapanListUI(llPersiapanList)
