@@ -40,7 +40,7 @@ data class Kapal(
         tanggalKeberangkatan = kapalMasukEntity.tanggalKeberangkatan,
         totalHariPersiapan = kapalMasukEntity.totalHariPersiapan,
         tanggalBerangkat = kapalMasukEntity.tanggalBerangkat,
-        tanggalKembali = kapalMasukEntity.tanggalKembali?.format(DateTimeFormatter.ISO_LOCAL_DATE),
+        tanggalKembali = kapalMasukEntity.tanggalKembali?.format(DateTimeFormatter.ISO_LOCAL_DATE), // Keep as String for compatibility
         listPersiapan = kapalMasukEntity.listPersiapan.toMutableList(),
         listDokumen = mutableListOf(), // KapalMasukEntity doesn't have this
         isFinished = kapalMasukEntity.isFinished,

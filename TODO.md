@@ -1,10 +1,3 @@
-# TODO: Add Durasi Kapal Berangkat
-
-## Tasks
-- [ ] Add durasiBerlayar field to KapalEntity
-- [ ] Add durasiBerlayar field to KapalMasukEntity
-- [ ] Add durasiBerlayar field to KapalStatusEntity
-- [ ] Update Kapal data class to include durasiBerlayar
-- [ ] Modify ProfileActivity to save durasiBerlayar when finishing a ship
-- [ ] Update UI in ProfileActivity to display the sailing duration
-- [ ] Test the changes
+- [ ] Hapus Toast durasi berlayar di ProfileActivity.kt setelah memilih tanggal keberangkatan
+- [ ] Tambahkan TextView untuk durasi berlayar di atas nama kapal di buildUI() jika perkiraanKeberangkatan sudah diatur
+- [ ] Test aplikasi untuk memastikan durasi ditampilkan dan terupdate harian

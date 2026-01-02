@@ -106,29 +106,52 @@ class ProfileActivity : AppCompatActivity() {
 
         if (listKapal.isNotEmpty()) {
             for (kapal in listKapal) {
-                // Create a horizontal layout for ship name and departure date
+                // Create a vertical layout for ship name and departure date
                 val shipInfoLayout = LinearLayout(this)
-                shipInfoLayout.orientation = LinearLayout.HORIZONTAL
+                shipInfoLayout.orientation = LinearLayout.VERTICAL
                 shipInfoLayout.layoutParams = LinearLayout.LayoutParams(
                     LinearLayout.LayoutParams.MATCH_PARENT,
                     LinearLayout.LayoutParams.WRAP_CONTENT
                 )
                 shipInfoLayout.setPadding(0, 16, 0, 8)
 
+                // Add sailing duration above ship name if departure date is set
+                if (!kapal.perkiraanKeberangkatan.isNullOrEmpty()) {
+                    val tvDurasiBerlayar = TextView(this)
+                    tvDurasiBerlayar.text = "Durasi Berlayar: ${hitungDurasiBerlayar(kapal.perkiraanKeberangkatan)}"
+                    tvDurasiBerlayar.textSize = 14f
+                    tvDurasiBerlayar.setTextColor(ContextCompat.getColor(this, R.color.primary))
+                    tvDurasiBerlayar.layoutParams = LinearLayout.LayoutParams(
+                        LinearLayout.LayoutParams.MATCH_PARENT,
+                        LinearLayout.LayoutParams.WRAP_CONTENT
+                    )
+                    shipInfoLayout.addView(tvDurasiBerlayar)
+                }
+
                 val tvKapal = TextView(this)
                 val formattedKembali = formatTanggal(kapal.tanggalKembali ?: "")  // Handle null dengan Elvis
                 val namaKapal = kapal.nama ?: ""
-                // Prioritize perkiraanKeberangkatan over tanggalKeberangkatan for display
-                val departureDate = kapal.perkiraanKeberangkatan ?: kapal.tanggalKeberangkatan ?: ""
-                val formattedKeberangkatan = formatTanggal(departureDate)
                 tvKapal.text = if (formattedKembali.isNotEmpty()) {
                     "Nama: $namaKapal, Kembali: $formattedKembali"
                 } else {
                     "Nama: $namaKapal"
                 }
                 tvKapal.textSize = 16f
-                tvKapal.layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
+                tvKapal.layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT)
                 shipInfoLayout.addView(tvKapal)
+
+                // Add departure date under the ship name if available
+                if (!kapal.perkiraanKeberangkatan.isNullOrEmpty()) {
+                    val tvDeparture = TextView(this)
+                    tvDeparture.text = "Keberangkatan: ${formatTanggal(kapal.perkiraanKeberangkatan!!)}"
+                    tvDeparture.textSize = 14f
+                    tvDeparture.setTextColor(ContextCompat.getColor(this, R.color.text_secondary))
+                    tvDeparture.layoutParams = LinearLayout.LayoutParams(
+                        LinearLayout.LayoutParams.MATCH_PARENT,
+                        LinearLayout.LayoutParams.WRAP_CONTENT
+                    )
+                    shipInfoLayout.addView(tvDeparture)
+                }
 
 
 
@@ -374,7 +397,7 @@ class ProfileActivity : AppCompatActivity() {
                         val allChecked = items.all { checkBoxStates[it] == true }
                         if (allChecked) {
                             val alertDialog = AlertDialog.Builder(this@ProfileActivity)
-                            alertDialog.setMessage("Tentukan perkiraan tanggal keberangkatan")
+                            alertDialog.setMessage("Tentukan tanggal keberangkatan kapal")
                             alertDialog.setPositiveButton("OK") { _, _ ->
                                 val calendar = Calendar.getInstance()
                                 val year = calendar.get(Calendar.YEAR)
@@ -387,7 +410,6 @@ class ProfileActivity : AppCompatActivity() {
                                     }.timeInMillis
                                     val durasi = hitungDurasiSelesaiPersiapan(kapal.tanggalKembali, tanggalSelesaiMillis)
                                     val durasiBerlayar = hitungDurasiBerlayar(selectedDate)
-                                    Toast.makeText(this@ProfileActivity, "Durasi berlayar dari tanggal keberangkatan hingga hari ini: $durasiBerlayar", Toast.LENGTH_LONG).show()
                                     val updatedKapal = kapal.copy(
                                         isFinished = true,
                                         perkiraanKeberangkatan = selectedDate,
