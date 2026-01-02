@@ -175,7 +175,7 @@ async function initializeDatabase() {
                 tanggalKembali DATE,
                 listPersiapan TEXT NOT NULL DEFAULT '[]',
                 isFinished INTEGER NOT NULL DEFAULT 0,
-                perkiraankeberangkatan DATE,
+                perkiraanKeberangkatan DATE,
                 durasiSelesaiPersiapan TEXT,
                 statusKerja TEXT NOT NULL DEFAULT 'persiapan'
             )
