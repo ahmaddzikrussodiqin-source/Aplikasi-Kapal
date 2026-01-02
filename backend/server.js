@@ -167,6 +167,7 @@ async function initializeDatabase() {
                 isFinished INTEGER NOT NULL DEFAULT 0,
                 perkiraanKeberangkatan DATE,
                 durasiSelesaiPersiapan TEXT,
+                durasiBerlayar TEXT,
                 statusKerja TEXT NOT NULL DEFAULT 'persiapan'
             )
         `);
