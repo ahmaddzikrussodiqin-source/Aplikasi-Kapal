@@ -34,33 +34,22 @@ const storage = multer.diskStorage({
 });
 const upload = multer({ storage: storage });
 
-// Database setup - Multiple schemas in one PostgreSQL instance
-console.log('🔧 Setting up database connections...');
+// Database setup - Single PostgreSQL instance with multiple schemas
+console.log('🔧 Setting up database connection...');
 console.log('DATABASE_URL exists:', !!process.env.DATABASE_URL);
-console.log('USERS_DATABASE_URL exists:', !!process.env.USERS_DATABASE_URL);
-console.log('KAPAL_DATABASE_URL exists:', !!process.env.KAPAL_DATABASE_URL);
 
-const usersPool = new Pool({
-    connectionString: process.env.USERS_DATABASE_URL || process.env.DATABASE_URL,
-    ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
+// Single database pool with connection timeout and retry settings
+const dbPool = new Pool({
+    connectionString: process.env.DATABASE_URL,
+    ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
+    connectionTimeoutMillis: 10000, // 10 seconds
+    query_timeout: 10000, // 10 seconds
+    idleTimeoutMillis: 30000, // 30 seconds
+    max: 20, // Maximum number of clients in the pool
+    allowExitOnIdle: true
 });
 
-const kapalPool = new Pool({
-    connectionString: process.env.KAPAL_DATABASE_URL || process.env.DATABASE_URL,
-    ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
-});
-
-const dokumenPool = new Pool({
-    connectionString: process.env.DOKUMEN_DATABASE_URL || process.env.DATABASE_URL,
-    ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
-});
-
-const kapalMasukPool = new Pool({
-    connectionString: process.env.KAPAL_MASUK_DATABASE_URL || process.env.DATABASE_URL,
-    ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
-});
-
-console.log('✅ Database pools created');
+console.log('✅ Database pool created');
 
 // Initialize database schemas and tables
 async function initializeDatabase() {
@@ -69,15 +58,15 @@ async function initializeDatabase() {
 
         // Create schemas if they don't exist
         console.log('📝 Creating schemas...');
-        await usersPool.query(`CREATE SCHEMA IF NOT EXISTS users_schema`);
-        await kapalPool.query(`CREATE SCHEMA IF NOT EXISTS kapal_schema`);
-        await dokumenPool.query(`CREATE SCHEMA IF NOT EXISTS dokumen_schema`);
-        await kapalMasukPool.query(`CREATE SCHEMA IF NOT EXISTS kapal_masuk_schema`);
+        await dbPool.query(`CREATE SCHEMA IF NOT EXISTS users_schema`);
+        await dbPool.query(`CREATE SCHEMA IF NOT EXISTS kapal_schema`);
+        await dbPool.query(`CREATE SCHEMA IF NOT EXISTS dokumen_schema`);
+        await dbPool.query(`CREATE SCHEMA IF NOT EXISTS kapal_masuk_schema`);
         console.log('✅ Schemas created successfully');
 
         // Users table in users_schema
         console.log('📝 Creating users table...');
-        await usersPool.query(`
+        await dbPool.query(`
             CREATE TABLE IF NOT EXISTS users_schema.users (
                 userId TEXT PRIMARY KEY,
                 password TEXT NOT NULL,
@@ -90,7 +79,7 @@ async function initializeDatabase() {
         console.log('✅ Users table created successfully');
 
         // Kapal Info table in kapal_schema
-        await kapalPool.query(`
+        await dbPool.query(`
             CREATE TABLE IF NOT EXISTS kapal_schema.kapal_info (
                 id SERIAL PRIMARY KEY,
                 nama TEXT,
@@ -108,7 +97,7 @@ async function initializeDatabase() {
         `);
 
         // Kapal Status table in kapal_schema (independent from kapal_info)
-        await kapalPool.query(`
+        await dbPool.query(`
             CREATE TABLE IF NOT EXISTS kapal_schema.kapal_status (
                 id SERIAL PRIMARY KEY,
                 kapalId INTEGER UNIQUE,  -- Nullable and no CASCADE constraint
@@ -125,7 +114,7 @@ async function initializeDatabase() {
 
         // Remove old foreign key constraint if exists (for migration)
         try {
-            await kapalPool.query(`ALTER TABLE kapal_schema.kapal_status DROP CONSTRAINT IF EXISTS kapal_status_kapalid_fkey`);
+            await dbPool.query(`ALTER TABLE kapal_schema.kapal_status DROP CONSTRAINT IF EXISTS kapal_status_kapalid_fkey`);
             console.log('✅ Old foreign key constraint removed');
         } catch (alterError) {
             console.log('No old foreign key constraint to remove');
@@ -133,14 +122,14 @@ async function initializeDatabase() {
 
         // Add UNIQUE constraint to kapalId if it doesn't exist
         try {
-            await kapalPool.query(`ALTER TABLE kapal_schema.kapal_status ADD CONSTRAINT kapal_status_kapalid_unique UNIQUE (kapalId)`);
+            await dbPool.query(`ALTER TABLE kapal_schema.kapal_status ADD CONSTRAINT kapal_status_kapalid_unique UNIQUE (kapalId)`);
             console.log('✅ UNIQUE constraint added to kapal_status.kapalId');
         } catch (alterError) {
             console.log('UNIQUE constraint on kapalId already exists or could not be added');
         }
 
         // Dokumen table in dokumen_schema
-        await dokumenPool.query(`
+        await dbPool.query(`
             CREATE TABLE IF NOT EXISTS dokumen_schema.dokumen (
                 id SERIAL PRIMARY KEY,
                 kapalId INTEGER NOT NULL,
@@ -156,7 +145,7 @@ async function initializeDatabase() {
         `);
 
         // Kapal Masuk table in kapal_masuk_schema
-        await kapalMasukPool.query(`
+        await dbPool.query(`
             CREATE TABLE IF NOT EXISTS kapal_masuk_schema.kapal_masuk (
                 id SERIAL PRIMARY KEY,
                 nama TEXT,
@@ -187,17 +176,12 @@ async function initializeDatabase() {
     }
 }
 
-// Connect to databases and initialize
-Promise.all([
-    usersPool.connect(),
-    kapalPool.connect(),
-    dokumenPool.connect(),
-    kapalMasukPool.connect()
-]).then(() => {
-    console.log('Connected to all PostgreSQL databases.');
+// Connect to database and initialize
+dbPool.connect().then(() => {
+    console.log('Connected to PostgreSQL database.');
     initializeDatabase();
 }).catch(err => {
-    console.error('Error connecting to databases:', err);
+    console.error('Error connecting to database:', err);
 });
 
 // Middleware to verify JWT token
@@ -236,11 +220,11 @@ app.get('/debug/database', async (req, res) => {
         console.log('🔍 Debug: Checking database contents...');
 
         // Check schemas
-        const schemasResult = await usersPool.query('SELECT schema_name FROM information_schema.schemata ORDER BY schema_name');
+        const schemasResult = await dbPool.query('SELECT schema_name FROM information_schema.schemata ORDER BY schema_name');
         console.log('Schemas found:', schemasResult.rows);
 
         // Check users_schema specifically
-        const usersSchemaResult = await usersPool.query('SELECT schema_name FROM information_schema.schemata WHERE schema_name = $1', ['users_schema']);
+        const usersSchemaResult = await dbPool.query('SELECT schema_name FROM information_schema.schemata WHERE schema_name = $1', ['users_schema']);
         console.log('users_schema exists:', usersSchemaResult.rows.length > 0);
 
         let usersData = [];
@@ -248,13 +232,13 @@ app.get('/debug/database', async (req, res) => {
 
         if (usersSchemaResult.rows.length > 0) {
             // Check if users table exists
-            const tablesResult = await usersPool.query('SELECT table_name FROM information_schema.tables WHERE table_schema = $1 AND table_name = $2', ['users_schema', 'users']);
+            const tablesResult = await dbPool.query('SELECT table_name FROM information_schema.tables WHERE table_schema = $1 AND table_name = $2', ['users_schema', 'users']);
             usersTableExists = tablesResult.rows.length > 0;
             console.log('users table exists:', usersTableExists);
 
             if (usersTableExists) {
                 // Get users data
-                const usersResult = await usersPool.query('SELECT userId, nama, role, created_at FROM users_schema.users ORDER BY created_at DESC');
+                const usersResult = await dbPool.query('SELECT userId, nama, role, created_at FROM users_schema.users ORDER BY created_at DESC');
                 usersData = usersResult.rows;
                 console.log('Users in database:', usersData.length);
             }
@@ -294,7 +278,7 @@ app.post('/api/login', async (req, res) => {
             });
         }
 
-        const result = await usersPool.query('SELECT * FROM users_schema.users WHERE userId = $1', [userId]);
+        const result = await dbPool.query('SELECT * FROM users_schema.users WHERE userId = $1', [userId]);
         const user = result.rows[0];
 
         if (!user) {
@@ -355,7 +339,7 @@ app.post('/api/register', async (req, res) => {
 
         // Check if user already exists
         console.log('🔍 Checking if user exists...');
-        const existingResult = await usersPool.query('SELECT userId FROM users_schema.users WHERE userId = $1', [userId]);
+        const existingResult = await dbPool.query('SELECT userId FROM users_schema.users WHERE userId = $1', [userId]);
         console.log('Existing users found:', existingResult.rows.length);
 
         if (existingResult.rows.length > 0) {
@@ -372,7 +356,7 @@ app.post('/api/register', async (req, res) => {
 
         // Insert new user
         console.log('💾 Inserting new user into database...');
-        const insertResult = await usersPool.query(
+        const insertResult = await dbPool.query(
             'INSERT INTO users_schema.users (userId, password) VALUES ($1, $2)',
             [userId, hashedPassword]
         );
@@ -401,8 +385,8 @@ app.post('/api/register', async (req, res) => {
 app.get('/api/users', authenticateToken, async (req, res) => {
     try {
         // Ensure schema and table exist with all required columns
-        await usersPool.query(`CREATE SCHEMA IF NOT EXISTS users_schema`);
-        await usersPool.query(`
+        await dbPool.query(`CREATE SCHEMA IF NOT EXISTS users_schema`);
+        await dbPool.query(`
             CREATE TABLE IF NOT EXISTS users_schema.users (
                 userId TEXT PRIMARY KEY,
                 password TEXT NOT NULL,
@@ -415,15 +399,15 @@ app.get('/api/users', authenticateToken, async (req, res) => {
 
         // Add missing columns if they don't exist (for existing tables)
         try {
-            await usersPool.query(`ALTER TABLE users_schema.users ADD COLUMN IF NOT EXISTS nama TEXT`);
-            await usersPool.query(`ALTER TABLE users_schema.users ADD COLUMN IF NOT EXISTS role TEXT DEFAULT 'Member'`);
-            await usersPool.query(`ALTER TABLE users_schema.users ADD COLUMN IF NOT EXISTS photoUri TEXT`);
-            await usersPool.query(`ALTER TABLE users_schema.users ADD COLUMN IF NOT EXISTS created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP`);
+            await dbPool.query(`ALTER TABLE users_schema.users ADD COLUMN IF NOT EXISTS nama TEXT`);
+            await dbPool.query(`ALTER TABLE users_schema.users ADD COLUMN IF NOT EXISTS role TEXT DEFAULT 'Member'`);
+            await dbPool.query(`ALTER TABLE users_schema.users ADD COLUMN IF NOT EXISTS photoUri TEXT`);
+            await dbPool.query(`ALTER TABLE users_schema.users ADD COLUMN IF NOT EXISTS created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP`);
         } catch (alterError) {
             console.log('Some columns might already exist, continuing...');
         }
 
-        const result = await usersPool.query('SELECT userId, nama, role, photoUri, created_at FROM users_schema.users');
+        const result = await dbPool.query('SELECT userId, nama, role, photoUri, created_at FROM users_schema.users');
         const users = result.rows.map(row => ({
             userId: row.userid,
             nama: row.nama,
@@ -463,7 +447,7 @@ app.put('/api/users/:userId', authenticateToken, async (req, res) => {
         query += ' WHERE userId = $' + (params.length + 1);
         params.push(userId);
 
-        const result = await usersPool.query(query, params);
+        const result = await dbPool.query(query, params);
 
         if (result.rowCount === 0) {
             return res.status(404).json({
@@ -526,7 +510,7 @@ app.post('/api/users', authenticateToken, async (req, res) => {
 
         // Check if user already exists
         console.log('🔍 Checking if user exists...');
-        const existingResult = await usersPool.query('SELECT userId FROM users_schema.users WHERE userId = $1', [userId]);
+        const existingResult = await dbPool.query('SELECT userId FROM users_schema.users WHERE userId = $1', [userId]);
         console.log('Existing users found:', existingResult.rows.length);
 
         if (existingResult.rows.length > 0) {
@@ -543,7 +527,7 @@ app.post('/api/users', authenticateToken, async (req, res) => {
 
         // Insert new user
         console.log('💾 Inserting new user into database...');
-        const insertResult = await usersPool.query(
+        const insertResult = await dbPool.query(
             'INSERT INTO users_schema.users (userId, password, nama, role) VALUES ($1, $2, $3, $4)',
             [userId, hashedPassword, nama, role]
         );
@@ -1206,7 +1190,7 @@ app.delete('/api/kapal-status/:id', authenticateToken, async (req, res) => {
 // Kapal Masuk routes (protected)
 app.get('/api/kapal-masuk', authenticateToken, async (req, res) => {
     try {
-        const result = await kapalMasukPool.query('SELECT * FROM kapal_masuk_schema.kapal_masuk ORDER BY id DESC');
+        const result = await dbPool.query('SELECT * FROM kapal_masuk_schema.kapal_masuk ORDER BY id DESC');
         const kapalMasuk = result.rows;
 
         console.log('📤 Retrieved kapal masuk data from DB:', JSON.stringify(kapalMasuk, null, 2));
@@ -1237,7 +1221,7 @@ app.get('/api/kapal-masuk', authenticateToken, async (req, res) => {
 app.get('/api/kapal-masuk/:id', authenticateToken, async (req, res) => {
     try {
         const { id } = req.params;
-        const result = await kapalMasukPool.query('SELECT * FROM kapal_masuk_schema.kapal_masuk WHERE id = $1', [id]);
+        const result = await dbPool.query('SELECT * FROM kapal_masuk_schema.kapal_masuk WHERE id = $1', [id]);
         const kapalMasuk = result.rows[0];
 
         if (!kapalMasuk) {
@@ -1271,7 +1255,7 @@ app.get('/api/kapal-masuk/:id', authenticateToken, async (req, res) => {
 app.post('/api/kapal-masuk', authenticateToken, async (req, res) => {
     try {
         const kapalMasukData = req.body;
-        const result = await kapalMasukPool.query(`
+        const result = await dbPool.query(`
             INSERT INTO kapal_masuk_schema.kapal_masuk (
                 nama, namaPemilik, tandaSelar, tandaPengenal, beratKotor, beratBersih,
                 merekMesin, nomorSeriMesin, jenisAlatTangkap, tanggalInput, tanggalKeberangkatan,
@@ -1320,7 +1304,7 @@ app.put('/api/kapal-masuk/:id', authenticateToken, async (req, res) => {
         console.log('🔄 Updating kapal masuk id:', id);
         console.log('📥 Received data:', JSON.stringify(kapalMasukData, null, 2));
 
-        const result = await kapalMasukPool.query(`
+        const result = await dbPool.query(`
             UPDATE kapal_masuk_schema.kapal_masuk SET
                 nama = $1, namaPemilik = $2, tandaSelar = $3, tandaPengenal = $4,
                 beratKotor = $5, beratBersih = $6, merekMesin = $7, nomorSeriMesin = $8,
@@ -1364,7 +1348,7 @@ app.put('/api/kapal-masuk/:id', authenticateToken, async (req, res) => {
 app.delete('/api/kapal-masuk/:id', authenticateToken, async (req, res) => {
     try {
         const { id } = req.params;
-        const result = await kapalMasukPool.query('DELETE FROM kapal_masuk_schema.kapal_masuk WHERE id = $1', [id]);
+        const result = await dbPool.query('DELETE FROM kapal_masuk_schema.kapal_masuk WHERE id = $1', [id]);
 
         if (result.rowCount === 0) {
             return res.status(404).json({
@@ -1432,16 +1416,11 @@ app.listen(PORT, () => {
 // Graceful shutdown
 process.on('SIGINT', () => {
     console.log('Shutting down gracefully...');
-    Promise.all([
-        usersPool.end(),
-        kapalPool.end(),
-        dokumenPool.end(),
-        kapalMasukPool.end()
-    ]).then(() => {
-        console.log('All database connections closed.');
+    dbPool.end().then(() => {
+        console.log('Database connection closed.');
         process.exit(0);
     }).catch(err => {
-        console.error('Error closing database connections:', err);
+        console.error('Error closing database connection:', err);
         process.exit(1);
     });
 });
