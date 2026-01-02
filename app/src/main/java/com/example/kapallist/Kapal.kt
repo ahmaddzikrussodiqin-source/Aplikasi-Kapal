@@ -15,6 +15,7 @@ data class Kapal(
     var isFinished: Boolean = false,
     var perkiraanKeberangkatan: String? = null,
     var durasiSelesaiPersiapan: String? = null,
+    var durasiBerlayar: String? = null,
     var id: Int = 0
 ) {
     constructor(kapalEntity: KapalEntity) : this(
@@ -45,6 +46,7 @@ data class Kapal(
         isFinished = kapalMasukEntity.isFinished,
         perkiraanKeberangkatan = kapalMasukEntity.perkiraanKeberangkatan?.format(DateTimeFormatter.ISO_LOCAL_DATE),
         durasiSelesaiPersiapan = kapalMasukEntity.durasiSelesaiPersiapan,
+        durasiBerlayar = kapalMasukEntity.durasiBerlayar,
         id = kapalMasukEntity.id
     )
 

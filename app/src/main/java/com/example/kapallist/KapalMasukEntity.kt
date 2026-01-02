@@ -26,5 +26,6 @@ data class KapalMasukEntity(
     @ColumnInfo(defaultValue = "0") var isFinished: Boolean = false,
     var perkiraanKeberangkatan: LocalDate? = null,
     var durasiSelesaiPersiapan: String? = null,
+    var durasiBerlayar: String? = null,
     @ColumnInfo(defaultValue = "persiapan") var statusKerja: String = "persiapan"
 )
