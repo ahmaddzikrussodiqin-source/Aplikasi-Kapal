@@ -5,6 +5,8 @@ import com.squareup.moshi.JsonAdapter
 import com.squareup.moshi.Moshi
 import com.squareup.moshi.Types
 import com.squareup.moshi.kotlin.reflect.KotlinJsonAdapterFactory
+import java.time.LocalDate
+import java.time.format.DateTimeFormatter
 
 class Converters {
 
@@ -36,5 +38,15 @@ class Converters {
     fun toDokumenKapalList(list: List<DokumenKapal>?): String {
          val adapter: JsonAdapter<List<DokumenKapal>> = moshi.adapter(Types.newParameterizedType(List::class.java, DokumenKapal::class.java))
         return adapter.toJson(list ?: emptyList())
+    }
+
+    @TypeConverter
+    fun fromLocalDate(value: String?): LocalDate? {
+        return value?.let { LocalDate.parse(it, DateTimeFormatter.ISO_LOCAL_DATE) }
+    }
+
+    @TypeConverter
+    fun toLocalDate(date: LocalDate?): String? {
+        return date?.format(DateTimeFormatter.ISO_LOCAL_DATE)
     }
 }
