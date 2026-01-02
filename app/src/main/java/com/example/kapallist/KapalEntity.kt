@@ -27,7 +27,8 @@ data class KapalEntity(
     @ColumnInfo(defaultValue = "[]") var listDokumen: List<DokumenKapal> = emptyList(),
     @ColumnInfo(defaultValue = "0") var isFinished: Boolean = false,
     var perkiraanKeberangkatan: String? = null,
-    var durasiSelesaiPersiapan: String? = null
+    var durasiSelesaiPersiapan: String? = null,
+    var durasiBerlayar: String? = null
 )
 
 fun hitungTotalHariPersiapan(tanggalInput: Long, tanggalKeberangkatan: Long?): Int? {

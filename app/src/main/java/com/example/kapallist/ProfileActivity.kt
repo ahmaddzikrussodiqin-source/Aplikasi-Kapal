@@ -130,20 +130,7 @@ class ProfileActivity : AppCompatActivity() {
                 tvKapal.layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
                 shipInfoLayout.addView(tvKapal)
 
-                // Display departure date on the right side
-                val tvKeberangkatan = TextView(this)
-                tvKeberangkatan.text = if (formattedKeberangkatan.isNotEmpty()) {
-                    "Keberangkatan: $formattedKeberangkatan"
-                } else {
-                    "Keberangkatan: -"
-                }
-                tvKeberangkatan.textSize = 14f
-                tvKeberangkatan.setTextColor(android.graphics.Color.BLUE)
-                tvKeberangkatan.layoutParams = LinearLayout.LayoutParams(
-                    LinearLayout.LayoutParams.WRAP_CONTENT,
-                    LinearLayout.LayoutParams.WRAP_CONTENT
-                ).apply { gravity = android.view.Gravity.END }
-                shipInfoLayout.addView(tvKeberangkatan)
+
 
                 llChecklist.addView(shipInfoLayout)
 
@@ -157,18 +144,7 @@ class ProfileActivity : AppCompatActivity() {
                 ).apply { gravity = android.view.Gravity.END }
                 llChecklist.addView(tvStatus)
 
-                val tvDurasiBerlayar = TextView(this)
-                val durasiBerlayar = if (!kapal.perkiraanKeberangkatan.isNullOrEmpty()) {
-                    hitungDurasiBerlayar(kapal.perkiraanKeberangkatan)
-                } else {
-                    "Belum ada tanggal keberangkatan"
-                }
-                Log.d("ProfileActivity", "Kapal ${kapal.nama} - perkiraanKeberangkatan: ${kapal.perkiraanKeberangkatan}, durasiBerlayar: $durasiBerlayar")
-                tvDurasiBerlayar.text = "Durasi Berlayar: $durasiBerlayar"
-                tvDurasiBerlayar.textSize = 16f
-                tvDurasiBerlayar.setTypeface(null, android.graphics.Typeface.BOLD)
-                tvDurasiBerlayar.setTextColor(android.graphics.Color.RED)
-                llChecklist.addView(tvDurasiBerlayar)
+
 
                 if (!kapal.perkiraanKeberangkatan.isNullOrEmpty()) {
                     val tvDurasi = TextView(this)
@@ -338,7 +314,8 @@ class ProfileActivity : AppCompatActivity() {
                                 val updatedKapal = kapal.copy(
                                     isFinished = false,
                                     perkiraanKeberangkatan = null,
-                                    durasiSelesaiPersiapan = null
+                                    durasiSelesaiPersiapan = null,
+                                    durasiBerlayar = null
                                 )
                                 // Reset checkbox states untuk kapal ini
                                 items.forEach { checkBoxStates[it] = false }
@@ -418,7 +395,8 @@ class ProfileActivity : AppCompatActivity() {
                                     val updatedKapal = kapal.copy(
                                         isFinished = true,
                                         perkiraanKeberangkatan = selectedDate,
-                                        durasiSelesaiPersiapan = durasi
+                                        durasiSelesaiPersiapan = durasi,
+                                        durasiBerlayar = durasiBerlayar
                                     )
                                     // Update via API
                                     lifecycleScope.launch {

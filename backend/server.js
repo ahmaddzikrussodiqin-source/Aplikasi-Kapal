@@ -108,7 +108,8 @@ async function initializeDatabase() {
                 listPersiapan TEXT NOT NULL DEFAULT '[]',
                 isFinished INTEGER NOT NULL DEFAULT 0,
                 perkiraanKeberangkatan TEXT,
-                durasiSelesaiPersiapan TEXT
+                durasiSelesaiPersiapan TEXT,
+                durasiBerlayar TEXT
             )
         `);
 
@@ -1260,8 +1261,8 @@ app.post('/api/kapal-masuk', authenticateToken, async (req, res) => {
                 nama, namaPemilik, tandaSelar, tandaPengenal, beratKotor, beratBersih,
                 merekMesin, nomorSeriMesin, jenisAlatTangkap, tanggalInput, tanggalKeberangkatan,
                 totalHariPersiapan, tanggalBerangkat, tanggalKembali, listPersiapan,
-                isFinished, perkiraanKeberangkatan, durasiSelesaiPersiapan, statusKerja
-            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19)
+                isFinished, perkiraanKeberangkatan, durasiSelesaiPersiapan, durasiBerlayar, statusKerja
+            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20)
             RETURNING *
         `, [
             kapalMasukData.nama, kapalMasukData.namaPemilik, kapalMasukData.tandaSelar, kapalMasukData.tandaPengenal,
@@ -1270,7 +1271,7 @@ app.post('/api/kapal-masuk', authenticateToken, async (req, res) => {
             kapalMasukData.totalHariPersiapan, kapalMasukData.tanggalBerangkat, kapalMasukData.tanggalKembali,
             JSON.stringify(kapalMasukData.listPersiapan || []), kapalMasukData.isFinished ? 1 : 0,
             kapalMasukData.perkiraanKeberangkatan, kapalMasukData.durasiSelesaiPersiapan,
-            kapalMasukData.statusKerja || 'persiapan'
+            kapalMasukData.durasiBerlayar, kapalMasukData.statusKerja || 'persiapan'
         ]);
 
         const kapalMasuk = result.rows[0];
@@ -1311,8 +1312,8 @@ app.put('/api/kapal-masuk/:id', authenticateToken, async (req, res) => {
                 jenisAlatTangkap = $9, tanggalInput = $10, tanggalKeberangkatan = $11,
                 totalHariPersiapan = $12, tanggalBerangkat = $13, tanggalKembali = $14,
                 listPersiapan = $15, isFinished = $16, perkiraanKeberangkatan = $17,
-                durasiSelesaiPersiapan = $18, statusKerja = $19
-            WHERE id = $20
+                durasiSelesaiPersiapan = $18, durasiBerlayar = $19, statusKerja = $20
+            WHERE id = $21
         `, [
             kapalMasukData.nama, kapalMasukData.namaPemilik, kapalMasukData.tandaSelar, kapalMasukData.tandaPengenal,
             kapalMasukData.beratKotor, kapalMasukData.beratBersih, kapalMasukData.merekMesin, kapalMasukData.nomorSeriMesin,
@@ -1320,7 +1321,7 @@ app.put('/api/kapal-masuk/:id', authenticateToken, async (req, res) => {
             kapalMasukData.totalHariPersiapan, kapalMasukData.tanggalBerangkat, kapalMasukData.tanggalKembali,
             JSON.stringify(kapalMasukData.listPersiapan || []), kapalMasukData.isFinished ? 1 : 0,
             kapalMasukData.perkiraanKeberangkatan, kapalMasukData.durasiSelesaiPersiapan,
-            kapalMasukData.statusKerja, id
+            kapalMasukData.durasiBerlayar, kapalMasukData.statusKerja, id
         ]);
 
         console.log('✅ Update result rowCount:', result.rowCount);

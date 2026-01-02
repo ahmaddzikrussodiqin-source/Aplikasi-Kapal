@@ -29,6 +29,7 @@ data class Kapal(
         isFinished = kapalEntity.isFinished,
         perkiraanKeberangkatan = kapalEntity.perkiraanKeberangkatan,
         durasiSelesaiPersiapan = kapalEntity.durasiSelesaiPersiapan,
+        durasiBerlayar = kapalEntity.durasiBerlayar,
         id = kapalEntity.id
     )
 
@@ -60,7 +61,8 @@ data class Kapal(
             listDokumen = this.listDokumen,
             isFinished = this.isFinished,
             perkiraanKeberangkatan = this.perkiraanKeberangkatan,
-            durasiSelesaiPersiapan = this.durasiSelesaiPersiapan
+            durasiSelesaiPersiapan = this.durasiSelesaiPersiapan,
+            durasiBerlayar = this.durasiBerlayar
         )
     }
 
@@ -85,6 +87,7 @@ data class Kapal(
             isFinished = this.isFinished,
             perkiraanKeberangkatan = this.perkiraanKeberangkatan?.let { LocalDate.parse(it, DateTimeFormatter.ISO_LOCAL_DATE) },
             durasiSelesaiPersiapan = this.durasiSelesaiPersiapan,
+            durasiBerlayar = this.durasiBerlayar,
             statusKerja = "persiapan" // default
         )
     }
