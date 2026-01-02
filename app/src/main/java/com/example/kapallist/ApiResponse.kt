@@ -1,4 +1,4 @@
-package com.example.kapallist
+ package com.example.kapallist
 
 data class ApiResponse<T>(
     val success: Boolean,
