@@ -30,6 +30,7 @@ class InputActivity : AppCompatActivity() {
     private var editMode: Boolean = false
     private var kapalIndex: Int = -1
     private var selectedKapalId: Int? = null
+    private var selectedPerkiraanKeberangkatan: LocalDate? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -89,6 +90,7 @@ class InputActivity : AppCompatActivity() {
                                     val selectedKapal = kapalList[which]
                                     etNamaKapal.setText(selectedKapal.nama)
                                     val perkiraan = selectedKapal.perkiraanKeberangkatan
+                                    selectedPerkiraanKeberangkatan = if (perkiraan != null) LocalDate.parse(perkiraan, DateTimeFormatter.ISO_LOCAL_DATE) else null
                                     if (perkiraan != null) {
                                         tvPerkiraanKeberangkatan.text = "Tanggal Perkiraan Keberangkatan: $perkiraan"
                                         tvPerkiraanKeberangkatan.visibility = View.VISIBLE
@@ -211,7 +213,8 @@ class InputActivity : AppCompatActivity() {
                                         val updatedKapalMasukEntity = existingKapal.copy(
                                             nama = namaKapal,
                                             tanggalKembali = LocalDate.parse(tanggalKembali, DateTimeFormatter.ofPattern("d/M/yyyy")),
-                                            listPersiapan = listPersiapan
+                                            listPersiapan = listPersiapan,
+                                            perkiraanKeberangkatan = selectedPerkiraanKeberangkatan
                                         )
 
                                         val response = ApiClient.apiService.updateKapalMasuk("Bearer $token", selectedKapalId!!, updatedKapalMasukEntity)
@@ -238,7 +241,8 @@ class InputActivity : AppCompatActivity() {
                                 tanggalKembali = LocalDate.parse(tanggalKembali, DateTimeFormatter.ofPattern("d/M/yyyy")),
                                 listPersiapan = listPersiapan,
                                 tanggalInput = java.text.SimpleDateFormat("dd/MM/yyyy", java.util.Locale.getDefault()).format(java.util.Date()),
-                                statusKerja = "persiapan"  // Default status
+                                statusKerja = "persiapan",  // Default status
+                                perkiraanKeberangkatan = selectedPerkiraanKeberangkatan
                             )
 
                             val response = ApiClient.apiService.createKapalMasuk("Bearer $token", kapalMasukEntity)
