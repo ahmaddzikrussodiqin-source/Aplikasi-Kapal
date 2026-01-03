@@ -403,7 +403,7 @@ class MainActivity : AppCompatActivity() {
         val roles = arrayOf("Moderator", "Supervisi", "Member")
         val adapter = ArrayAdapter(this, android.R.layout.simple_spinner_item, roles)
         spinnerNewRole.adapter = adapter
-        spinnerNewRole.setSelection(2)  // Default to "Member"
+        spinnerNewRole.setSelection(0)  // Default to "Moderator"
 
         val dialog = AlertDialog.Builder(this)
             .setView(dialogView)
@@ -634,40 +634,21 @@ class MainActivity : AppCompatActivity() {
 
         Log.d("MainActivity", "userId: $userId, userRole: $userRole")
 
-        // Kontrol akses berdasarkan role
+        // Akses penuh untuk semua role
         val btnInput = findViewById<Button>(R.id.btn_input_status)
         val btnProfile = findViewById<Button>(R.id.btn_view_profile)
         val btnDokumen = findViewById<Button>(R.id.btn_dokumen_kapal)
         val btnDaftarKapal = findViewById<Button>(R.id.btn_daftar_kapal)  // Tambah tombol baru
 
-        when (userRole) {
-            "Moderator" -> {
-                // Akses penuh
-                btnInput.isEnabled = true
-                btnProfile.isEnabled = true
-                btnDokumen.isEnabled = true
-                btnDaftarKapal.isEnabled = true  // Enable tombol baru
-                // Tampilkan fitur buat akun dan manage users
-                showCreateAccountButton()
-                showManageUsersButton()
-            }
-            "Supervisi" -> {
-                // Akses ke Input dan Profile
-                btnInput.isEnabled = true
-                btnProfile.isEnabled = true
-                btnDokumen.isEnabled = false
-                btnDokumen.alpha = 0.5f  // Visual hint disabled
-                btnDaftarKapal.isEnabled = true  // Enable tombol baru
-            }
-            "Member" -> {
-                // Akses ke Input dan Profile
-                btnInput.isEnabled = true
-                btnProfile.isEnabled = true
-                btnDokumen.isEnabled = false
-                btnDokumen.alpha = 0.5f
-                btnDaftarKapal.isEnabled = true  // Enable tombol baru
-            }
-        }
+        // Enable semua tombol untuk semua role
+        btnInput.isEnabled = true
+        btnProfile.isEnabled = true
+        btnDokumen.isEnabled = true
+        btnDaftarKapal.isEnabled = true
+
+        // Tampilkan fitur buat akun dan manage users untuk semua role
+        showCreateAccountButton()
+        showManageUsersButton()
 
         btnInput.setOnClickListener {
             val intent = Intent(this@MainActivity, InputActivity::class.java)

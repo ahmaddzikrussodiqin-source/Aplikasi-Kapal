@@ -328,70 +328,66 @@ class ProfileActivity : AppCompatActivity() {
 
                 btnFinish.setOnClickListener {
                     if (kapal.isFinished) {
-                        // Undo finish jika tombol "Batal" dan role memungkinkan
-                        if (userRole == "Moderator" || userRole == "Supervisi") {
-                            // Show confirmation dialog for undo
-                            val alertDialog = AlertDialog.Builder(this@ProfileActivity)
-                            alertDialog.setMessage("Yakin ingin membatalkan proses finish?")
-                            alertDialog.setPositiveButton("Ya") { _, _ ->
-                                val updatedKapal = kapal.copy(
-                                    isFinished = false,
-                                    perkiraanKeberangkatan = null,
-                                    durasiSelesaiPersiapan = null,
-                                    durasiBerlayar = null
-                                )
-                                // Update via API
-                                lifecycleScope.launch {
-                                    try {
-                                        val sharedPref = getSharedPreferences("login_prefs", MODE_PRIVATE)
-                                        val token = sharedPref.getString("token", "") ?: ""
-                                        if (token.isEmpty()) {
-                                            Toast.makeText(this@ProfileActivity, "Token tidak ditemukan", Toast.LENGTH_SHORT).show()
-                                            return@launch
-                                        }
-
-                                        Log.d("ProfileActivity", "Undoing finish for kapal id: ${kapal.id}, updatedKapal: $updatedKapal")
-                                        val response = ApiClient.apiService.updateKapalMasuk("Bearer $token", kapal.id, updatedKapal.toKapalMasukEntity())
-                                        Log.d("ProfileActivity", "Response code: ${response.code()}, message: ${response.message()}")
-                                        if (response.isSuccessful) {
-                                            val apiResponse = response.body()
-                                            Log.d("ProfileActivity", "API response: $apiResponse")
-                                            if (apiResponse?.success == true) {
-                                                // Simpan state checkbox yang direset
-                                                val editor = getSharedPreferences("kapal_data", MODE_PRIVATE).edit()
-                                                val updatedStateJson = Gson().toJson(checkBoxStates)
-                                                editor.putString("checkbox_states", updatedStateJson)
-                                                val updatedDateJson = Gson().toJson(checkBoxDates)
-                                                editor.putString("checkbox_dates", updatedDateJson)
-                                                editor.apply()
-                                                loadDataAndBuildUI()  // Reload UI
-                                                Toast.makeText(this@ProfileActivity, "Proses finish dibatalkan", Toast.LENGTH_SHORT).show()
-                                            } else {
-                                                Toast.makeText(this@ProfileActivity, "Gagal membatalkan finish: ${apiResponse?.message}", Toast.LENGTH_SHORT).show()
-                                            }
-                                        } else {
-                                            if (response.code() == 403) {
-                                                val intent = Intent(this@ProfileActivity, LoginActivity::class.java)
-                                                startActivity(intent)
-                                                finish()
-                                                Toast.makeText(this@ProfileActivity, "Token expired, please login again", Toast.LENGTH_SHORT).show()
-                                            } else {
-                                                Toast.makeText(this@ProfileActivity, "Gagal membatalkan finish: ${response.message()}", Toast.LENGTH_SHORT).show()
-                                            }
-                                        }
-                                    } catch (e: Exception) {
-                                        Toast.makeText(this@ProfileActivity, "Error: ${e.message}", Toast.LENGTH_SHORT).show()
+                        // Undo finish untuk semua role
+                        // Show confirmation dialog for undo
+                        val alertDialog = AlertDialog.Builder(this@ProfileActivity)
+                        alertDialog.setMessage("Yakin ingin membatalkan proses finish?")
+                        alertDialog.setPositiveButton("Ya") { _, _ ->
+                            val updatedKapal = kapal.copy(
+                                isFinished = false,
+                                perkiraanKeberangkatan = null,
+                                durasiSelesaiPersiapan = null,
+                                durasiBerlayar = null
+                            )
+                            // Update via API
+                            lifecycleScope.launch {
+                                try {
+                                    val sharedPref = getSharedPreferences("login_prefs", MODE_PRIVATE)
+                                    val token = sharedPref.getString("token", "") ?: ""
+                                    if (token.isEmpty()) {
+                                        Toast.makeText(this@ProfileActivity, "Token tidak ditemukan", Toast.LENGTH_SHORT).show()
+                                        return@launch
                                     }
+
+                                    Log.d("ProfileActivity", "Undoing finish for kapal id: ${kapal.id}, updatedKapal: $updatedKapal")
+                                    val response = ApiClient.apiService.updateKapalMasuk("Bearer $token", kapal.id, updatedKapal.toKapalMasukEntity())
+                                    Log.d("ProfileActivity", "Response code: ${response.code()}, message: ${response.message()}")
+                                    if (response.isSuccessful) {
+                                        val apiResponse = response.body()
+                                        Log.d("ProfileActivity", "API response: $apiResponse")
+                                        if (apiResponse?.success == true) {
+                                            // Simpan state checkbox yang direset
+                                            val editor = getSharedPreferences("kapal_data", MODE_PRIVATE).edit()
+                                            val updatedStateJson = Gson().toJson(checkBoxStates)
+                                            editor.putString("checkbox_states", updatedStateJson)
+                                            val updatedDateJson = Gson().toJson(checkBoxDates)
+                                            editor.putString("checkbox_dates", updatedDateJson)
+                                            editor.apply()
+                                            loadDataAndBuildUI()  // Reload UI
+                                            Toast.makeText(this@ProfileActivity, "Proses finish dibatalkan", Toast.LENGTH_SHORT).show()
+                                        } else {
+                                            Toast.makeText(this@ProfileActivity, "Gagal membatalkan finish: ${apiResponse?.message}", Toast.LENGTH_SHORT).show()
+                                        }
+                                    } else {
+                                        if (response.code() == 403) {
+                                            val intent = Intent(this@ProfileActivity, LoginActivity::class.java)
+                                            startActivity(intent)
+                                            finish()
+                                            Toast.makeText(this@ProfileActivity, "Token expired, please login again", Toast.LENGTH_SHORT).show()
+                                        } else {
+                                            Toast.makeText(this@ProfileActivity, "Gagal membatalkan finish: ${response.message()}", Toast.LENGTH_SHORT).show()
+                                        }
+                                    }
+                                } catch (e: Exception) {
+                                    Toast.makeText(this@ProfileActivity, "Error: ${e.message}", Toast.LENGTH_SHORT).show()
                                 }
                             }
-                            alertDialog.setNegativeButton("Tidak") { _, _ ->
-                                // Do nothing, just dismiss the dialog
-                            }
-                            alertDialog.setCancelable(true)
-                            alertDialog.show()
-                        } else {
-                            Toast.makeText(this@ProfileActivity, "Akses tidak diizinkan untuk membatalkan finish", Toast.LENGTH_SHORT).show()
                         }
+                        alertDialog.setNegativeButton("Tidak") { _, _ ->
+                            // Do nothing, just dismiss the dialog
+                        }
+                        alertDialog.setCancelable(true)
+                        alertDialog.show()
                     } else {
                         // Kode finish asli
                         val allChecked = items.all { checkBoxStates[it] == true }

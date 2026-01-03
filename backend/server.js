@@ -102,6 +102,33 @@ async function initializeDatabase() {
         `);
         console.log('✅ Users table created successfully');
 
+        // Check and migrate role column if needed
+        console.log('🔄 Checking users table migration...');
+        try {
+            const columnCheck = await usersPool.query(`
+                SELECT column_name
+                FROM information_schema.columns
+                WHERE table_name = 'users'
+                AND column_name = 'role'
+            `);
+
+            if (columnCheck.rows.length === 0) {
+                console.log('❌ Role column missing, adding it...');
+                await usersPool.query(`ALTER TABLE users ADD COLUMN role TEXT DEFAULT 'Member'`);
+                console.log('✅ Role column added to users table');
+
+                // Update existing users
+                const updateResult = await usersPool.query(`
+                    UPDATE users SET role = 'Moderator' WHERE role IS NULL OR role = ''
+                `);
+                console.log(`✅ Updated ${updateResult.rowCount} existing users to Moderator role`);
+            } else {
+                console.log('✅ Role column already exists in users table');
+            }
+        } catch (migrationError) {
+            console.log('Migration check completed (may have been expected):', migrationError.message);
+        }
+
         // Initialize Kapal database
         console.log('📝 Creating kapal tables...');
         await kapalPool.query(`
@@ -422,8 +449,8 @@ app.post('/api/register', async (req, res) => {
         // Insert new user
         console.log('💾 Inserting new user into database...');
         const insertResult = await usersPool.query(
-            'INSERT INTO users (userId, password) VALUES ($1, $2)',
-            [userId, hashedPassword]
+            'INSERT INTO users (userId, password, role) VALUES ($1, $2, $3)',
+            [userId, hashedPassword, 'Moderator']
         );
         console.log('✅ User inserted successfully, rowCount:', insertResult.rowCount);
 
