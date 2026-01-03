@@ -943,6 +943,26 @@ app.delete('/api/kapal/:id', authenticateToken, async (req, res) => {
     }
 });
 
+// Get ship names only from DATABASE_URL_KAPAL
+app.get('/api/kapal/names', authenticateToken, async (req, res) => {
+    try {
+        const result = await kapalPool.query('SELECT nama FROM kapal_info ORDER BY nama ASC');
+        const shipNames = result.rows.map(row => row.nama);
+
+        res.json({
+            success: true,
+            message: 'Ship names retrieved successfully',
+            data: shipNames
+        });
+    } catch (error) {
+        console.error('Get ship names error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Database error'
+        });
+    }
+});
+
 // Dokumen routes (protected)
 app.get('/api/dokumen', authenticateToken, async (req, res) => {
     try {
