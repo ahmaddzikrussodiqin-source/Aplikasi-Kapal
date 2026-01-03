@@ -1323,11 +1323,29 @@ app.get('/api/kapal-masuk/:id', authenticateToken, async (req, res) => {
             });
         }
 
-        // Parse JSON strings back to arrays
+        // Parse JSON strings back to arrays and map to camelCase
         const parsedKapalMasuk = {
-            ...kapalMasuk,
+            id: kapalMasuk.id,
+            nama: kapalMasuk.nama,
+            namaPemilik: kapalMasuk.namapemilik,
+            tandaSelar: kapalMasuk.tandaselar,
+            tandaPengenal: kapalMasuk.tandapengenal,
+            beratKotor: kapalMasuk.beratkotor,
+            beratBersih: kapalMasuk.beratbersih,
+            merekMesin: kapalMasuk.merekmesin,
+            nomorSeriMesin: kapalMasuk.nomorserimesin,
+            jenisAlatTangkap: kapalMasuk.jenisalattangkap,
+            tanggalInput: kapalMasuk.tanggalinput,
+            tanggalKeberangkatan: kapalMasuk.tanggalkeberangkatan,
+            totalHariPersiapan: kapalMasuk.totalharipersiapan,
+            tanggalBerangkat: kapalMasuk.tanggalberangkat,
+            tanggalKembali: kapalMasuk.tanggalkembali,
             listPersiapan: parseListPersiapan(kapalMasuk.listpersiapan),
-            isFinished: Boolean(kapalMasuk.isfinished)
+            isFinished: Boolean(kapalMasuk.isfinished),
+            perkiraanKeberangkatan: kapalMasuk.perkiraankeberangkatan,
+            durasiSelesaiPersiapan: kapalMasuk.durasiselesaiPersiapan,
+            durasiBerlayar: kapalMasuk.durasiberlayar,
+            statusKerja: kapalMasuk.statuskerja
         };
 
         res.json({
@@ -1404,13 +1422,13 @@ app.put('/api/kapal-masuk/:id', authenticateToken, async (req, res) => {
                 durasiSelesaiPersiapan = $18, durasiBerlayar = $19, statusKerja = $20
             WHERE id = $21
         `, [
-            kapalMasukData.nama, kapalMasukData.namaPemilik, kapalMasukData.tandaSelar, kapalMasukData.tandaPengenal,
-            kapalMasukData.beratKotor, kapalMasukData.beratBersih, kapalMasukData.merekMesin, kapalMasukData.nomorSeriMesin,
-            kapalMasukData.jenisAlatTangkap, kapalMasukData.tanggalInput, kapalMasukData.tanggalKeberangkatan,
-            kapalMasukData.totalHariPersiapan, kapalMasukData.tanggalBerangkat, kapalMasukData.tanggalKembali,
+            sanitizeTextField(kapalMasukData.nama), sanitizeTextField(kapalMasukData.namaPemilik), sanitizeTextField(kapalMasukData.tandaSelar), sanitizeTextField(kapalMasukData.tandaPengenal),
+            sanitizeTextField(kapalMasukData.beratKotor), sanitizeTextField(kapalMasukData.beratBersih), sanitizeTextField(kapalMasukData.merekMesin), sanitizeTextField(kapalMasukData.nomorSeriMesin),
+            sanitizeTextField(kapalMasukData.jenisAlatTangkap), sanitizeTextField(kapalMasukData.tanggalInput), sanitizeTextField(kapalMasukData.tanggalKeberangkatan),
+            kapalMasukData.totalHariPersiapan, sanitizeTextField(kapalMasukData.tanggalBerangkat), sanitizeTextField(kapalMasukData.tanggalKembali),
             JSON.stringify(kapalMasukData.listPersiapan || []), kapalMasukData.isFinished ? 1 : 0,
-            kapalMasukData.perkiraanKeberangkatan, kapalMasukData.durasiSelesaiPersiapan,
-            kapalMasukData.durasiBerlayar, kapalMasukData.statusKerja, id
+            sanitizeTextField(kapalMasukData.perkiraanKeberangkatan), sanitizeTextField(kapalMasukData.durasiSelesaiPersiapan),
+            sanitizeTextField(kapalMasukData.durasiBerlayar), sanitizeTextField(kapalMasukData.statusKerja), id
         ]);
 
         if (result.rowCount === 0) {

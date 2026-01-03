@@ -42,7 +42,18 @@ class Converters {
 
     @TypeConverter
     fun fromLocalDate(value: String?): LocalDate? {
-        return value?.let { LocalDate.parse(it, DateTimeFormatter.ISO_LOCAL_DATE) }
+        return value?.let {
+            try {
+                LocalDate.parse(it, DateTimeFormatter.ISO_LOCAL_DATE)
+            } catch (e: Exception) {
+                try {
+                    // Try DD/MM/YYYY format
+                    LocalDate.parse(it, DateTimeFormatter.ofPattern("d/M/yyyy"))
+                } catch (e2: Exception) {
+                    null
+                }
+            }
+        }
     }
 
     @TypeConverter
