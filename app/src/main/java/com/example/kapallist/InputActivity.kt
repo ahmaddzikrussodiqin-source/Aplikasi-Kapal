@@ -7,6 +7,7 @@ import com.google.android.material.floatingactionbutton.FloatingActionButton
 import android.os.Bundle
 import android.util.Log
 import android.view.KeyEvent
+import android.view.View
 import android.widget.Button
 import android.widget.EditText
 import android.widget.ImageView
@@ -53,6 +54,7 @@ class InputActivity : AppCompatActivity() {
         val btnTambahPersiapan = findViewById<Button>(R.id.btn_tambah_persiapan)
         val llPersiapanList = findViewById<LinearLayout>(R.id.ll_persiapan_list)
         val btnSimpan = findViewById<Button>(R.id.btn_simpan)
+        val tvPerkiraanKeberangkatan = findViewById<TextView>(R.id.tv_perkiraan_keberangkatan)
 
         if (editMode && selectedKapalId != null) {
             // Load existing kapal data for editing
@@ -81,10 +83,18 @@ class InputActivity : AppCompatActivity() {
                             val kapalList = apiResponse.data ?: emptyList()
                             val namaKapalList = kapalList.mapNotNull { it.nama }
                             if (namaKapalList.isNotEmpty()) {
-                                val builder = AlertDialog.Builder(this@InputActivity)
+                            val builder = AlertDialog.Builder(this@InputActivity)
                                 builder.setTitle("Pilih Nama Kapal (Referensi)")
                                 builder.setItems(namaKapalList.toTypedArray()) { _, which ->
-                                    etNamaKapal.setText(namaKapalList[which])
+                                    val selectedKapal = kapalList[which]
+                                    etNamaKapal.setText(selectedKapal.nama)
+                                    val perkiraan = selectedKapal.perkiraanKeberangkatan
+                                    if (perkiraan != null) {
+                                        tvPerkiraanKeberangkatan.text = "Tanggal Perkiraan Keberangkatan: $perkiraan"
+                                        tvPerkiraanKeberangkatan.visibility = View.VISIBLE
+                                    } else {
+                                        tvPerkiraanKeberangkatan.visibility = View.GONE
+                                    }
                                     // Tidak set selectedKapalId karena ini untuk kapal masuk baru
                                 }
                                 builder.setNegativeButton("Batal", null)
