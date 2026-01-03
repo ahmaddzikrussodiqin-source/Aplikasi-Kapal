@@ -26,7 +26,7 @@ class LocalDateAdapter : JsonSerializer<LocalDate>, JsonDeserializer<LocalDate> 
     )
 
     override fun serialize(src: LocalDate?, typeOfSrc: Type?, context: JsonSerializationContext?): JsonElement {
-        return JsonPrimitive(src?.format(DateTimeFormatter.ofPattern("yyyy-MM-dd")))
+        return JsonPrimitive(src?.format(DateTimeFormatter.ISO_LOCAL_DATE))
     }
 
     override fun deserialize(json: JsonElement?, typeOfT: Type?, context: JsonDeserializationContext?): LocalDate? {

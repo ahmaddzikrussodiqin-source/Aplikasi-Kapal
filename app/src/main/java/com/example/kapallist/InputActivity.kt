@@ -285,8 +285,13 @@ class InputActivity : AppCompatActivity() {
                         if (kapal != null) {
                             etNamaKapal.setText(kapal.nama)
 
+                            // Debug logging
+                            Log.d("InputActivity", "kapal.tanggalKembali: ${kapal.tanggalKembali}")
+                            Log.d("InputActivity", "kapal.tanggalKembali type: ${kapal.tanggalKembali?.javaClass?.simpleName}")
+
                             // Handle date display - format LocalDate to DD/MM/YYYY
                             val formattedDate = kapal.tanggalKembali?.format(DateTimeFormatter.ofPattern("d/M/yyyy")) ?: ""
+                            Log.d("InputActivity", "formattedDate: '$formattedDate'")
                             etTanggalKembali.setText(formattedDate)
                             listPersiapan.clear()
                             listPersiapan.addAll(kapal.listPersiapan ?: emptyList())
