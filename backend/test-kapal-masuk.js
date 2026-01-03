@@ -71,9 +71,9 @@ async function testKapalMasukAPI() {
         // Test update kapal masuk
         console.log('\n6. Testing kapal masuk update...');
         const updateData = {
-            ...kapalMasukData,
-            isFinished: true,
-            perkiraanKeberangkatan: '3 februari 2026'
+            nama: 'Kapal Test Masuk Updated',
+            tanggalKembali: '20/12/2024',
+            listPersiapan: ['Persiapan 1 Updated', 'Persiapan 2', 'Persiapan 3', 'Persiapan 4']
         };
 
         const updateResponse = await axios.put(`${BASE_URL}/api/kapal-masuk/${kapalId}`, updateData, {
