@@ -660,6 +660,11 @@ function parseListPersiapan(value) {
     }
 }
 
+// Helper function to convert null values to empty strings for TEXT fields
+function sanitizeTextField(value) {
+    return value === null || value === undefined ? '' : value;
+}
+
 // Kapal routes (protected)
 app.get('/api/kapal', authenticateToken, async (req, res) => {
     try {
@@ -1352,13 +1357,13 @@ app.post('/api/kapal-masuk', authenticateToken, async (req, res) => {
             ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20)
             RETURNING *
         `, [
-            kapalMasukData.nama, kapalMasukData.namaPemilik, kapalMasukData.tandaSelar, kapalMasukData.tandaPengenal,
-            kapalMasukData.beratKotor, kapalMasukData.beratBersih, kapalMasukData.merekMesin, kapalMasukData.nomorSeriMesin,
-            kapalMasukData.jenisAlatTangkap, kapalMasukData.tanggalInput, kapalMasukData.tanggalKeberangkatan,
-            kapalMasukData.totalHariPersiapan, kapalMasukData.tanggalBerangkat, kapalMasukData.tanggalKembali,
+            sanitizeTextField(kapalMasukData.nama), sanitizeTextField(kapalMasukData.namaPemilik), sanitizeTextField(kapalMasukData.tandaSelar), sanitizeTextField(kapalMasukData.tandaPengenal),
+            sanitizeTextField(kapalMasukData.beratKotor), sanitizeTextField(kapalMasukData.beratBersih), sanitizeTextField(kapalMasukData.merekMesin), sanitizeTextField(kapalMasukData.nomorSeriMesin),
+            sanitizeTextField(kapalMasukData.jenisAlatTangkap), sanitizeTextField(kapalMasukData.tanggalInput), sanitizeTextField(kapalMasukData.tanggalKeberangkatan),
+            kapalMasukData.totalHariPersiapan, sanitizeTextField(kapalMasukData.tanggalBerangkat), sanitizeTextField(kapalMasukData.tanggalKembali),
             JSON.stringify(kapalMasukData.listPersiapan || []), kapalMasukData.isFinished ? 1 : 0,
-            kapalMasukData.perkiraanKeberangkatan, kapalMasukData.durasiSelesaiPersiapan,
-            kapalMasukData.durasiBerlayar, kapalMasukData.statusKerja || 'persiapan'
+            sanitizeTextField(kapalMasukData.perkiraanKeberangkatan), sanitizeTextField(kapalMasukData.durasiSelesaiPersiapan),
+            sanitizeTextField(kapalMasukData.durasiBerlayar), sanitizeTextField(kapalMasukData.statusKerja) || 'persiapan'
         ]);
 
         const kapalMasuk = result.rows[0];
