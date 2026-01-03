@@ -1,21 +1,23 @@
-# Migration to Railway Schema-based Database
+# Railway Deploy Error Fix - Column "role" Missing
 
-## Current Status
-- Using separate PostgreSQL databases for each module
-- DATABASE_URL_USERS, DATABASE_URL_KAPAL, DATABASE_URL_DOKUMEN, DATABASE_URL_KAPAL_MASUK
-- Each database has its own pool connection
+## Issue
+- Error: "column "role" of relation "users" does not exist" during user registration
+- Occurs at line 451 in server.js during INSERT operation
 
-## Target
-- Single Railway database with schemas
-- Single DATABASE_URL environment variable
-- Tables organized in schemas: users_schema, kapal_schema, dokumen_schema, kapal_masuk_schema
+## Root Cause
+- The users table was created without the "role" column initially
+- Migration logic in server.js was catching errors silently, allowing deployment to succeed with broken schema
+- Railway deployment uses separate databases, not schemas as indicated in setup script
 
-## Tasks
-- [ ] Update database initialization in server.js to create schemas and tables
-- [ ] Migrate users routes to use users_schema
-- [ ] Migrate kapal routes to use kapal_schema
-- [ ] Migrate dokumen routes to use dokumen_schema
-- [ ] Migrate kapal-masuk routes to use kapal_masuk_schema
-- [ ] Remove separate pool connections, keep only dbPool
-- [ ] Update setup-railway-env.sh for single DATABASE_URL
-- [ ] Test all API endpoints work correctly
+## Solution Implemented
+- [x] Fixed migration query to include `table_schema = 'public'` for specificity
+- [x] Changed migration error handling to throw errors instead of logging them
+- [x] This ensures deployment fails if migration cannot add the missing "role" column
+
+## Next Steps
+- Redeploy to Railway with the updated server.js
+- Monitor deployment logs to ensure migration succeeds
+- Test user registration functionality after deployment
+
+## Files Modified
+- backend/server.js: Updated migration logic in initializeDatabase function

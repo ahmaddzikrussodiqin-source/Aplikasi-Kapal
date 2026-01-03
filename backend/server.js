@@ -108,7 +108,8 @@ async function initializeDatabase() {
             const columnCheck = await usersPool.query(`
                 SELECT column_name
                 FROM information_schema.columns
-                WHERE table_name = 'users'
+                WHERE table_schema = 'public'
+                AND table_name = 'users'
                 AND column_name = 'role'
             `);
 
@@ -126,7 +127,8 @@ async function initializeDatabase() {
                 console.log('✅ Role column already exists in users table');
             }
         } catch (migrationError) {
-            console.log('Migration check completed (may have been expected):', migrationError.message);
+            console.error('❌ Migration failed:', migrationError);
+            throw migrationError; // Fail the deployment if migration fails
         }
 
         // Initialize Kapal database
