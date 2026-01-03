@@ -32,6 +32,8 @@ class InputActivity : AppCompatActivity() {
     private var selectedKapalId: Int? = null
     private var selectedPerkiraanKeberangkatan: LocalDate? = null
 
+
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         supportActionBar?.hide()
@@ -51,15 +53,19 @@ class InputActivity : AppCompatActivity() {
 
         val etNamaKapal = findViewById<EditText>(R.id.et_nama_kapal)
         val etTanggalKembali = findViewById<EditText>(R.id.et_tanggal_kembali)
+        val etPerkiraanKeberangkatan = findViewById<EditText>(R.id.et_perkiraan_keberangkatan)
         val etPersiapan = findViewById<EditText>(R.id.et_persiapan)
         val btnTambahPersiapan = findViewById<Button>(R.id.btn_tambah_persiapan)
         val llPersiapanList = findViewById<LinearLayout>(R.id.ll_persiapan_list)
         val btnSimpan = findViewById<Button>(R.id.btn_simpan)
-        val tvPerkiraanKeberangkatan = findViewById<TextView>(R.id.tv_perkiraan_keberangkatan)
+
+        if (editMode) {
+            etPerkiraanKeberangkatan.visibility = View.GONE
+        }
 
         if (editMode && selectedKapalId != null) {
             // Load existing kapal data for editing
-            loadKapalDataForEdit(selectedKapalId!!, etNamaKapal, etTanggalKembali, llPersiapanList)
+            loadKapalDataForEdit(selectedKapalId!!, etNamaKapal, etTanggalKembali, etPerkiraanKeberangkatan, llPersiapanList)
         } else {
             if (namaKapalFromIntent != null) {
                 etNamaKapal.setText(namaKapalFromIntent)
@@ -89,14 +95,6 @@ class InputActivity : AppCompatActivity() {
                                 builder.setItems(namaKapalList.toTypedArray()) { _, which ->
                                     val selectedKapal = kapalList[which]
                                     etNamaKapal.setText(selectedKapal.nama)
-                                    val perkiraan = selectedKapal.perkiraanKeberangkatan
-                                    selectedPerkiraanKeberangkatan = if (perkiraan != null) LocalDate.parse(perkiraan, DateTimeFormatter.ISO_LOCAL_DATE) else null
-                                    if (perkiraan != null) {
-                                        tvPerkiraanKeberangkatan.text = "Tanggal Perkiraan Keberangkatan: $perkiraan"
-                                        tvPerkiraanKeberangkatan.visibility = View.VISIBLE
-                                    } else {
-                                        tvPerkiraanKeberangkatan.visibility = View.GONE
-                                    }
                                     // Tidak set selectedKapalId karena ini untuk kapal masuk baru
                                 }
                                 builder.setNegativeButton("Batal", null)
@@ -171,6 +169,43 @@ class InputActivity : AppCompatActivity() {
             datePickerDialog.show()
         }
 
+        if (!editMode) {
+            etPerkiraanKeberangkatan.setOnClickListener {
+                // Try to parse existing date from EditText, fallback to current date
+                val existingDateText = etPerkiraanKeberangkatan.text.toString().trim()
+                val (year, month, day) = if (existingDateText.isNotEmpty()) {
+                    try {
+                        val parts = existingDateText.split("/")
+                        if (parts.size == 3) {
+                            val day = parts[0].toInt()
+                            val month = parts[1].toInt() - 1 // DatePicker uses 0-based months
+                            val year = parts[2].toInt()
+                            Triple(year, month, day)
+                        } else {
+                            // Fallback to current date if parsing fails
+                            val calendar = Calendar.getInstance()
+                            Triple(calendar.get(Calendar.YEAR), calendar.get(Calendar.MONTH), calendar.get(Calendar.DAY_OF_MONTH))
+                        }
+                    } catch (e: Exception) {
+                        // Fallback to current date if parsing fails
+                        val calendar = Calendar.getInstance()
+                        Triple(calendar.get(Calendar.YEAR), calendar.get(Calendar.MONTH), calendar.get(Calendar.DAY_OF_MONTH))
+                    }
+                } else {
+                    // No existing date, use current date
+                    val calendar = Calendar.getInstance()
+                    Triple(calendar.get(Calendar.YEAR), calendar.get(Calendar.MONTH), calendar.get(Calendar.DAY_OF_MONTH))
+                }
+
+                val datePickerDialog = DatePickerDialog(this, { _, selectedYear, selectedMonth, selectedDay ->
+                    val selectedDate = "$selectedDay/${selectedMonth + 1}/$selectedYear"
+                    etPerkiraanKeberangkatan.setText(selectedDate)
+                    selectedPerkiraanKeberangkatan = LocalDate.of(selectedYear, selectedMonth + 1, selectedDay)
+                }, year, month, day)
+                datePickerDialog.show()
+            }
+        }
+
         btnTambahPersiapan.setOnClickListener {
             val persiapanText = etPersiapan.text.toString().trim()
             if (persiapanText.isNotEmpty()) {
@@ -214,7 +249,7 @@ class InputActivity : AppCompatActivity() {
                                             nama = namaKapal,
                                             tanggalKembali = LocalDate.parse(tanggalKembali, DateTimeFormatter.ofPattern("d/M/yyyy")),
                                             listPersiapan = listPersiapan,
-                                            perkiraanKeberangkatan = selectedPerkiraanKeberangkatan
+                                            perkiraanKeberangkatan = existingKapal.perkiraanKeberangkatan
                                         )
 
                                         val response = ApiClient.apiService.updateKapalMasuk("Bearer $token", selectedKapalId!!, updatedKapalMasukEntity)
@@ -281,7 +316,7 @@ class InputActivity : AppCompatActivity() {
         }
     }
 
-    private fun loadKapalDataForEdit(kapalId: Int, etNamaKapal: EditText, etTanggalKembali: EditText, llPersiapanList: LinearLayout) {
+    private fun loadKapalDataForEdit(kapalId: Int, etNamaKapal: EditText, etTanggalKembali: EditText, etPerkiraanKeberangkatan: EditText, llPersiapanList: LinearLayout) {
         lifecycleScope.launch {
             try {
                 val sharedPref = getSharedPreferences("login_prefs", MODE_PRIVATE)
@@ -310,6 +345,7 @@ class InputActivity : AppCompatActivity() {
                             listPersiapan.clear()
                             listPersiapan.addAll(kapal.listPersiapan ?: emptyList())
                             updatePersiapanListUI(llPersiapanList)
+                            // Do not load or set perkiraanKeberangkatan when editing
                         } else {
                             Toast.makeText(this@InputActivity, "Data kapal tidak ditemukan", Toast.LENGTH_SHORT).show()
                         }

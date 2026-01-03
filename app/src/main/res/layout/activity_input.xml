@@ -65,6 +65,13 @@
                 android:hint="Tanggal Kembali (DD/MM/YYYY)" />
 
             <EditText
+                android:id="@+id/et_perkiraan_keberangkatan"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:focusable="false"
+                android:hint="Perkiraan Keberangkatan (DD/MM/YYYY)" />
+
+            <EditText
                 android:id="@+id/et_persiapan"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"

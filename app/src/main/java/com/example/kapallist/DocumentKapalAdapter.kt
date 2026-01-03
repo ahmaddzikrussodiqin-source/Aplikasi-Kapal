@@ -15,6 +15,7 @@ class DocumentKapalAdapter(
 
     inner class KapalViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
         val tvNamaKapal: TextView = itemView.findViewById(R.id.tv_nama_kapal)
+        val tvTanggalKembali: TextView = itemView.findViewById(R.id.tv_tanggal_kembali)
         val btnEdit: Button = itemView.findViewById(R.id.btn_edit)
         val btnDelete: Button = itemView.findViewById(R.id.btn_delete)
     }
@@ -27,6 +28,12 @@ class DocumentKapalAdapter(
     override fun onBindViewHolder(holder: KapalViewHolder, position: Int) {
         val kapal = kapalList[position]
         holder.tvNamaKapal.text = kapal.nama ?: "Tanpa Nama"
+        if (kapal.tanggalKembali != null) {
+            holder.tvTanggalKembali.text = "Tanggal Kembali: ${kapal.tanggalKembali}"
+            holder.tvTanggalKembali.visibility = View.VISIBLE
+        } else {
+            holder.tvTanggalKembali.visibility = View.GONE
+        }
         holder.itemView.setOnClickListener { onItemClick(kapal) }
         holder.btnEdit.visibility = View.GONE
         holder.btnDelete.visibility = View.GONE
