@@ -30,7 +30,6 @@ class InputActivity : AppCompatActivity() {
     private var editMode: Boolean = false
     private var kapalIndex: Int = -1
     private var selectedKapalId: Int? = null
-    private var selectedPerkiraanKeberangkatan: LocalDate? = null
 
 
 
@@ -53,19 +52,16 @@ class InputActivity : AppCompatActivity() {
 
         val etNamaKapal = findViewById<EditText>(R.id.et_nama_kapal)
         val etTanggalKembali = findViewById<EditText>(R.id.et_tanggal_kembali)
-        val etPerkiraanKeberangkatan = findViewById<EditText>(R.id.et_perkiraan_keberangkatan)
         val etPersiapan = findViewById<EditText>(R.id.et_persiapan)
         val btnTambahPersiapan = findViewById<Button>(R.id.btn_tambah_persiapan)
         val llPersiapanList = findViewById<LinearLayout>(R.id.ll_persiapan_list)
         val btnSimpan = findViewById<Button>(R.id.btn_simpan)
 
-        if (editMode) {
-            etPerkiraanKeberangkatan.visibility = View.GONE
-        }
+        // Perkiraan keberangkatan is hidden in layout and not used in edit mode
 
         if (editMode && selectedKapalId != null) {
             // Load existing kapal data for editing
-            loadKapalDataForEdit(selectedKapalId!!, etNamaKapal, etTanggalKembali, etPerkiraanKeberangkatan, llPersiapanList)
+            loadKapalDataForEdit(selectedKapalId!!, etNamaKapal, etTanggalKembali, llPersiapanList)
         } else {
             if (namaKapalFromIntent != null) {
                 etNamaKapal.setText(namaKapalFromIntent)
@@ -169,42 +165,7 @@ class InputActivity : AppCompatActivity() {
             datePickerDialog.show()
         }
 
-        if (!editMode) {
-            etPerkiraanKeberangkatan.setOnClickListener {
-                // Try to parse existing date from EditText, fallback to current date
-                val existingDateText = etPerkiraanKeberangkatan.text.toString().trim()
-                val (year, month, day) = if (existingDateText.isNotEmpty()) {
-                    try {
-                        val parts = existingDateText.split("/")
-                        if (parts.size == 3) {
-                            val day = parts[0].toInt()
-                            val month = parts[1].toInt() - 1 // DatePicker uses 0-based months
-                            val year = parts[2].toInt()
-                            Triple(year, month, day)
-                        } else {
-                            // Fallback to current date if parsing fails
-                            val calendar = Calendar.getInstance()
-                            Triple(calendar.get(Calendar.YEAR), calendar.get(Calendar.MONTH), calendar.get(Calendar.DAY_OF_MONTH))
-                        }
-                    } catch (e: Exception) {
-                        // Fallback to current date if parsing fails
-                        val calendar = Calendar.getInstance()
-                        Triple(calendar.get(Calendar.YEAR), calendar.get(Calendar.MONTH), calendar.get(Calendar.DAY_OF_MONTH))
-                    }
-                } else {
-                    // No existing date, use current date
-                    val calendar = Calendar.getInstance()
-                    Triple(calendar.get(Calendar.YEAR), calendar.get(Calendar.MONTH), calendar.get(Calendar.DAY_OF_MONTH))
-                }
 
-                val datePickerDialog = DatePickerDialog(this, { _, selectedYear, selectedMonth, selectedDay ->
-                    val selectedDate = "$selectedDay/${selectedMonth + 1}/$selectedYear"
-                    etPerkiraanKeberangkatan.setText(selectedDate)
-                    selectedPerkiraanKeberangkatan = LocalDate.of(selectedYear, selectedMonth + 1, selectedDay)
-                }, year, month, day)
-                datePickerDialog.show()
-            }
-        }
 
         btnTambahPersiapan.setOnClickListener {
             val persiapanText = etPersiapan.text.toString().trim()
@@ -247,7 +208,7 @@ class InputActivity : AppCompatActivity() {
                                         // Update only the edited fields
                                         val updatedKapalMasukEntity = existingKapal.copy(
                                             nama = namaKapal,
-                                            tanggalKembali = LocalDate.parse(tanggalKembali, DateTimeFormatter.ofPattern("d/M/yyyy")),
+                                            tanggalKembali = LocalDate.parse(tanggalKembali, DateTimeFormatter.ofPattern("d/M/yyyy")).toString(),
                                             listPersiapan = listPersiapan,
                                             perkiraanKeberangkatan = existingKapal.perkiraanKeberangkatan
                                         )
@@ -273,11 +234,11 @@ class InputActivity : AppCompatActivity() {
                             val kapalMasukEntity = KapalMasukEntity(
                                 id = 0,  // Selalu 0 untuk entry baru
                                 nama = namaKapal,
-                                tanggalKembali = LocalDate.parse(tanggalKembali, DateTimeFormatter.ofPattern("d/M/yyyy")),
+                                tanggalKembali = LocalDate.parse(tanggalKembali, DateTimeFormatter.ofPattern("d/M/yyyy")).toString(),
                                 listPersiapan = listPersiapan,
                                 tanggalInput = java.text.SimpleDateFormat("dd/MM/yyyy", java.util.Locale.getDefault()).format(java.util.Date()),
                                 statusKerja = "persiapan",  // Default status
-                                perkiraanKeberangkatan = selectedPerkiraanKeberangkatan
+                                perkiraanKeberangkatan = null
                             )
 
                             val response = ApiClient.apiService.createKapalMasuk("Bearer $token", kapalMasukEntity)
@@ -316,7 +277,7 @@ class InputActivity : AppCompatActivity() {
         }
     }
 
-    private fun loadKapalDataForEdit(kapalId: Int, etNamaKapal: EditText, etTanggalKembali: EditText, etPerkiraanKeberangkatan: EditText, llPersiapanList: LinearLayout) {
+    private fun loadKapalDataForEdit(kapalId: Int, etNamaKapal: EditText, etTanggalKembali: EditText, llPersiapanList: LinearLayout) {
         lifecycleScope.launch {
             try {
                 val sharedPref = getSharedPreferences("login_prefs", MODE_PRIVATE)

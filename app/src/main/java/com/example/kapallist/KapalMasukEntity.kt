@@ -21,7 +21,7 @@ data class KapalMasukEntity(
     var tanggalKeberangkatan: String? = null,
     var totalHariPersiapan: Int? = null,
     var tanggalBerangkat: String? = null,
-    var tanggalKembali: LocalDate? = null,
+    var tanggalKembali: String? = null,
     @ColumnInfo(defaultValue = "[]") var listPersiapan: List<String> = emptyList(),
     var isFinished: Boolean = false,
     var perkiraanKeberangkatan: LocalDate? = null,

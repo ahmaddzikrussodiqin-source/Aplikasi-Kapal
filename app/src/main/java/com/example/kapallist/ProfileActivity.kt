@@ -67,13 +67,16 @@ class ProfileActivity : AppCompatActivity() {
                         val kapalMasukList = apiResponse.data ?: emptyList()
                         Log.d("ProfileActivity", "Received kapal masuk data: ${kapalMasukList.size} items")
                         kapalMasukList.forEach { kapalMasuk ->
-                            Log.d("ProfileActivity", "Kapal: ${kapalMasuk.nama}, tanggalKeberangkatan: ${kapalMasuk.tanggalKeberangkatan}")
+                            Log.d("ProfileActivity", "Kapal: ${kapalMasuk.nama}, tanggalKeberangkatan: ${kapalMasuk.tanggalKeberangkatan}, perkiraanKeberangkatan: ${kapalMasuk.perkiraanKeberangkatan}")
                         }
                         listKapal.clear()
                         // Convert KapalMasukEntity to Kapal
                         listKapal.addAll(kapalMasukList.map { kapalMasukEntity ->
                             Kapal(kapalMasukEntity)
                         })
+                        listKapal.forEach { kapal ->
+                            Log.d("ProfileActivity", "Converted Kapal: ${kapal.nama}, perkiraanKeberangkatan: ${kapal.perkiraanKeberangkatan}")
+                        }
                         runOnUiThread {
                             buildUI(llChecklist)
                         }
@@ -143,7 +146,7 @@ class ProfileActivity : AppCompatActivity() {
                 // Add departure date under the ship name if available
                 if (!kapal.perkiraanKeberangkatan.isNullOrEmpty()) {
                     val tvDeparture = TextView(this)
-                    tvDeparture.text = "Keberangkatan: ${formatTanggal(kapal.perkiraanKeberangkatan!!)}"
+                    tvDeparture.text = "Tanggal Keberangkatan: ${formatTanggal(kapal.perkiraanKeberangkatan!!)}"
                     tvDeparture.textSize = 14f
                     tvDeparture.setTextColor(ContextCompat.getColor(this, R.color.text_secondary))
                     tvDeparture.layoutParams = LinearLayout.LayoutParams(
@@ -408,6 +411,7 @@ class ProfileActivity : AppCompatActivity() {
                                     val durasiBerlayar = hitungDurasiBerlayar(selectedDate)
                                     val updatedKapal = kapal.copy(
                                         isFinished = true,
+                                        tanggalBerangkat = selectedDate,
                                         perkiraanKeberangkatan = selectedDate,
                                         durasiSelesaiPersiapan = durasi,
                                         durasiBerlayar = durasiBerlayar
@@ -449,7 +453,7 @@ class ProfileActivity : AppCompatActivity() {
                                         }
                                     }
                                 }, year, month, day)
-                                datePickerDialog.setTitle("Pilih Perkiraan Keberangkatan")
+                                datePickerDialog.setTitle("Pilih Tanggal Keberangkatan")
                                 datePickerDialog.show()
                             }
                             alertDialog.setCancelable(true)

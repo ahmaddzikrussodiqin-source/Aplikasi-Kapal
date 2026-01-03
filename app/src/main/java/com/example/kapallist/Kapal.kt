@@ -40,11 +40,11 @@ data class Kapal(
         tanggalKeberangkatan = kapalMasukEntity.tanggalKeberangkatan,
         totalHariPersiapan = kapalMasukEntity.totalHariPersiapan,
         tanggalBerangkat = kapalMasukEntity.tanggalBerangkat,
-        tanggalKembali = kapalMasukEntity.tanggalKembali?.format(DateTimeFormatter.ISO_LOCAL_DATE), // Keep as String for compatibility
+        tanggalKembali = kapalMasukEntity.tanggalKembali?.toString(),
         listPersiapan = kapalMasukEntity.listPersiapan.toMutableList(),
         listDokumen = mutableListOf(), // KapalMasukEntity doesn't have this
         isFinished = kapalMasukEntity.isFinished,
-        perkiraanKeberangkatan = kapalMasukEntity.perkiraanKeberangkatan?.format(DateTimeFormatter.ISO_LOCAL_DATE),
+        perkiraanKeberangkatan = kapalMasukEntity.perkiraanKeberangkatan?.toString(),
         durasiSelesaiPersiapan = kapalMasukEntity.durasiSelesaiPersiapan,
         durasiBerlayar = kapalMasukEntity.durasiBerlayar,
         id = kapalMasukEntity.id
@@ -84,10 +84,10 @@ data class Kapal(
             tanggalKeberangkatan = this.tanggalKeberangkatan,
             totalHariPersiapan = this.totalHariPersiapan,
             tanggalBerangkat = this.tanggalBerangkat,
-            tanggalKembali = this.tanggalKembali?.let { LocalDate.parse(it, DateTimeFormatter.ISO_LOCAL_DATE) },
+            tanggalKembali = this.tanggalKembali,
             listPersiapan = this.listPersiapan,
             isFinished = this.isFinished,
-            perkiraanKeberangkatan = this.perkiraanKeberangkatan?.let { LocalDate.parse(it, DateTimeFormatter.ISO_LOCAL_DATE) },
+            perkiraanKeberangkatan = this.perkiraanKeberangkatan?.let { LocalDate.parse(it) },
             durasiSelesaiPersiapan = this.durasiSelesaiPersiapan,
             durasiBerlayar = this.durasiBerlayar,
             statusKerja = "persiapan" // default
