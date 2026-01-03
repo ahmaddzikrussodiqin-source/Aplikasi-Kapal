@@ -83,24 +83,7 @@ const storage = multer.diskStorage({
 });
 const upload = multer({ storage: storage });
 
-// Database setup - Single PostgreSQL instance with multiple schemas
-console.log('🔧 Setting up database connection...');
-console.log('DATABASE_URL exists:', !!process.env.DATABASE_URL);
-
-// Single database pool with connection timeout and retry settings
-const dbPool = new Pool({
-    connectionString: process.env.DATABASE_URL,
-    ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
-    connectionTimeoutMillis: 10000, // 10 seconds
-    query_timeout: 10000, // 10 seconds
-    idleTimeoutMillis: 30000, // 30 seconds
-    max: 20, // Maximum number of clients in the pool
-    allowExitOnIdle: true
-});
-
-console.log('✅ Database pool created');
-
-// Initialize database tables in separate databases
+// Initialize database tables
 async function initializeDatabase() {
     try {
         console.log('🔄 Initializing database tables...');
@@ -235,12 +218,17 @@ async function initializeDatabase() {
     }
 }
 
-// Connect to database and initialize
-dbPool.connect().then(() => {
-    console.log('Connected to PostgreSQL database.');
+// Connect to databases and initialize
+Promise.all([
+    usersPool.connect(),
+    kapalPool.connect(),
+    dokumenPool.connect(),
+    kapalMasukPool.connect()
+]).then(() => {
+    console.log('Connected to all PostgreSQL databases.');
     initializeDatabase();
 }).catch(err => {
-    console.error('Error connecting to database:', err);
+    console.error('Error connecting to databases:', err);
 });
 
 // Middleware to verify JWT token
@@ -461,30 +449,7 @@ app.post('/api/register', async (req, res) => {
 // User routes (protected)
 app.get('/api/users', authenticateToken, async (req, res) => {
     try {
-        // Ensure schema and table exist with all required columns
-        await dbPool.query(`CREATE SCHEMA IF NOT EXISTS users_schema`);
-        await dbPool.query(`
-            CREATE TABLE IF NOT EXISTS users_schema.users (
-                userId TEXT PRIMARY KEY,
-                password TEXT NOT NULL,
-                nama TEXT,
-                role TEXT DEFAULT 'Member',
-                photoUri TEXT,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            )
-        `);
-
-        // Add missing columns if they don't exist (for existing tables)
-        try {
-            await dbPool.query(`ALTER TABLE users_schema.users ADD COLUMN IF NOT EXISTS nama TEXT`);
-            await dbPool.query(`ALTER TABLE users_schema.users ADD COLUMN IF NOT EXISTS role TEXT DEFAULT 'Member'`);
-            await dbPool.query(`ALTER TABLE users_schema.users ADD COLUMN IF NOT EXISTS photoUri TEXT`);
-            await dbPool.query(`ALTER TABLE users_schema.users ADD COLUMN IF NOT EXISTS created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP`);
-        } catch (alterError) {
-            console.log('Some columns might already exist, continuing...');
-        }
-
-        const result = await dbPool.query('SELECT userId, nama, role, photoUri, created_at FROM users_schema.users');
+        const result = await usersPool.query('SELECT userId, nama, role, photoUri, created_at FROM users');
         const users = result.rows.map(row => ({
             userId: row.userid,
             nama: row.nama,
@@ -511,7 +476,7 @@ app.put('/api/users/:userId', authenticateToken, async (req, res) => {
         const { userId } = req.params;
         const { password, nama, role, photoUri } = req.body;
 
-        let query = 'UPDATE users_schema.users SET nama = $1, role = $2, photoUri = $3';
+        let query = 'UPDATE users SET nama = $1, role = $2, photoUri = $3';
         let params = [nama, role, photoUri];
 
         if (password) {
@@ -524,7 +489,7 @@ app.put('/api/users/:userId', authenticateToken, async (req, res) => {
         query += ' WHERE userId = $' + (params.length + 1);
         params.push(userId);
 
-        const result = await dbPool.query(query, params);
+        const result = await usersPool.query(query, params);
 
         if (result.rowCount === 0) {
             return res.status(404).json({
@@ -550,7 +515,7 @@ app.delete('/api/users/:userId', authenticateToken, async (req, res) => {
     try {
         const { userId } = req.params;
 
-        const result = await dbPool.query('DELETE FROM users_schema.users WHERE userId = $1', [userId]);
+        const result = await usersPool.query('DELETE FROM users WHERE userId = $1', [userId]);
 
         if (result.rowCount === 0) {
             return res.status(404).json({
@@ -587,7 +552,7 @@ app.post('/api/users', authenticateToken, async (req, res) => {
 
         // Check if user already exists
         console.log('🔍 Checking if user exists...');
-        const existingResult = await dbPool.query('SELECT userId FROM users_schema.users WHERE userId = $1', [userId]);
+        const existingResult = await usersPool.query('SELECT userId FROM users WHERE userId = $1', [userId]);
         console.log('Existing users found:', existingResult.rows.length);
 
         if (existingResult.rows.length > 0) {
@@ -604,8 +569,8 @@ app.post('/api/users', authenticateToken, async (req, res) => {
 
         // Insert new user
         console.log('💾 Inserting new user into database...');
-        const insertResult = await dbPool.query(
-            'INSERT INTO users_schema.users (userId, password, nama, role) VALUES ($1, $2, $3, $4)',
+        const insertResult = await usersPool.query(
+            'INSERT INTO users (userId, password, nama, role) VALUES ($1, $2, $3, $4)',
             [userId, hashedPassword, nama, role]
         );
         console.log('✅ User inserted successfully, rowCount:', insertResult.rowCount);
@@ -1270,16 +1235,12 @@ app.get('/api/kapal-masuk', authenticateToken, async (req, res) => {
         const result = await kapalMasukPool.query('SELECT * FROM kapal_masuk ORDER BY id DESC');
         const kapalMasuk = result.rows;
 
-        console.log('📤 Retrieved kapal masuk data from DB:', JSON.stringify(kapalMasuk, null, 2));
-
         // Parse JSON strings back to arrays and convert isFinished to boolean
         const parsedKapalMasuk = kapalMasuk.map(k => ({
             ...k,
             listPersiapan: parseListPersiapan(k.listpersiapan),
             isFinished: Boolean(k.isfinished)
         }));
-
-        console.log('📤 Sending parsed kapal masuk data:', JSON.stringify(parsedKapalMasuk, null, 2));
 
         res.json({
             success: true,
@@ -1335,9 +1296,10 @@ app.post('/api/kapal-masuk', authenticateToken, async (req, res) => {
         const result = await kapalMasukPool.query(`
             INSERT INTO kapal_masuk (
                 nama, namaPemilik, tandaSelar, tandaPengenal, beratKotor, beratBersih,
-                merekMesin, nomorSeriMesin, jenisAlatTangkap, tanggalInput, tanggalKeberangkatan,
-                totalHariPersiapan, tanggalBerangkat, tanggalKembali, listPersiapan,
-                isFinished, perkiraanKeberangkatan, durasiSelesaiPersiapan, durasiBerlayar, statusKerja
+                merekMesin, nomorSeriMesin, jenisAlatTangkap, tanggalInput,
+                tanggalKeberangkatan, totalHariPersiapan, tanggalBerangkat, tanggalKembali,
+                listPersiapan, isFinished, perkiraanKeberangkatan, durasiSelesaiPersiapan,
+                durasiBerlayar, statusKerja
             ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20)
             RETURNING *
         `, [
@@ -1378,9 +1340,6 @@ app.put('/api/kapal-masuk/:id', authenticateToken, async (req, res) => {
         const { id } = req.params;
         const kapalMasukData = req.body;
 
-        console.log('🔄 Updating kapal masuk id:', id);
-        console.log('📥 Received data:', JSON.stringify(kapalMasukData, null, 2));
-
         const result = await kapalMasukPool.query(`
             UPDATE kapal_masuk SET
                 nama = $1, namaPemilik = $2, tandaSelar = $3, tandaPengenal = $4,
@@ -1399,8 +1358,6 @@ app.put('/api/kapal-masuk/:id', authenticateToken, async (req, res) => {
             kapalMasukData.perkiraanKeberangkatan, kapalMasukData.durasiSelesaiPersiapan,
             kapalMasukData.durasiBerlayar, kapalMasukData.statusKerja, id
         ]);
-
-        console.log('✅ Update result rowCount:', result.rowCount);
 
         if (result.rowCount === 0) {
             return res.status(404).json({
