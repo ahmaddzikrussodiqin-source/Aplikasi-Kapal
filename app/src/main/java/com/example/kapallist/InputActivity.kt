@@ -285,43 +285,8 @@ class InputActivity : AppCompatActivity() {
                         if (kapal != null) {
                             etNamaKapal.setText(kapal.nama)
 
-                            // Debug logging for date
-                            Log.d("InputActivity", "kapal.tanggalKembali: ${kapal.tanggalKembali}")
-                            Log.d("InputActivity", "kapal.tanggalKembali type: ${kapal.tanggalKembali?.javaClass?.simpleName}")
-                            Log.d("InputActivity", "kapal.tanggalKembali toString: ${kapal.tanggalKembali?.toString()}")
-
-                            // Handle date display - API returns LocalDate object, format to DD/MM/YYYY
-                            val formattedDate = try {
-                                val date = kapal.tanggalKembali
-                                Log.d("InputActivity", "Processing date: $date")
-                                if (date != null) {
-                                    val result = date.format(DateTimeFormatter.ofPattern("d/M/yyyy"))
-                                    Log.d("InputActivity", "Formatted date: $result")
-                                    result
-                                } else {
-                                    Log.d("InputActivity", "Date is null")
-                                    ""
-                                }
-                            } catch (e: Exception) {
-                                Log.e("InputActivity", "Error formatting LocalDate: ${e.message}", e)
-                                // If formatting fails, try to parse as string first
-                                if (kapal.tanggalKembali != null) {
-                                    try {
-                                        val dateStr = kapal.tanggalKembali.toString()
-                                        Log.d("InputActivity", "Trying to parse string: $dateStr")
-                                        val parsed = LocalDate.parse(dateStr, DateTimeFormatter.ISO_LOCAL_DATE)
-                                        val result = parsed.format(DateTimeFormatter.ofPattern("d/M/yyyy"))
-                                        Log.d("InputActivity", "Parsed and formatted: $result")
-                                        result
-                                    } catch (e2: Exception) {
-                                        Log.e("InputActivity", "Error parsing string date: ${e2.message}", e2)
-                                        ""
-                                    }
-                                } else {
-                                    ""
-                                }
-                            }
-                            Log.d("InputActivity", "Final formatted date: '$formattedDate'")
+                            // Handle date display - format LocalDate to DD/MM/YYYY
+                            val formattedDate = kapal.tanggalKembali?.format(DateTimeFormatter.ofPattern("d/M/yyyy")) ?: ""
                             etTanggalKembali.setText(formattedDate)
                             listPersiapan.clear()
                             listPersiapan.addAll(kapal.listPersiapan ?: emptyList())

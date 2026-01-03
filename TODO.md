@@ -1,12 +1,10 @@
-# TODO: Simplify Kapal Masuk Database Schema
+# TODO List
 
-## Overview
-Modify DATABASE_URL_KAPAL_MASUK to only include Nama Kapal, Tanggal Kembali, and Persiapan from Kapal Masuk input.
+## Fixed Issues
+- [x] **Tanggal Kembali Blank on Edit**: Fixed LocalDateAdapter to handle multiple date formats and simplified date formatting logic in InputActivity.kt
+  - Updated LocalDateAdapter to support "yyyy-MM-dd", "d/M/yyyy", "dd/MM/yyyy", and ISO_LOCAL_DATE formats
+  - Simplified date display logic in loadKapalDataForEdit function
 
-## Tasks
-- [ ] Update KapalMasukEntity.kt to only include required fields (id, nama, tanggalKembali, listPersiapan)
-- [ ] Modify backend/server.js table creation for kapal_masuk
-- [ ] Update API endpoints in server.js to handle simplified schema
-- [ ] Update ApiService.kt interface if needed
-- [ ] Test the changes to ensure functionality works
-- [ ] Create migration script if needed for existing data
+## Pending Tasks
+- [ ] Test the fix by creating and editing kapal masuk data
+- [ ] Verify that dates are properly displayed and saved in all scenarios

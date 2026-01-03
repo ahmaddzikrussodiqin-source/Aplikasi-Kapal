@@ -18,14 +18,29 @@ import java.time.format.DateTimeFormatter
 import java.util.concurrent.TimeUnit
 
 class LocalDateAdapter : JsonSerializer<LocalDate>, JsonDeserializer<LocalDate> {
-    private val formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd")
+    private val formatters = listOf(
+        DateTimeFormatter.ofPattern("yyyy-MM-dd"),  // ISO format
+        DateTimeFormatter.ofPattern("d/M/yyyy"),    // Display format
+        DateTimeFormatter.ofPattern("dd/MM/yyyy"),  // Alternative display format
+        DateTimeFormatter.ISO_LOCAL_DATE            // Fallback
+    )
 
     override fun serialize(src: LocalDate?, typeOfSrc: Type?, context: JsonSerializationContext?): JsonElement {
-        return JsonPrimitive(src?.format(formatter))
+        return JsonPrimitive(src?.format(DateTimeFormatter.ofPattern("yyyy-MM-dd")))
     }
 
     override fun deserialize(json: JsonElement?, typeOfT: Type?, context: JsonDeserializationContext?): LocalDate? {
-        return json?.asString?.let { LocalDate.parse(it, formatter) }
+        val dateString = json?.asString?.trim()
+        if (dateString.isNullOrEmpty()) return null
+
+        for (formatter in formatters) {
+            try {
+                return LocalDate.parse(dateString, formatter)
+            } catch (e: Exception) {
+                // Try next formatter
+            }
+        }
+        return null // If all formats fail
     }
 }
 
