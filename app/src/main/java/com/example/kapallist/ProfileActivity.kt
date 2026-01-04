@@ -165,16 +165,6 @@ class ProfileActivity : AppCompatActivity() {
                 ).apply { gravity = android.view.Gravity.END }
                 llChecklist.addView(tvStatus)
 
-
-
-                if (!kapal.perkiraanKeberangkatan.isNullOrEmpty()) {
-                    val tvDurasi = TextView(this)
-                    tvDurasi.text = "Durasi Selesai Persiapan: ${kapal.durasiSelesaiPersiapan ?: "Belum selesai"}"  // Handle null dengan Elvis
-                    tvDurasi.textSize = 12f
-                    tvDurasi.setTextColor(android.graphics.Color.BLUE)
-                    llChecklist.addView(tvDurasi)
-                }
-
                 val items = kapal.listPersiapan
                 Log.d("ProfileActivity", "Checklist items for ${kapal.nama}: $items")
 
