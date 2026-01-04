@@ -196,7 +196,10 @@ async function initializeDatabase() {
         // Initialize Kapal Masuk database
         console.log('📝 Creating kapal_masuk table...');
         await kapalMasukPool.query(`
-            CREATE TABLE IF NOT EXISTS kapal_masuk (
+            CREATE SCHEMA IF NOT EXISTS kapal_masuk_schema
+        `);
+        await kapalMasukPool.query(`
+            CREATE TABLE IF NOT EXISTS kapal_masuk_schema.kapal_masuk (
                 id SERIAL PRIMARY KEY,
                 nama TEXT,
                 namaPemilik TEXT NOT NULL DEFAULT '',
@@ -226,12 +229,13 @@ async function initializeDatabase() {
             const columnCheck = await kapalMasukPool.query(`
                 SELECT column_name
                 FROM information_schema.columns
-                WHERE table_name = 'kapal_masuk'
+                WHERE table_schema = 'kapal_masuk_schema'
+                AND table_name = 'kapal_masuk'
                 AND column_name = 'durasiBerlayar'
             `);
 
             if (columnCheck.rows.length === 0) {
-                await kapalMasukPool.query(`ALTER TABLE kapal_masuk ADD COLUMN durasiBerlayar TEXT`);
+                await kapalMasukPool.query(`ALTER TABLE kapal_masuk_schema.kapal_masuk ADD COLUMN durasiBerlayar TEXT`);
                 console.log('✅ Added missing column durasiBerlayar');
             } else {
                 console.log('Column durasiBerlayar already exists');
@@ -328,7 +332,7 @@ app.get('/debug/database', async (req, res) => {
         // Check kapal masuk database
         let kapalMasukData = [];
         try {
-            const kapalMasukResult = await kapalMasukPool.query('SELECT id, nama FROM kapal_masuk ORDER BY id DESC LIMIT 5');
+            const kapalMasukResult = await kapalMasukPool.query('SELECT id, nama FROM kapal_masuk_schema.kapal_masuk ORDER BY id DESC LIMIT 5');
             kapalMasukData = kapalMasukResult.rows;
             console.log('Kapal Masuk in database:', kapalMasukData.length);
         } catch (kapalMasukError) {
@@ -1286,14 +1290,32 @@ app.delete('/api/kapal-status/:id', authenticateToken, async (req, res) => {
 // Kapal Masuk routes (protected)
 app.get('/api/kapal-masuk', authenticateToken, async (req, res) => {
     try {
-        const result = await kapalMasukPool.query('SELECT * FROM kapal_masuk ORDER BY id DESC');
+        const result = await kapalMasukPool.query('SELECT * FROM kapal_masuk_schema.kapal_masuk ORDER BY id DESC');
         const kapalMasuk = result.rows;
 
-        // Parse JSON strings back to arrays and convert isFinished to boolean
+        // Parse JSON strings back to arrays and convert isFinished to boolean, and map to camelCase
         const parsedKapalMasuk = kapalMasuk.map(k => ({
-            ...k,
+            id: k.id,
+            nama: k.nama,
+            namaPemilik: k.namapemilik,
+            tandaSelar: k.tandaselar,
+            tandaPengenal: k.tandapengenal,
+            beratKotor: k.beratkotor,
+            beratBersih: k.beratbersih,
+            merekMesin: k.merekmesin,
+            nomorSeriMesin: k.nomorserimesin,
+            jenisAlatTangkap: k.jenisalattangkap,
+            tanggalInput: k.tanggalinput,
+            tanggalKeberangkatan: k.tanggalkeberangkatan,
+            totalHariPersiapan: k.totalharipersiapan,
+            tanggalBerangkat: k.tanggalberangkat,
+            tanggalKembali: k.tanggalkembali,
             listPersiapan: parseListPersiapan(k.listpersiapan),
-            isFinished: Boolean(k.isfinished)
+            isFinished: Boolean(k.isfinished),
+            perkiraanKeberangkatan: k.perkiraankeberangkatan,
+            durasiSelesaiPersiapan: k.durasiselesaiPersiapan,
+            durasiBerlayar: k.durasiberlayar,
+            statusKerja: k.statuskerja
         }));
 
         res.json({
@@ -1313,7 +1335,7 @@ app.get('/api/kapal-masuk', authenticateToken, async (req, res) => {
 app.get('/api/kapal-masuk/:id', authenticateToken, async (req, res) => {
     try {
         const { id } = req.params;
-        const result = await kapalMasukPool.query('SELECT * FROM kapal_masuk WHERE id = $1', [id]);
+        const result = await kapalMasukPool.query('SELECT * FROM kapal_masuk_schema.kapal_masuk WHERE id = $1', [id]);
         const kapalMasuk = result.rows[0];
 
         if (!kapalMasuk) {
@@ -1366,7 +1388,7 @@ app.post('/api/kapal-masuk', authenticateToken, async (req, res) => {
     try {
         const kapalMasukData = req.body;
         const result = await kapalMasukPool.query(`
-            INSERT INTO kapal_masuk (
+            INSERT INTO kapal_masuk_schema.kapal_masuk (
                 nama, namaPemilik, tandaSelar, tandaPengenal, beratKotor, beratBersih,
                 merekMesin, nomorSeriMesin, jenisAlatTangkap, tanggalInput,
                 tanggalKeberangkatan, totalHariPersiapan, tanggalBerangkat, tanggalKembali,
@@ -1413,7 +1435,7 @@ app.put('/api/kapal-masuk/:id', authenticateToken, async (req, res) => {
         const kapalMasukData = req.body;
 
         const result = await kapalMasukPool.query(`
-            UPDATE kapal_masuk SET
+            UPDATE kapal_masuk_schema.kapal_masuk SET
                 nama = $1, namaPemilik = $2, tandaSelar = $3, tandaPengenal = $4,
                 beratKotor = $5, beratBersih = $6, merekMesin = $7, nomorSeriMesin = $8,
                 jenisAlatTangkap = $9, tanggalInput = $10, tanggalKeberangkatan = $11,
@@ -1454,7 +1476,7 @@ app.put('/api/kapal-masuk/:id', authenticateToken, async (req, res) => {
 app.delete('/api/kapal-masuk/:id', authenticateToken, async (req, res) => {
     try {
         const { id } = req.params;
-        const result = await kapalMasukPool.query('DELETE FROM kapal_masuk WHERE id = $1', [id]);
+        const result = await kapalMasukPool.query('DELETE FROM kapal_masuk_schema.kapal_masuk WHERE id = $1', [id]);
 
         if (result.rowCount === 0) {
             return res.status(404).json({

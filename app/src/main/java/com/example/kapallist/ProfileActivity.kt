@@ -132,29 +132,24 @@ class ProfileActivity : AppCompatActivity() {
                 }
 
                 val tvKapal = TextView(this)
-                val formattedKembali = formatTanggal(kapal.tanggalKembali ?: "")  // Handle null dengan Elvis
+                val formattedKembali = if (kapal.tanggalKembali.isNullOrEmpty()) "Belum ditentukan" else formatTanggal(kapal.tanggalKembali!!)
                 val namaKapal = kapal.nama ?: ""
-                tvKapal.text = if (formattedKembali.isNotEmpty()) {
-                    "Nama: $namaKapal, Kembali: $formattedKembali"
-                } else {
-                    "Nama: $namaKapal"
-                }
+                tvKapal.text = "Nama: $namaKapal, Kembali: $formattedKembali"
                 tvKapal.textSize = 16f
                 tvKapal.layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT)
                 shipInfoLayout.addView(tvKapal)
 
-                // Add departure date under the ship name if available
-                if (!kapal.perkiraanKeberangkatan.isNullOrEmpty()) {
-                    val tvDeparture = TextView(this)
-                    tvDeparture.text = "Tanggal Keberangkatan: ${formatTanggal(kapal.perkiraanKeberangkatan!!)}"
-                    tvDeparture.textSize = 14f
-                    tvDeparture.setTextColor(ContextCompat.getColor(this, R.color.text_secondary))
-                    tvDeparture.layoutParams = LinearLayout.LayoutParams(
-                        LinearLayout.LayoutParams.MATCH_PARENT,
-                        LinearLayout.LayoutParams.WRAP_CONTENT
-                    )
-                    shipInfoLayout.addView(tvDeparture)
-                }
+                // Add departure date under the ship name always
+                val tvDeparture = TextView(this)
+                val formattedDeparture = if (kapal.perkiraanKeberangkatan.isNullOrEmpty()) "Belum ditentukan" else formatTanggal(kapal.perkiraanKeberangkatan!!)
+                tvDeparture.text = "Tanggal Keberangkatan: $formattedDeparture"
+                tvDeparture.textSize = 14f
+                tvDeparture.setTextColor(ContextCompat.getColor(this, R.color.text_secondary))
+                tvDeparture.layoutParams = LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.MATCH_PARENT,
+                    LinearLayout.LayoutParams.WRAP_CONTENT
+                )
+                shipInfoLayout.addView(tvDeparture)
 
 
 
