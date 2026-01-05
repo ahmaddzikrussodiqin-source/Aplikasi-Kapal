@@ -22,11 +22,15 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout
 import com.google.android.material.floatingactionbutton.FloatingActionButton
+import org.json.JSONArray
+import org.json.JSONObject
 import kotlinx.coroutines.launch
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import java.io.File
 import java.io.FileOutputStream
 import java.io.IOException
+
+
 
 class DocumentActivity : AppCompatActivity() {
 
@@ -161,6 +165,7 @@ class DocumentActivity : AppCompatActivity() {
                 Toast.makeText(this@DocumentActivity, "Gagal memuat data", Toast.LENGTH_LONG).show()
                 Log.e("DocumentActivity", "Load kapal error: ${e.message}")
             } finally {
+                Log.d("DocumentActivity", "Setting isRefreshing to false")
                 swipeRefreshLayout.isRefreshing = false
             }
         }
@@ -365,16 +370,20 @@ class DocumentActivity : AppCompatActivity() {
             return
         }
 
+        Log.d("DocumentActivity", "Fetching dokumen for kapalId: $kapalId")
         val response = ApiClient.apiService.getDokumenByKapalId("Bearer $token", kapalId)
+        Log.d("DocumentActivity", "Response code: ${response.code()}, message: ${response.message()}")
         if (response.isSuccessful) {
             val apiResponse = response.body()
+            Log.d("DocumentActivity", "API Response: success=${apiResponse?.success}, message=${apiResponse?.message}, data size=${apiResponse?.data?.size}")
             if (apiResponse?.success == true) {
                 val dokumenForKapal = apiResponse.data ?: emptyList()
+                Log.d("DocumentActivity", "Dokumen count: ${dokumenForKapal.size}")
                 listDokumen.clear()
                 listDokumen.addAll(dokumenForKapal)
                 setupDokumenAdapter()
             } else {
-                Toast.makeText(this@DocumentActivity, "Gagal memuat data dokumen", Toast.LENGTH_LONG).show()
+                Toast.makeText(this@DocumentActivity, "Gagal memuat data dokumen: ${apiResponse?.message}", Toast.LENGTH_LONG).show()
             }
         } else {
             Toast.makeText(this@DocumentActivity, "Gagal memuat data dokumen: ${response.message()}", Toast.LENGTH_LONG).show()
@@ -384,38 +393,44 @@ class DocumentActivity : AppCompatActivity() {
 
 
     private fun setupDokumenAdapter() {
-        currentDokumenAdapter = DokumenAdapter(
-            listDokumen.map { dokumenEntity ->
-                // Parse file paths from JSON
-                val pathGambar = mutableListOf<String>()
-                val pathPdf = mutableListOf<String>()
+        val dokumenKapalList = listDokumen.map { dokumenEntity ->
+            // Parse file paths from JSON
+            val pathGambar = mutableListOf<String>()
+            val pathPdf = mutableListOf<String>()
 
-                dokumenEntity.filePath?.let { filePathJson ->
-                    try {
-                        val moshi = com.squareup.moshi.Moshi.Builder().build()
-                        val adapter = moshi.adapter(Map::class.java)
-                        val fileData = adapter.fromJson(filePathJson) as? Map<*, *>
-                        fileData?.let { data ->
-                            (data["images"] as? List<*>)?.forEach { path ->
-                                path?.toString()?.let { pathGambar.add(it) }
-                            }
-                            (data["pdfs"] as? List<*>)?.forEach { path ->
-                                path?.toString()?.let { pathPdf.add(it) }
-                            }
-                        }
-                    } catch (e: Exception) {
-                        Log.e("DocumentActivity", "Error parsing file paths: ${e.message}")
+            dokumenEntity.filePath?.let { filePathJson ->
+                Log.d("DocumentActivity", "Parsing filePathJson: $filePathJson")
+                try {
+                    val jsonObject = JSONObject(filePathJson)
+                    val imagesArray = jsonObject.getJSONArray("images")
+                    for (i in 0 until imagesArray.length()) {
+                        pathGambar.add(imagesArray.getString(i))
                     }
+                    val pdfsArray = jsonObject.getJSONArray("pdfs")
+                    for (i in 0 until pdfsArray.length()) {
+                        pathPdf.add(pdfsArray.getString(i))
+                    }
+                } catch (e: Exception) {
+                    Log.e("DocumentActivity", "Error parsing file paths: ${e.message}, json: $filePathJson")
                 }
+            }
 
-                // Convert DokumenEntity to DokumenKapal for adapter
-                DokumenKapal(
-                    jenis = dokumenEntity.jenis ?: "",
-                    pathGambar = pathGambar,
-                    pathPdf = pathPdf,
-                    tanggalExpired = dokumenEntity.tanggalKadaluarsa ?: ""
-                )
-            }.toMutableList(),
+            // Convert DokumenEntity to DokumenKapal for adapter
+            DokumenKapal(
+                jenis = dokumenEntity.jenis ?: "",
+                pathGambar = pathGambar,
+                pathPdf = pathPdf,
+                tanggalExpired = dokumenEntity.tanggalKadaluarsa ?: ""
+            )
+        }.toMutableList()
+
+        Log.d("DocumentActivity", "Setting up DokumenAdapter with ${dokumenKapalList.size} items")
+        dokumenKapalList.forEachIndexed { index, dokumenKapal ->
+            Log.d("DocumentActivity", "Item $index: jenis=${dokumenKapal.jenis}, gambar=${dokumenKapal.pathGambar.size}, pdf=${dokumenKapal.pathPdf.size}")
+        }
+
+        currentDokumenAdapter = DokumenAdapter(
+            dokumenKapalList,
             onImagePreviewClick = { position ->
                 val dokumenKapal = currentDokumenAdapter?.getItem(position)
                 if (dokumenKapal?.pathGambar?.isNotEmpty() == true) {
@@ -441,6 +456,8 @@ class DocumentActivity : AppCompatActivity() {
             }
         )
         rvKapalList.adapter = currentDokumenAdapter
+        rvKapalList.invalidate()
+        Log.d("DocumentActivity", "Adapter set to RecyclerView")
     }
 
     private fun showShipList() {
@@ -552,19 +569,17 @@ class DocumentActivity : AppCompatActivity() {
 
         dokumenEntity.filePath?.let { filePathJson ->
             try {
-                val moshi = com.squareup.moshi.Moshi.Builder().build()
-                val adapter = moshi.adapter(Map::class.java)
-                val fileData = adapter.fromJson(filePathJson) as? Map<*, *>
-                fileData?.let { data ->
-                    (data["images"] as? List<*>)?.forEach { path ->
-                        path?.toString()?.let { existingPathGambar.add(it) }
-                    }
-                    (data["pdfs"] as? List<*>)?.forEach { path ->
-                        path?.toString()?.let { existingPathPdf.add(it) }
-                    }
+                val jsonObject = JSONObject(filePathJson)
+                val imagesArray = jsonObject.getJSONArray("images")
+                for (i in 0 until imagesArray.length()) {
+                    existingPathGambar.add(imagesArray.getString(i))
+                }
+                val pdfsArray = jsonObject.getJSONArray("pdfs")
+                for (i in 0 until pdfsArray.length()) {
+                    existingPathPdf.add(pdfsArray.getString(i))
                 }
             } catch (e: Exception) {
-                Log.e("DocumentActivity", "Error parsing existing file paths: ${e.message}")
+                Log.e("DocumentActivity", "Error parsing existing file paths: ${e.message}, json: $filePathJson")
             }
         }
 
@@ -620,11 +635,11 @@ class DocumentActivity : AppCompatActivity() {
                 val allPdfs = existingPathPdf + pendingPdfAdditions
 
                 // Serialize file paths as JSON for storage
-                val fileData = mapOf(
-                    "images" to allImages,
-                    "pdfs" to allPdfs
-                )
-                val filePathJson = com.squareup.moshi.Moshi.Builder().build().adapter(Map::class.java).toJson(fileData)
+                val jsonObject = JSONObject()
+                jsonObject.put("images", JSONArray(allImages))
+                jsonObject.put("pdfs", JSONArray(allPdfs))
+                val filePathJson = jsonObject.toString()
+                Log.d("DocumentActivity", "Saving filePathJson: $filePathJson")
 
                 val updatedDokumen = dokumenEntity.copy(
                     kapalId = dokumenEntity.kapalId ?: currentKapal?.id,
