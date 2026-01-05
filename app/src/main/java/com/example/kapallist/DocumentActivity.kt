@@ -97,17 +97,28 @@ class DocumentActivity : AppCompatActivity() {
 
         dokumenDatabase = DokumenDatabase.getDatabase(this)
 
-        savedKapalId = savedInstanceState?.getInt("currentKapalId", -1) ?: -1
+        val sharedPref = getSharedPreferences("document_prefs", MODE_PRIVATE)
+        savedKapalId = savedInstanceState?.getInt("currentKapalId", -1) ?: sharedPref.getInt("currentKapalId", -1)
     }
 
     override fun onResume() {
         super.onResume()
+        val sharedPref = getSharedPreferences("document_prefs", MODE_PRIVATE)
+        savedKapalId = sharedPref.getInt("currentKapalId", -1)
         loadKapalList()
     }
 
     override fun onSaveInstanceState(outState: Bundle) {
         super.onSaveInstanceState(outState)
-        currentKapal?.id?.let { outState.putInt("currentKapalId", it) }
+        currentKapal?.id?.let {
+            outState.putInt("currentKapalId", it)
+            val sharedPref = getSharedPreferences("document_prefs", MODE_PRIVATE)
+            sharedPref.edit().putInt("currentKapalId", it).apply()
+        }
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
     }
 
     private fun loadKapalList() {
@@ -129,12 +140,11 @@ class DocumentActivity : AppCompatActivity() {
                         listKapal.addAll(kapalEntities)
                         kapalAdapter.notifyDataSetChanged()
 
-                        if (savedKapalId != -1) {
+                        if (savedKapalId != -1 && currentKapal == null) {
                             val kapal = listKapal.find { it.id == savedKapalId }
                             if (kapal != null) {
                                 showDocumentList(kapal)
                             }
-                            savedKapalId = -1
                         }
                     } else {
                         Toast.makeText(this@DocumentActivity, "Gagal memuat data kapal", Toast.LENGTH_LONG).show()
@@ -193,7 +203,6 @@ class DocumentActivity : AppCompatActivity() {
             val dpd = android.app.DatePickerDialog(this, { _, y, m, d -> etTanggalExpired.setText("$d/${m + 1}/$y") }, c.get(java.util.Calendar.YEAR), c.get(java.util.Calendar.MONTH), c.get(java.util.Calendar.DAY_OF_MONTH))
             dpd.show()
         }
-
         val dialog = AlertDialog.Builder(this)
             .setView(dialogView)
             .setCancelable(true)
@@ -327,6 +336,8 @@ class DocumentActivity : AppCompatActivity() {
 
     private fun showDocumentList(kapal: KapalEntity) {
         currentKapal = kapal
+        val sharedPref = getSharedPreferences("document_prefs", MODE_PRIVATE)
+        sharedPref.edit().putInt("currentKapalId", kapal.id).apply()
         showingShipList = false
         loadDokumenForKapal(kapal.id)
         btnBack.setOnClickListener {
@@ -467,6 +478,8 @@ class DocumentActivity : AppCompatActivity() {
 
     private fun showShipList() {
         currentKapal = null
+        val sharedPref = getSharedPreferences("document_prefs", MODE_PRIVATE)
+        sharedPref.edit().remove("currentKapalId").apply()
         showingShipList = true
         rvKapalList.adapter = kapalAdapter
         btnBack.setOnClickListener { finish() }
