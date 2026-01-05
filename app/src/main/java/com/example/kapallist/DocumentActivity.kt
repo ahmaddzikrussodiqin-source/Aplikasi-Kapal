@@ -20,13 +20,13 @@ import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.DividerItemDecoration
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
+import androidx.swiperefreshlayout.widget.SwipeRefreshLayout
 import com.google.android.material.floatingactionbutton.FloatingActionButton
 import kotlinx.coroutines.launch
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import java.io.File
 import java.io.FileOutputStream
 import java.io.IOException
-import com.example.kapallist.DokumenDatabase
 
 class DocumentActivity : AppCompatActivity() {
 
@@ -37,13 +37,13 @@ class DocumentActivity : AppCompatActivity() {
     private lateinit var kapalAdapter: DocumentKapalAdapter
     private var listKapal = mutableListOf<KapalEntity>()
     private lateinit var database: KapalDatabase
-    private lateinit var dokumenDatabase: DokumenDatabase
 
     private var currentKapalPosition: Int = -1
     private var currentDokumenPosition: Int = -1
 
     private var currentDokumenAdapter: DokumenAdapter? = null
     private lateinit var rvKapalList: RecyclerView
+    private lateinit var swipeRefreshLayout: SwipeRefreshLayout
     private lateinit var btnBack: FloatingActionButton
     private lateinit var btnAddDokumen: FloatingActionButton
 
@@ -78,6 +78,7 @@ class DocumentActivity : AppCompatActivity() {
         }
 
         rvKapalList = findViewById(R.id.rv_kapal_list)
+        swipeRefreshLayout = findViewById(R.id.swipe_refresh_layout)
         btnBack = findViewById(R.id.btn_back)
         btnAddDokumen = findViewById(R.id.btn_add_dokumen)
         btnBack.setOnClickListener { finish() }
@@ -85,6 +86,10 @@ class DocumentActivity : AppCompatActivity() {
             if (currentKapal != null) {
                 showTambahDokumenDialog()
             }
+        }
+
+        swipeRefreshLayout.setOnRefreshListener {
+            refreshData()
         }
 
         kapalAdapter = DocumentKapalAdapter(listKapal) { kapal ->
@@ -95,8 +100,6 @@ class DocumentActivity : AppCompatActivity() {
         rvKapalList.adapter = kapalAdapter
         rvKapalList.addItemDecoration(DividerItemDecoration(this, LinearLayoutManager.VERTICAL))
 
-        dokumenDatabase = DokumenDatabase.getDatabase(this)
-
         val sharedPref = getSharedPreferences("document_prefs", MODE_PRIVATE)
         savedKapalId = savedInstanceState?.getInt("currentKapalId", -1) ?: sharedPref.getInt("currentKapalId", -1)
     }
@@ -106,6 +109,8 @@ class DocumentActivity : AppCompatActivity() {
         val sharedPref = getSharedPreferences("document_prefs", MODE_PRIVATE)
         savedKapalId = sharedPref.getInt("currentKapalId", -1)
         loadKapalList()
+        // Reload documents if we're currently viewing a ship's documents
+        currentKapal?.let { loadDokumenForKapal(it.id) }
     }
 
     override fun onSaveInstanceState(outState: Bundle) {
@@ -155,8 +160,15 @@ class DocumentActivity : AppCompatActivity() {
             } catch (e: Exception) {
                 Toast.makeText(this@DocumentActivity, "Gagal memuat data", Toast.LENGTH_LONG).show()
                 Log.e("DocumentActivity", "Load kapal error: ${e.message}")
+            } finally {
+                swipeRefreshLayout.isRefreshing = false
             }
         }
+    }
+
+    private fun refreshData() {
+        loadKapalList()
+        currentKapal?.let { loadDokumenForKapal(it.id) }
     }
 
     fun setCurrentDokumenPosition(position: Int) {
@@ -236,15 +248,8 @@ class DocumentActivity : AppCompatActivity() {
                             val apiResponse = response.body()
                             if (apiResponse?.success == true) {
                                 Toast.makeText(this@DocumentActivity, "Dokumen berhasil ditambahkan", Toast.LENGTH_SHORT).show()
-                                // Add the created document to the list and update adapter immediately
-                                apiResponse.data?.let { createdDokumen ->
-                                    listDokumen.add(createdDokumen)
-                                    setupDokumenAdapter()
-                                    // Insert to local DB
-                                    lifecycleScope.launch {
-                                        dokumenDatabase.dokumenDao().insertDokumen(createdDokumen)
-                                    }
-                                }
+                                // Reload documents from API to reflect changes
+                                currentKapal?.id?.let { loadDokumenForKapal(it) }
                                 dialog.dismiss()
                             } else {
                                 Toast.makeText(this@DocumentActivity, "Gagal menambah dokumen", Toast.LENGTH_SHORT).show()
@@ -368,11 +373,6 @@ class DocumentActivity : AppCompatActivity() {
                 listDokumen.clear()
                 listDokumen.addAll(dokumenForKapal)
                 setupDokumenAdapter()
-                // Save to local DB
-                dokumenDatabase.dokumenDao().deleteAllDokumen() // Clear old
-                for (dok in dokumenForKapal) {
-                    dokumenDatabase.dokumenDao().insertDokumen(dok)
-                }
             } else {
                 Toast.makeText(this@DocumentActivity, "Gagal memuat data dokumen", Toast.LENGTH_LONG).show()
             }
@@ -381,24 +381,7 @@ class DocumentActivity : AppCompatActivity() {
         }
     }
 
-    private suspend fun syncDokumenFromApi(kapalId: Int) {
-        // Load from API without updating UI
-        val sharedPref = getSharedPreferences("login_prefs", MODE_PRIVATE)
-        val token = sharedPref.getString("token", "") ?: return
 
-        val response = ApiClient.apiService.getDokumenByKapalId("Bearer $token", kapalId)
-        if (response.isSuccessful) {
-            val apiResponse = response.body()
-            if (apiResponse?.success == true) {
-                val dokumenForKapal = apiResponse.data ?: emptyList()
-                // Update local DB
-                dokumenDatabase.dokumenDao().deleteAllDokumen()
-                for (dok in dokumenForKapal) {
-                    dokumenDatabase.dokumenDao().insertDokumen(dok)
-                }
-            }
-        }
-    }
 
     private fun setupDokumenAdapter() {
         currentDokumenAdapter = DokumenAdapter(
@@ -462,8 +445,6 @@ class DocumentActivity : AppCompatActivity() {
 
     private fun showShipList() {
         currentKapal = null
-        val sharedPref = getSharedPreferences("document_prefs", MODE_PRIVATE)
-        sharedPref.edit().remove("currentKapalId").apply()
         showingShipList = true
         rvKapalList.adapter = kapalAdapter
         btnBack.setOnClickListener { finish() }
@@ -668,16 +649,8 @@ class DocumentActivity : AppCompatActivity() {
                             val apiResponse = response.body()
                             if (apiResponse?.success == true) {
                                 Toast.makeText(this@DocumentActivity, "Dokumen berhasil diperbarui", Toast.LENGTH_SHORT).show()
-                                // Update the document in the list and refresh adapter immediately
-                                val index = listDokumen.indexOfFirst { it.id == dokumenEntity.id }
-                                if (index != -1) {
-                                    listDokumen[index] = updatedDokumen
-                                    setupDokumenAdapter()
-                                    // Update local DB
-                                    lifecycleScope.launch {
-                                        dokumenDatabase.dokumenDao().updateDokumen(updatedDokumen)
-                                    }
-                                }
+                                // Reload documents from API to reflect changes
+                                currentKapal?.id?.let { loadDokumenForKapal(it) }
                                 dialog.dismiss()
                             } else {
                                 Toast.makeText(this@DocumentActivity, "Gagal memperbarui dokumen", Toast.LENGTH_SHORT).show()
