@@ -19,7 +19,11 @@ class ImagePagerAdapter(private val context: Context, private val images: Mutabl
 
     override fun onBindViewHolder(holder: ViewHolder, position: Int) {
         val imagePath = images[position]
-        if (File(imagePath).exists()) {
+        if (imagePath.startsWith("http")) {
+            // Load from URL
+            Glide.with(holder.itemView.context).load(imagePath).into(holder.imageView)
+        } else if (File(imagePath).exists()) {
+            // Load from local file
             Glide.with(holder.itemView.context).load(File(imagePath)).into(holder.imageView)
         }
         holder.tvImageNumber.text = "${position + 1}/${images.size}"

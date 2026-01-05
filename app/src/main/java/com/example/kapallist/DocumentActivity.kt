@@ -241,25 +241,27 @@ class DocumentActivity : AppCompatActivity() {
                 }
             } ?: data?.data?.let { uris.add(it) }
 
-            uris.forEach { uri ->
-                val mimeType = contentResolver.getType(uri) ?: ""
-                val filePath = saveFileToInternalStorage(uri, mimeType)
-                if (filePath != null) {
-                    if (mimeType.startsWith("image")) pendingGambarAdditions.add(filePath)
-                    else if (mimeType.contains("pdf")) pendingPdfAdditions.add(filePath)
-                    else Toast.makeText(this, "File tipe ini tidak didukung", Toast.LENGTH_SHORT).show()
-                } else {
-                    Toast.makeText(this, "Gagal menyimpan file", Toast.LENGTH_SHORT).show()
+            lifecycleScope.launch {
+                uris.forEach { uri ->
+                    val mimeType = contentResolver.getType(uri) ?: ""
+                    val fileUrl = uploadFileToServer(uri, mimeType)
+                    if (fileUrl != null) {
+                        if (mimeType.startsWith("image")) pendingGambarAdditions.add(fileUrl)
+                        else if (mimeType.contains("pdf")) pendingPdfAdditions.add(fileUrl)
+                        else Toast.makeText(this@DocumentActivity, "File tipe ini tidak didukung", Toast.LENGTH_SHORT).show()
+                    } else {
+                        Toast.makeText(this@DocumentActivity, "Gagal upload file", Toast.LENGTH_SHORT).show()
+                    }
                 }
+                // Update the counts in the dialog
+                updateFileCounts()
+                // Note: No database update here - changes only happen on save
+                currentDokumenPosition = -1
             }
-            // Update the counts in the dialog
-            updateFileCounts()
-            // Note: No database update here - changes only happen on save
-            currentDokumenPosition = -1
         }
     }
 
-    private fun saveFileToInternalStorage(uri: Uri, mimeType: String): String? {
+    private suspend fun uploadFileToServer(uri: Uri, mimeType: String): String? {
         return try {
             val inputStream = contentResolver.openInputStream(uri) ?: return null
             val extension = when {
@@ -267,12 +269,33 @@ class DocumentActivity : AppCompatActivity() {
                 mimeType.startsWith("image") -> ".jpg"
                 else -> ""
             }
-            val file = File(filesDir, "file_${System.currentTimeMillis()}$extension")
-            FileOutputStream(file).use { outputStream -> inputStream.copyTo(outputStream) }
-            inputStream.close()
-            file.absolutePath
-        } catch (e: IOException) {
-            Log.e("DocumentActivity", "Error simpan file: ${e.message}")
+            val fileName = "file_${System.currentTimeMillis()}$extension"
+
+            // Create MultipartBody.Part
+            val requestBody = okhttp3.RequestBody.create(
+                okhttp3.MediaType.parse(mimeType),
+                inputStream.readBytes()
+            )
+            val filePart = okhttp3.MultipartBody.Part.createFormData("file", fileName, requestBody)
+
+            // Upload to server
+            val sharedPref = getSharedPreferences("login_prefs", MODE_PRIVATE)
+            val token = sharedPref.getString("token", "") ?: return null
+
+            val response = ApiClient.apiService.uploadFile("Bearer $token", filePart)
+            if (response.isSuccessful) {
+                val apiResponse = response.body()
+                if (apiResponse?.success == true) {
+                    val filename = apiResponse.data?.filename
+                    if (filename != null) {
+                        return "${Config.BASE_URL}/uploads/$filename"
+                    }
+                }
+            }
+            Log.e("DocumentActivity", "Upload failed: ${response.message()}")
+            null
+        } catch (e: Exception) {
+            Log.e("DocumentActivity", "Error upload file: ${e.message}")
             null
         }
     }
@@ -407,24 +430,34 @@ class DocumentActivity : AppCompatActivity() {
     }
 
     private fun openPdf(pdfPath: String) {
-        val file = File(pdfPath)
-        if (file.exists()) {
-            val uri = androidx.core.content.FileProvider.getUriForFile(
-                this,
-                "${packageName}.provider",
-                file
-            )
-            val intent = Intent(Intent.ACTION_VIEW).apply {
-                setDataAndType(uri, "application/pdf")
-                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-            }
+        if (pdfPath.startsWith("http")) {
+            // Open URL in browser
+            val intent = Intent(Intent.ACTION_VIEW, android.net.Uri.parse(pdfPath))
             try {
                 startActivity(intent)
             } catch (e: Exception) {
                 Toast.makeText(this, "Tidak ada aplikasi untuk membuka PDF", Toast.LENGTH_SHORT).show()
             }
         } else {
-            Toast.makeText(this, "File PDF tidak ditemukan", Toast.LENGTH_SHORT).show()
+            val file = File(pdfPath)
+            if (file.exists()) {
+                val uri = androidx.core.content.FileProvider.getUriForFile(
+                    this,
+                    "${packageName}.provider",
+                    file
+                )
+                val intent = Intent(Intent.ACTION_VIEW).apply {
+                    setDataAndType(uri, "application/pdf")
+                    addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                }
+                try {
+                    startActivity(intent)
+                } catch (e: Exception) {
+                    Toast.makeText(this, "Tidak ada aplikasi untuk membuka PDF", Toast.LENGTH_SHORT).show()
+                }
+            } else {
+                Toast.makeText(this, "File PDF tidak ditemukan", Toast.LENGTH_SHORT).show()
+            }
         }
     }
 
@@ -434,7 +467,14 @@ class DocumentActivity : AppCompatActivity() {
             return
         }
 
-        val pdfNames = pdfPaths.map { File(it).name }
+        val pdfNames = pdfPaths.map { path ->
+            if (path.startsWith("http")) {
+                // Extract filename from URL
+                path.substringAfterLast('/')
+            } else {
+                File(path).name
+            }
+        }
         val builder = AlertDialog.Builder(this)
         builder.setTitle("Pilih PDF")
         builder.setItems(pdfNames.toTypedArray()) { _, which ->

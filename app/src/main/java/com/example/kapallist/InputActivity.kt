@@ -206,9 +206,14 @@ class InputActivity : AppCompatActivity() {
                                     val existingKapal = apiResponse.data
                                     if (existingKapal != null) {
                                         // Update only the edited fields
+                                        val parsedDate = try {
+                                            LocalDate.parse(tanggalKembali, DateTimeFormatter.ISO_LOCAL_DATE)
+                                        } catch (e: Exception) {
+                                            LocalDate.parse(tanggalKembali, DateTimeFormatter.ofPattern("d/M/yyyy"))
+                                        }
                                         val updatedKapalMasukEntity = existingKapal.copy(
                                             nama = namaKapal,
-                                            tanggalKembali = LocalDate.parse(tanggalKembali, DateTimeFormatter.ofPattern("d/M/yyyy")).toString(),
+                                            tanggalKembali = parsedDate.toString(),
                                             listPersiapan = listPersiapan,
                                             perkiraanKeberangkatan = existingKapal.perkiraanKeberangkatan
                                         )
@@ -231,10 +236,15 @@ class InputActivity : AppCompatActivity() {
                             }
                         } else {
                             // Create new kapal masuk
+                            val parsedDate = try {
+                                LocalDate.parse(tanggalKembali, DateTimeFormatter.ISO_LOCAL_DATE)
+                            } catch (e: Exception) {
+                                LocalDate.parse(tanggalKembali, DateTimeFormatter.ofPattern("d/M/yyyy"))
+                            }
                             val kapalMasukEntity = KapalMasukEntity(
                                 id = 0,  // Selalu 0 untuk entry baru
                                 nama = namaKapal,
-                                tanggalKembali = LocalDate.parse(tanggalKembali, DateTimeFormatter.ofPattern("d/M/yyyy")).toString(),
+                                tanggalKembali = parsedDate.toString(),
                                 listPersiapan = listPersiapan,
                                 tanggalInput = java.text.SimpleDateFormat("dd/MM/yyyy", java.util.Locale.getDefault()).format(java.util.Date()),
                                 statusKerja = "persiapan",  // Default status
@@ -295,13 +305,19 @@ class InputActivity : AppCompatActivity() {
                         if (kapal != null) {
                             etNamaKapal.setText(kapal.nama)
 
-                            // Debug logging
-                            Log.d("InputActivity", "kapal.tanggalKembali: ${kapal.tanggalKembali}")
-                            Log.d("InputActivity", "kapal.tanggalKembali type: ${kapal.tanggalKembali?.javaClass?.simpleName}")
-
-                            // Handle date display - format LocalDate to DD/MM/YYYY
-                            val formattedDate = kapal.tanggalKembali?.format(DateTimeFormatter.ofPattern("d/M/yyyy")) ?: ""
-                            Log.d("InputActivity", "formattedDate: '$formattedDate'")
+                            // Handle date display - parse string to LocalDate then format to DD/MM/YYYY
+                            val localDate = kapal.tanggalKembali?.let {
+                                try {
+                                    LocalDate.parse(it, DateTimeFormatter.ISO_LOCAL_DATE)
+                                } catch (e: Exception) {
+                                    try {
+                                        LocalDate.parse(it, DateTimeFormatter.ofPattern("d/M/yyyy"))
+                                    } catch (e2: Exception) {
+                                        null
+                                    }
+                                }
+                            }
+                            val formattedDate = localDate?.format(DateTimeFormatter.ofPattern("d/M/yyyy")) ?: ""
                             etTanggalKembali.setText(formattedDate)
                             listPersiapan.clear()
                             listPersiapan.addAll(kapal.listPersiapan ?: emptyList())

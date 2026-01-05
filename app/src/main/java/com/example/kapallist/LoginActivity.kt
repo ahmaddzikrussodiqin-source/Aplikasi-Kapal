@@ -2,6 +2,7 @@ package com.example.kapallist
 
 import android.content.Intent
 import android.os.Bundle
+import android.view.View
 import android.widget.Button
 import android.widget.EditText
 import android.widget.Toast
@@ -35,6 +36,8 @@ class LoginActivity : AppCompatActivity() {
         val etPassword = findViewById<EditText>(R.id.et_password)
         val btnLogin = findViewById<Button>(R.id.btn_login)
         val btnRegister = findViewById<Button>(R.id.btn_register)
+
+        btnRegister.visibility = View.GONE
 
         btnLogin.setOnClickListener {
             val userId = etUserId.text.toString().trim()

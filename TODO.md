@@ -1,4 +1,8 @@
-- [x] Hide et_perkiraan_keberangkatan when editMode in InputActivity
-- [x] Remove loading perkiraanKeberangkatan in loadKapalDataForEdit
-- [x] Update btnSimpan to not change perkiraanKeberangkatan when editMode
-- [x] Condition etPerkiraanKeberangkatan.setOnClickListener to only when !editMode
+- [x] Fix date parsing in InputActivity.kt for editing ship preparation
+  - [x] Update loadKapalDataForEdit to correctly parse and format tanggalKembali
+  - [x] Update save logic to handle both YYYY-MM-DD and DD/MM/YYYY formats
+- [x] Fix document file sync across devices
+  - [x] Backend: Add static file serving for uploads directory
+  - [x] Android: Modify DocumentActivity to upload files to server instead of saving locally
+  - [x] Update file path storage to use server URLs
+  - [x] Update file display logic to load from server URLs
