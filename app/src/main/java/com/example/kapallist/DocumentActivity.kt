@@ -348,23 +348,7 @@ class DocumentActivity : AppCompatActivity() {
 
     private fun loadDokumenForKapal(kapalId: Int) {
         lifecycleScope.launch {
-            try {
-                // First, try to load from local DB
-                val localDokumen = dokumenDatabase.dokumenDao().getAllDokumen().filter { it.kapalId == kapalId }
-                if (localDokumen.isNotEmpty()) {
-                    listDokumen.clear()
-                    listDokumen.addAll(localDokumen)
-                    setupDokumenAdapter()
-                    // Sync from API in background
-                    syncDokumenFromApi(kapalId)
-                } else {
-                    // Load from API
-                    loadFromApi(kapalId)
-                }
-            } catch (e: Exception) {
-                // If local DB fails, load from API
-                loadFromApi(kapalId)
-            }
+            loadFromApi(kapalId)
         }
     }
 
