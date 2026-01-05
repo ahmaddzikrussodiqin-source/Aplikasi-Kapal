@@ -36,16 +36,21 @@ const kapalPool = new Pool({
     allowExitOnIdle: true
 });
 
-// Dokumen database pool
-const dokumenPool = new Pool({
-    connectionString: process.env.DATABASE_URL_DOKUMEN,
-    ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
-    connectionTimeoutMillis: 10000,
-    query_timeout: 10000,
-    idleTimeoutMillis: 30000,
-    max: 20,
-    allowExitOnIdle: true
-});
+// Dokumen database pool (optional)
+let dokumenPool = null;
+if (process.env.DATABASE_URL_DOKUMEN) {
+    dokumenPool = new Pool({
+        connectionString: process.env.DATABASE_URL_DOKUMEN,
+        ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
+        connectionTimeoutMillis: 10000,
+        query_timeout: 10000,
+        idleTimeoutMillis: 30000,
+        max: 20,
+        allowExitOnIdle: true
+    });
+} else {
+    console.log('⚠️  DATABASE_URL_DOKUMEN not set - Dokumen functionality will be disabled');
+}
 
 // Kapal Masuk database pool
 const kapalMasukPool = new Pool({
@@ -178,23 +183,27 @@ async function initializeDatabase() {
         }
         console.log('✅ Kapal tables created successfully');
 
-        // Initialize Dokumen database
-        console.log('📝 Creating dokumen table...');
-        await dokumenPool.query(`
-            CREATE TABLE IF NOT EXISTS dokumen (
-                id SERIAL PRIMARY KEY,
-                kapalId INTEGER NOT NULL,
-                nama TEXT NOT NULL,
-                jenis TEXT NOT NULL,
-                nomor TEXT,
-                tanggalTerbit TEXT,
-                tanggalKadaluarsa TEXT,
-                status TEXT NOT NULL DEFAULT 'aktif',
-                filePath TEXT,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            )
-        `);
-        console.log('✅ Dokumen table created successfully');
+        // Initialize Dokumen database (optional)
+        if (dokumenPool) {
+            console.log('📝 Creating dokumen table...');
+            await dokumenPool.query(`
+                CREATE TABLE IF NOT EXISTS dokumen (
+                    id SERIAL PRIMARY KEY,
+                    kapalId INTEGER NOT NULL,
+                    nama TEXT NOT NULL,
+                    jenis TEXT NOT NULL,
+                    nomor TEXT,
+                    tanggalTerbit TEXT,
+                    tanggalKadaluarsa TEXT,
+                    status TEXT NOT NULL DEFAULT 'aktif',
+                    filePath TEXT,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            `);
+            console.log('✅ Dokumen table created successfully');
+        } else {
+            console.log('⚠️  Skipping dokumen table creation - DATABASE_URL_DOKUMEN not configured');
+        }
 
         // Initialize Kapal Masuk database
         console.log('📝 Creating kapal_masuk table...');
@@ -255,12 +264,17 @@ async function initializeDatabase() {
 }
 
 // Connect to databases and initialize
-Promise.all([
+const connectPromises = [
     usersPool.connect(),
     kapalPool.connect(),
-    dokumenPool.connect(),
     kapalMasukPool.connect()
-]).then(() => {
+];
+
+if (dokumenPool) {
+    connectPromises.push(dokumenPool.connect());
+}
+
+Promise.all(connectPromises).then(() => {
     console.log('Connected to all PostgreSQL databases.');
     initializeDatabase();
 }).catch(err => {
@@ -325,9 +339,13 @@ app.get('/debug/database', async (req, res) => {
         // Check dokumen database
         let dokumenData = [];
         try {
-            const dokumenResult = await dokumenPool.query('SELECT id, nama FROM dokumen ORDER BY id DESC LIMIT 5');
-            dokumenData = dokumenResult.rows;
-            console.log('Dokumen in database:', dokumenData.length);
+            if (dokumenPool) {
+                const dokumenResult = await dokumenPool.query('SELECT id, nama FROM dokumen ORDER BY id DESC LIMIT 5');
+                dokumenData = dokumenResult.rows;
+                console.log('Dokumen in database:', dokumenData.length);
+            } else {
+                console.log('Dokumen database not configured');
+            }
         } catch (dokumenError) {
             console.log('Dokumen database error:', dokumenError.message);
         }
@@ -977,6 +995,13 @@ app.get('/api/kapal/names', authenticateToken, async (req, res) => {
 
 // Dokumen routes (protected)
 app.get('/api/dokumen', authenticateToken, async (req, res) => {
+    if (!dokumenPool) {
+        return res.status(503).json({
+            success: false,
+            message: 'Dokumen database not configured'
+        });
+    }
+
     try {
         const result = await dokumenPool.query('SELECT * FROM dokumen ORDER BY id DESC');
         res.json({
@@ -994,6 +1019,13 @@ app.get('/api/dokumen', authenticateToken, async (req, res) => {
 });
 
 app.get('/api/dokumen/kapal/:kapalId', authenticateToken, async (req, res) => {
+    if (!dokumenPool) {
+        return res.status(503).json({
+            success: false,
+            message: 'Dokumen database not configured'
+        });
+    }
+
     try {
         const { kapalId } = req.params;
         const result = await dokumenPool.query('SELECT * FROM dokumen WHERE kapalId = $1 ORDER BY id DESC', [kapalId]);
@@ -1012,6 +1044,13 @@ app.get('/api/dokumen/kapal/:kapalId', authenticateToken, async (req, res) => {
 });
 
 app.get('/api/dokumen/:id', authenticateToken, async (req, res) => {
+    if (!dokumenPool) {
+        return res.status(503).json({
+            success: false,
+            message: 'Dokumen database not configured'
+        });
+    }
+
     try {
         const { id } = req.params;
         const result = await dokumenPool.query('SELECT * FROM dokumen WHERE id = $1', [id]);
@@ -1039,6 +1078,13 @@ app.get('/api/dokumen/:id', authenticateToken, async (req, res) => {
 });
 
 app.post('/api/dokumen', authenticateToken, async (req, res) => {
+    if (!dokumenPool) {
+        return res.status(503).json({
+            success: false,
+            message: 'Dokumen database not configured'
+        });
+    }
+
     try {
         const dokumenData = req.body;
         const result = await dokumenPool.query(`
@@ -1067,6 +1113,13 @@ app.post('/api/dokumen', authenticateToken, async (req, res) => {
 });
 
 app.put('/api/dokumen/:id', authenticateToken, async (req, res) => {
+    if (!dokumenPool) {
+        return res.status(503).json({
+            success: false,
+            message: 'Dokumen database not configured'
+        });
+    }
+
     try {
         const { id } = req.params;
         const dokumenData = req.body;
@@ -1103,6 +1156,13 @@ app.put('/api/dokumen/:id', authenticateToken, async (req, res) => {
 });
 
 app.delete('/api/dokumen/:id', authenticateToken, async (req, res) => {
+    if (!dokumenPool) {
+        return res.status(503).json({
+            success: false,
+            message: 'Dokumen database not configured'
+        });
+    }
+
     try {
         const { id } = req.params;
         const result = await dokumenPool.query('DELETE FROM dokumen WHERE id = $1', [id]);
@@ -1548,12 +1608,17 @@ app.listen(PORT, () => {
 process.on('SIGINT', async () => {
     console.log('Shutting down gracefully...');
     try {
-        await Promise.all([
+        const endPromises = [
             usersPool.end(),
             kapalPool.end(),
-            dokumenPool.end(),
             kapalMasukPool.end()
-        ]);
+        ];
+
+        if (dokumenPool) {
+            endPromises.push(dokumenPool.end());
+        }
+
+        await Promise.all(endPromises);
         console.log('All database connections closed.');
         process.exit(0);
     } catch (err) {

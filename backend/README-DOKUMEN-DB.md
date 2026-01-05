@@ -19,8 +19,10 @@ The KapalList application uses separate PostgreSQL databases for different data 
 3. Add **4 PostgreSQL databases**:
    - Database 1: Users
    - Database 2: Kapal
-   - Database 3: Dokumen (for images/PDFs)
+   - Database 3: Dokumen (for images/PDFs) - **Optional**
    - Database 4: Kapal Masuk
+
+**Note:** The Dokumen database is optional. If you don't set up DATABASE_URL_DOKUMEN, the application will still work but document upload features will be disabled.
 
 ### 2. Set Environment Variables
 
@@ -115,12 +117,12 @@ Images and PDFs are stored as JSON in the `filePath` column:
 
 ## Checklist
 
-- [ ] 4 PostgreSQL databases created in Railway
-- [ ] Environment variables set
+- [ ] 4 PostgreSQL databases created in Railway (Dokumen is optional)
+- [ ] Environment variables set (DATABASE_URL_DOKUMEN optional)
 - [ ] Application deployed
-- [ ] Dokumen database initialized (`setup-dokumen-db.js`)
-- [ ] Database connection tested (`test-dokumen-db.js`)
-- [ ] File upload functionality verified
+- [ ] Dokumen database initialized (`setup-dokumen-db.js`) - **Optional**
+- [ ] Database connection tested (`test-dokumen-db.js`) - **Optional**
+- [ ] File upload functionality verified - **Optional**
 - [ ] Cross-device synchronization tested
 
 ## Troubleshooting
