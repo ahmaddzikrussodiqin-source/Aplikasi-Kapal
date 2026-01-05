@@ -56,6 +56,7 @@ class DocumentActivity : AppCompatActivity() {
     private var currentPendingGambarDeletions = mutableListOf<Int>()
     private var currentPendingPdfDeletions = mutableListOf<Int>()
     private var currentDokumen: DokumenKapal? = null
+    private var savedKapalId: Int = -1
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -91,11 +92,18 @@ class DocumentActivity : AppCompatActivity() {
         rvKapalList.layoutManager = LinearLayoutManager(this)
         rvKapalList.adapter = kapalAdapter
         rvKapalList.addItemDecoration(DividerItemDecoration(this, LinearLayoutManager.VERTICAL))
+
+        savedKapalId = savedInstanceState?.getInt("currentKapalId", -1) ?: -1
     }
 
     override fun onResume() {
         super.onResume()
         loadKapalList()
+    }
+
+    override fun onSaveInstanceState(outState: Bundle) {
+        super.onSaveInstanceState(outState)
+        currentKapal?.id?.let { outState.putInt("currentKapalId", it) }
     }
 
     private fun loadKapalList() {
@@ -116,6 +124,14 @@ class DocumentActivity : AppCompatActivity() {
                         listKapal.clear()
                         listKapal.addAll(kapalEntities)
                         kapalAdapter.notifyDataSetChanged()
+
+                        if (savedKapalId != -1) {
+                            val kapal = listKapal.find { it.id == savedKapalId }
+                            if (kapal != null) {
+                                showDocumentList(kapal)
+                            }
+                            savedKapalId = -1
+                        }
                     } else {
                         Toast.makeText(this@DocumentActivity, "Gagal memuat data kapal", Toast.LENGTH_LONG).show()
                     }
@@ -156,7 +172,7 @@ class DocumentActivity : AppCompatActivity() {
 
         val dialog = AlertDialog.Builder(this)
             .setView(dialogView)
-            .setCancelable(true)
+            .setCancelable(false)
             .create()
 
         dialog.show()
@@ -494,6 +510,7 @@ class DocumentActivity : AppCompatActivity() {
         val tvGambarList = dialogView.findViewById<TextView>(R.id.tv_gambar_list)
         val tvPdfList = dialogView.findViewById<TextView>(R.id.tv_pdf_list)
         val btnSimpanDokumen = dialogView.findViewById<Button>(R.id.btn_simpan_edit)
+        val btnBatal = dialogView.findViewById<Button>(R.id.btn_batal_edit)
 
         etJenisDokumen.setText(dokumenEntity.jenis)
         etTanggalExpired.setText(dokumenEntity.tanggalKadaluarsa)
@@ -566,7 +583,7 @@ class DocumentActivity : AppCompatActivity() {
 
         val dialog = AlertDialog.Builder(this)
             .setView(dialogView)
-            .setCancelable(true)
+            .setCancelable(false)
             .create()
 
         btnSimpanDokumen.setOnClickListener {

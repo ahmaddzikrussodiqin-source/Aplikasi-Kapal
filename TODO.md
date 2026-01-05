@@ -1,8 +1,9 @@
-- [x] Fix date parsing in InputActivity.kt for editing ship preparation
-  - [x] Update loadKapalDataForEdit to correctly parse and format tanggalKembali
-  - [x] Update save logic to handle both YYYY-MM-DD and DD/MM/YYYY formats
-- [x] Fix document file sync across devices
-  - [x] Backend: Add static file serving for uploads directory
-  - [x] Android: Modify DocumentActivity to upload files to server instead of saving locally
-  - [x] Update file path storage to use server URLs
-  - [x] Update file display logic to load from server URLs
+# TODO
+
+## Current Task: Fix DocumentActivity state preservation
+
+- [x] Add savedKapalId variable
+- [x] Implement onSaveInstanceState to save currentKapal.id
+- [x] Restore savedKapalId in onCreate
+- [x] In loadKapalList success, if savedKapalId != -1, showDocumentList for that kapal
+- [x] Test the fix
