@@ -26,6 +26,7 @@ import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import java.io.File
 import java.io.FileOutputStream
 import java.io.IOException
+import com.example.kapallist.DokumenDatabase
 
 class DocumentActivity : AppCompatActivity() {
 
@@ -36,6 +37,7 @@ class DocumentActivity : AppCompatActivity() {
     private lateinit var kapalAdapter: DocumentKapalAdapter
     private var listKapal = mutableListOf<KapalEntity>()
     private lateinit var database: KapalDatabase
+    private lateinit var dokumenDatabase: DokumenDatabase
 
     private var currentKapalPosition: Int = -1
     private var currentDokumenPosition: Int = -1
@@ -92,6 +94,8 @@ class DocumentActivity : AppCompatActivity() {
         rvKapalList.layoutManager = LinearLayoutManager(this)
         rvKapalList.adapter = kapalAdapter
         rvKapalList.addItemDecoration(DividerItemDecoration(this, LinearLayoutManager.VERTICAL))
+
+        dokumenDatabase = DokumenDatabase.getDatabase(this)
 
         savedKapalId = savedInstanceState?.getInt("currentKapalId", -1) ?: -1
     }
@@ -227,6 +231,10 @@ class DocumentActivity : AppCompatActivity() {
                                 apiResponse.data?.let { createdDokumen ->
                                     listDokumen.add(createdDokumen)
                                     setupDokumenAdapter()
+                                    // Insert to local DB
+                                    lifecycleScope.launch {
+                                        dokumenDatabase.dokumenDao().insertDokumen(createdDokumen)
+                                    }
                                 }
                                 dialog.dismiss()
                             } else {
@@ -330,30 +338,69 @@ class DocumentActivity : AppCompatActivity() {
     private fun loadDokumenForKapal(kapalId: Int) {
         lifecycleScope.launch {
             try {
-                val sharedPref = getSharedPreferences("login_prefs", MODE_PRIVATE)
-                val token = sharedPref.getString("token", "") ?: ""
-                if (token.isEmpty()) {
-                    Toast.makeText(this@DocumentActivity, "Token tidak ditemukan", Toast.LENGTH_SHORT).show()
-                    return@launch
-                }
-
-                val response = ApiClient.apiService.getDokumenByKapalId("Bearer $token", kapalId)
-                if (response.isSuccessful) {
-                    val apiResponse = response.body()
-                    if (apiResponse?.success == true) {
-                        val dokumenForKapal = apiResponse.data ?: emptyList()
-                        listDokumen.clear()
-                        listDokumen.addAll(dokumenForKapal)
-                        setupDokumenAdapter()
-                    } else {
-                        Toast.makeText(this@DocumentActivity, "Gagal memuat data dokumen", Toast.LENGTH_LONG).show()
-                    }
+                // First, try to load from local DB
+                val localDokumen = dokumenDatabase.dokumenDao().getAllDokumen().filter { it.kapalId == kapalId }
+                if (localDokumen.isNotEmpty()) {
+                    listDokumen.clear()
+                    listDokumen.addAll(localDokumen)
+                    setupDokumenAdapter()
+                    // Sync from API in background
+                    syncDokumenFromApi(kapalId)
                 } else {
-                    Toast.makeText(this@DocumentActivity, "Gagal memuat data dokumen: ${response.message()}", Toast.LENGTH_LONG).show()
+                    // Load from API
+                    loadFromApi(kapalId)
                 }
             } catch (e: Exception) {
+                // If local DB fails, load from API
+                loadFromApi(kapalId)
+            }
+        }
+    }
+
+    private suspend fun loadFromApi(kapalId: Int) {
+        val sharedPref = getSharedPreferences("login_prefs", MODE_PRIVATE)
+        val token = sharedPref.getString("token", "") ?: ""
+        if (token.isEmpty()) {
+            Toast.makeText(this@DocumentActivity, "Token tidak ditemukan", Toast.LENGTH_SHORT).show()
+            return
+        }
+
+        val response = ApiClient.apiService.getDokumenByKapalId("Bearer $token", kapalId)
+        if (response.isSuccessful) {
+            val apiResponse = response.body()
+            if (apiResponse?.success == true) {
+                val dokumenForKapal = apiResponse.data ?: emptyList()
+                listDokumen.clear()
+                listDokumen.addAll(dokumenForKapal)
+                setupDokumenAdapter()
+                // Save to local DB
+                dokumenDatabase.dokumenDao().deleteAllDokumen() // Clear old
+                for (dok in dokumenForKapal) {
+                    dokumenDatabase.dokumenDao().insertDokumen(dok)
+                }
+            } else {
                 Toast.makeText(this@DocumentActivity, "Gagal memuat data dokumen", Toast.LENGTH_LONG).show()
-                Log.e("DocumentActivity", "Load dokumen error: ${e.message}")
+            }
+        } else {
+            Toast.makeText(this@DocumentActivity, "Gagal memuat data dokumen: ${response.message()}", Toast.LENGTH_LONG).show()
+        }
+    }
+
+    private suspend fun syncDokumenFromApi(kapalId: Int) {
+        // Load from API without updating UI
+        val sharedPref = getSharedPreferences("login_prefs", MODE_PRIVATE)
+        val token = sharedPref.getString("token", "") ?: return
+
+        val response = ApiClient.apiService.getDokumenByKapalId("Bearer $token", kapalId)
+        if (response.isSuccessful) {
+            val apiResponse = response.body()
+            if (apiResponse?.success == true) {
+                val dokumenForKapal = apiResponse.data ?: emptyList()
+                // Update local DB
+                dokumenDatabase.dokumenDao().deleteAllDokumen()
+                for (dok in dokumenForKapal) {
+                    dokumenDatabase.dokumenDao().insertDokumen(dok)
+                }
             }
         }
     }
@@ -629,6 +676,10 @@ class DocumentActivity : AppCompatActivity() {
                                 if (index != -1) {
                                     listDokumen[index] = updatedDokumen
                                     setupDokumenAdapter()
+                                    // Update local DB
+                                    lifecycleScope.launch {
+                                        dokumenDatabase.dokumenDao().updateDokumen(updatedDokumen)
+                                    }
                                 }
                                 dialog.dismiss()
                             } else {
