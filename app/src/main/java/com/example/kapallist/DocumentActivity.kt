@@ -273,7 +273,7 @@ class DocumentActivity : AppCompatActivity() {
 
             // Create MultipartBody.Part
             val requestBody = okhttp3.RequestBody.create(
-                okhttp3.MediaType.parse(mimeType),
+                mimeType.toMediaTypeOrNull(),
                 inputStream.readBytes()
             )
             val filePart = okhttp3.MultipartBody.Part.createFormData("file", fileName, requestBody)

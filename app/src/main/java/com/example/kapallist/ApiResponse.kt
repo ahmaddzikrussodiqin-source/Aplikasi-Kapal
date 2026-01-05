@@ -21,3 +21,9 @@ data class LoginResponse(
     val token: String,
     val user: User
 )
+
+data class UploadResponse(
+    val filename: String,
+    val path: String,
+    val size: Long
+)

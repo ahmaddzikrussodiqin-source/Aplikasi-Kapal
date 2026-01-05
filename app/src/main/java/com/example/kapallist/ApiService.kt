@@ -59,7 +59,7 @@ interface ApiService {
     // File upload
     @Multipart
     @POST("api/upload")
-    suspend fun uploadFile(@Header("Authorization") token: String, @Part file: MultipartBody.Part): Response<ApiResponse<String>>
+    suspend fun uploadFile(@Header("Authorization") token: String, @Part file: MultipartBody.Part): Response<ApiResponse<UploadResponse>>
 
     // User management
     @GET("api/users")
