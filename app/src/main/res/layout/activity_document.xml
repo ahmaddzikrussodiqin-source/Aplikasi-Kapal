@@ -20,14 +20,22 @@
         android:layout_marginTop="32dp"
         android:layout_marginBottom="16dp" />
 
-    <!-- RecyclerView untuk menampilkan daftar kapal -->
-    <androidx.recyclerview.widget.RecyclerView
-        android:id="@+id/rv_kapal_list"
+    <!-- SwipeRefreshLayout untuk pull-to-refresh -->
+    <androidx.swiperefreshlayout.widget.SwipeRefreshLayout
+        android:id="@+id/swipe_refresh_layout"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:layout_below="@id/tv_title"
-        android:clipToPadding="false"
-        android:paddingBottom="72dp" />
+        android:layout_below="@id/tv_title">
+
+        <!-- RecyclerView untuk menampilkan daftar kapal -->
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/rv_kapal_list"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:clipToPadding="false"
+            android:paddingBottom="72dp" />
+
+    </androidx.swiperefreshlayout.widget.SwipeRefreshLayout>
 
     <!-- Tombol Back berupa FloatingActionButton di kiri bawah -->
     <com.google.android.material.floatingactionbutton.FloatingActionButton

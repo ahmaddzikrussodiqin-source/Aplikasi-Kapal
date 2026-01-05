@@ -70,6 +70,9 @@ dependencies {
     // ViewPager2
     implementation("androidx.viewpager2:viewpager2:1.1.0")
 
+    // SwipeRefreshLayout
+    implementation("androidx.swiperefreshlayout:swiperefreshlayout:1.1.0")
+
     // Activity dan Fragment KTX
     implementation("androidx.activity:activity-ktx:1.9.0")
     implementation("androidx.fragment:fragment-ktx:1.8.0")
