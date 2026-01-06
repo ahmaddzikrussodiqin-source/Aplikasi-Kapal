@@ -369,7 +369,21 @@ class DocumentActivity : AppCompatActivity() {
         val btnSimpanDokumen = dialogView.findViewById<Button>(R.id.btn_simpan_dokumen)
 
         etTanggalExpired.setOnClickListener {
+            val existing = dokumenEntity.tanggalKadaluarsa
             val c = java.util.Calendar.getInstance()
+            if (existing != null) {
+                try {
+                    val parts = existing.split("/")
+                    if (parts.size == 3) {
+                        val day = parts[0].toInt()
+                        val month = parts[1].toInt() - 1
+                        val year = parts[2].toInt()
+                        c.set(year, month, day)
+                    }
+                } catch (e: Exception) {
+                    // Use current date
+                }
+            }
             val dpd = android.app.DatePickerDialog(this, { _, y, m, d -> etTanggalExpired.setText("$d/${m + 1}/$y") }, c.get(java.util.Calendar.YEAR), c.get(java.util.Calendar.MONTH), c.get(java.util.Calendar.DAY_OF_MONTH))
             dpd.show()
         }
