@@ -69,8 +69,14 @@ class DokumenAdapter(
 
     override fun getItemCount(): Int = dokumenList.size
 
-    public fun getItem(position: Int): DokumenKapal {
+    fun getItem(position: Int): DokumenKapal {
         return dokumenList[position]
+    }
+
+    fun updateList(newList: List<DokumenKapal>) {
+        dokumenList.clear()
+        dokumenList.addAll(newList)
+        notifyDataSetChanged()
     }
 
     private fun isExpiringSoon(tanggalExpired: String?): Boolean {

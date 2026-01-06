@@ -185,9 +185,12 @@ async function initializeDatabase() {
 
         // Initialize Dokumen database (optional)
         if (dokumenPool) {
-            console.log('📝 Creating dokumen table...');
+            console.log('📝 Creating dokumen schema and table...');
             await dokumenPool.query(`
-                CREATE TABLE IF NOT EXISTS dokumen (
+                CREATE SCHEMA IF NOT EXISTS dokumen_schema
+            `);
+            await dokumenPool.query(`
+                CREATE TABLE IF NOT EXISTS dokumen_schema.dokumen (
                     id SERIAL PRIMARY KEY,
                     kapalId INTEGER NOT NULL,
                     nama TEXT NOT NULL,
@@ -200,9 +203,9 @@ async function initializeDatabase() {
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 )
             `);
-            console.log('✅ Dokumen table created successfully');
+            console.log('✅ Dokumen schema and table created successfully');
         } else {
-            console.log('⚠️  Skipping dokumen table creation - DATABASE_URL_DOKUMEN not configured');
+            console.log('⚠️  Skipping dokumen schema and table creation - DATABASE_URL_DOKUMEN not configured');
         }
 
         // Initialize Kapal Masuk database
@@ -340,7 +343,7 @@ app.get('/debug/database', async (req, res) => {
         let dokumenData = [];
         try {
             if (dokumenPool) {
-                const dokumenResult = await dokumenPool.query('SELECT id, nama FROM dokumen ORDER BY id DESC LIMIT 5');
+                const dokumenResult = await dokumenPool.query('SELECT id, nama FROM dokumen_schema.dokumen ORDER BY id DESC LIMIT 5');
                 dokumenData = dokumenResult.rows;
                 console.log('Dokumen in database:', dokumenData.length);
             } else {
@@ -1003,7 +1006,7 @@ app.get('/api/dokumen', authenticateToken, async (req, res) => {
     }
 
     try {
-        const result = await dokumenPool.query('SELECT * FROM dokumen ORDER BY id DESC');
+        const result = await dokumenPool.query('SELECT * FROM dokumen_schema.dokumen ORDER BY id DESC');
         res.json({
             success: true,
             message: 'Dokumen retrieved successfully',
@@ -1028,7 +1031,7 @@ app.get('/api/dokumen/kapal/:kapalId', authenticateToken, async (req, res) => {
 
     try {
         const { kapalId } = req.params;
-        const result = await dokumenPool.query('SELECT * FROM dokumen WHERE kapalId = $1 ORDER BY id DESC', [kapalId]);
+        const result = await dokumenPool.query('SELECT * FROM dokumen_schema.dokumen WHERE kapalId = $1 ORDER BY id DESC', [kapalId]);
         res.json({
             success: true,
             message: 'Dokumen retrieved successfully',
@@ -1053,7 +1056,7 @@ app.get('/api/dokumen/:id', authenticateToken, async (req, res) => {
 
     try {
         const { id } = req.params;
-        const result = await dokumenPool.query('SELECT * FROM dokumen WHERE id = $1', [id]);
+        const result = await dokumenPool.query('SELECT * FROM dokumen_schema.dokumen WHERE id = $1', [id]);
         const dokumen = result.rows[0];
 
         if (!dokumen) {
@@ -1088,7 +1091,7 @@ app.post('/api/dokumen', authenticateToken, async (req, res) => {
     try {
         const dokumenData = req.body;
         const result = await dokumenPool.query(`
-            INSERT INTO dokumen (
+            INSERT INTO dokumen_schema.dokumen (
                 kapalId, nama, jenis, nomor, tanggalTerbit, tanggalKadaluarsa, status, filePath
             ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
             RETURNING *
@@ -1125,7 +1128,7 @@ app.put('/api/dokumen/:id', authenticateToken, async (req, res) => {
         const dokumenData = req.body;
 
         const result = await dokumenPool.query(`
-            UPDATE dokumen SET
+            UPDATE dokumen_schema.dokumen SET
                 kapalId = $1, nama = $2, jenis = $3, nomor = $4,
                 tanggalTerbit = $5, tanggalKadaluarsa = $6, status = $7, filePath = $8
             WHERE id = $9
@@ -1165,7 +1168,7 @@ app.delete('/api/dokumen/:id', authenticateToken, async (req, res) => {
 
     try {
         const { id } = req.params;
-        const result = await dokumenPool.query('DELETE FROM dokumen WHERE id = $1', [id]);
+        const result = await dokumenPool.query('DELETE FROM dokumen_schema.dokumen WHERE id = $1', [id]);
 
         if (result.rowCount === 0) {
             return res.status(404).json({

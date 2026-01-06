@@ -23,6 +23,9 @@ interface DokumenDao {
     @Query("SELECT * FROM dokumen_table WHERE id = :id")
     suspend fun getDokumenById(id: Int): DokumenEntity?
 
+    @Query("SELECT * FROM dokumen_table WHERE kapalId = :kapalId")
+    suspend fun getDokumenByKapalId(kapalId: Int): List<DokumenEntity>
+
     @Query("DELETE FROM dokumen_table")
     suspend fun deleteAllDokumen()
 }
