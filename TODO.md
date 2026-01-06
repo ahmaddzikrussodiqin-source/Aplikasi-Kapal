@@ -1,23 +1,16 @@
-# TODO: Fix UI Update Issue in DocumentActivity
+# KapalList Project TODO
 
-## Problem
-- Tanggal (date), gambar (images), and PDF pada UI tidak ter update after editing documents.
-- Logs show API updates successfully, but RecyclerView doesn't refresh.
+## Railway Deployment Fix
 
-## Root Cause
-- setupDokumenAdapter creates a new DokumenAdapter each time and sets it to RecyclerView.
-- Although setting a new adapter should rebind views, in practice, it may not refresh existing views properly.
-- Reusing the same adapter instance and calling notifyDataSetChanged ensures views are updated.
+- [x] Analyze Railway deploy logs error: PostgreSQL authentication failed for dokumen database
+- [x] Identify root cause: Dokumen database connection failing prevents app startup
+- [x] Implement fix: Make dokumen database connection optional using Promise.allSettled
+- [x] Update server.js to handle optional dokumen connection gracefully
+- [ ] Test the fix by deploying to Railway
+- [ ] Verify app starts successfully without dokumen database
 
-## Plan
-- Modify setupDokumenAdapter to reuse currentDokumenAdapter if exists, else create new.
-- Use updateList to update data and notify changes.
-- Remove unnecessary rvKapalList.invalidate().
+## Next Steps
 
-## Steps
-1. Update setupDokumenAdapter in DocumentActivity.kt to reuse adapter.
-2. Test the fix by running the app and editing a document.
-3. Verify that date, image count, and PDF count update in the list after save.
-
-## Files to Edit
-- app/src/main/java/com/example/kapallist/DocumentActivity.kt
+- Deploy the updated code to Railway
+- Check if the authentication error is resolved
+- If dokumen database is needed, ensure correct DATABASE_URL_DOKUMEN is set in Railway variables

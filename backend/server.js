@@ -277,8 +277,32 @@ if (dokumenPool) {
     connectPromises.push(dokumenPool.connect());
 }
 
-Promise.all(connectPromises).then(() => {
-    console.log('Connected to all PostgreSQL databases.');
+Promise.allSettled(connectPromises).then((results) => {
+    // Check connection results
+    const usersResult = results[0];
+    const kapalResult = results[1];
+    const kapalMasukResult = results[2];
+    let dokumenResult = null;
+
+    if (dokumenPool) {
+        dokumenResult = results[3];
+        if (dokumenResult.status === 'rejected') {
+            console.error('Failed to connect to dokumen database:', dokumenResult.reason.message);
+            console.log('Dokumen functionality will be disabled.');
+            dokumenPool = null;
+        }
+    }
+
+    // Check if required databases connected successfully
+    if (usersResult.status === 'rejected' || kapalResult.status === 'rejected' || kapalMasukResult.status === 'rejected') {
+        console.error('Error connecting to required databases:');
+        if (usersResult.status === 'rejected') console.error('Users DB:', usersResult.reason.message);
+        if (kapalResult.status === 'rejected') console.error('Kapal DB:', kapalResult.reason.message);
+        if (kapalMasukResult.status === 'rejected') console.error('Kapal Masuk DB:', kapalMasukResult.reason.message);
+        throw new Error('Required database connection failed');
+    }
+
+    console.log('Connected to all required PostgreSQL databases.');
     initializeDatabase();
 }).catch(err => {
     console.error('Error connecting to databases:', err);
