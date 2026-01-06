@@ -1,35 +1,39 @@
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:orientation="vertical"
     android:padding="16dp">
 
-    <EditText
-        android:id="@+id/et_jenis_dokumen_dialog"
+    <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:hint="Jenis Dokumen (mis: Manifest)"
-        android:layout_marginTop="100dp"/>
+        android:orientation="vertical">
 
-    <EditText
-        android:id="@+id/et_tanggal_expired_dialog"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:hint="Tanggal Expired"
-        android:inputType="none"
-        android:focusable="false"
-        android:clickable="true"
-        android:layout_marginTop="8dp" />
+        <EditText
+            android:id="@+id/et_jenis_dokumen_dialog"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="Jenis Dokumen (mis: Manifest)"
+            android:layout_marginTop="16dp"/>
 
-    <Button
-        style="@style/RoundedButton"
-        android:textColor="@color/black"
-        android:id="@+id/btn_simpan_dokumen"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="Simpan Dokumen"
-        android:layout_marginTop="16dp" />
+        <EditText
+            android:id="@+id/et_tanggal_expired_dialog"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="Tanggal Expired"
+            android:inputType="none"
+            android:focusable="false"
+            android:clickable="true"
+            android:layout_marginTop="8dp" />
 
+        <Button
+            style="@style/RoundedButton"
+            android:textColor="@color/black"
+            android:id="@+id/btn_simpan_dokumen"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Simpan Dokumen"
+            android:layout_marginTop="16dp" />
 
+    </LinearLayout>
 
-</LinearLayout>
+</ScrollView>

@@ -44,7 +44,7 @@ class DocumentActivity : AppCompatActivity() {
 
     private lateinit var kapalAdapter: DocumentKapalAdapter
     private var listKapal = mutableListOf<KapalEntity>()
-    private lateinit var database: DocumentDatabase
+    private lateinit var database: KapalDatabase
     private lateinit var apiService: ApiService
 
     private var currentKapalPosition: Int = -1
@@ -86,7 +86,7 @@ class DocumentActivity : AppCompatActivity() {
             )
         }
 
-        database = DocumentDatabase.getDatabase(this)
+        database = KapalDatabase.getDatabase(this)
         apiService = ApiClient.apiService
 
         rvKapalList = findViewById(R.id.rv_kapal_list)
@@ -162,7 +162,8 @@ class DocumentActivity : AppCompatActivity() {
     private fun createKapal(nama: String) {
         lifecycleScope.launch {
             val newKapal = KapalEntity(nama = nama)
-            database.kapalDao().insertKapal(newKapal)
+            val insertedId = database.kapalDao().insertKapal(newKapal)
+            newKapal.id = insertedId.toInt()
             listKapal.add(newKapal)
             kapalAdapter.notifyDataSetChanged()
             Toast.makeText(this@DocumentActivity, "Kapal berhasil ditambahkan", Toast.LENGTH_SHORT).show()
@@ -185,32 +186,8 @@ class DocumentActivity : AppCompatActivity() {
     }
 
     private fun loadDokumenForKapal(kapalId: Int) {
-        val token = getToken()
-        if (token.isNotEmpty()) {
-            lifecycleScope.launch {
-                try {
-                    val response = apiService.getDokumenByKapalId("Bearer $token", kapalId)
-                    if (response.isSuccessful && response.body()?.data?.isNotEmpty() == true) {
-                        val apiDokumen = response.body()?.data ?: emptyList()
-                        // Save to local DB for cache
-                        database.dokumenDao().deleteAllDokumen() // Clear local dokumen
-                        apiDokumen.forEach { database.dokumenDao().insertDokumen(it) }
-                        listDokumen.clear()
-                        listDokumen.addAll(apiDokumen)
-                        setupDokumenAdapter()
-                    } else {
-                        // Fallback to local
-                        loadFromLocal(kapalId)
-                    }
-                } catch (e: Exception) {
-                    // Fallback to local
-                    loadFromLocal(kapalId)
-                }
-            }
-        } else {
-            // No token, load from local
-            loadFromLocal(kapalId)
-        }
+        // Always load from local to ensure updated data is shown
+        loadFromLocal(kapalId)
     }
 
     private fun loadFromLocal(kapalId: Int) {
@@ -369,22 +346,12 @@ class DocumentActivity : AppCompatActivity() {
         val btnSimpanDokumen = dialogView.findViewById<Button>(R.id.btn_simpan_dokumen)
 
         etTanggalExpired.setOnClickListener {
-            val existing = dokumenEntity.tanggalKadaluarsa
             val c = java.util.Calendar.getInstance()
-            if (existing != null) {
-                try {
-                    val parts = existing.split("/")
-                    if (parts.size == 3) {
-                        val day = parts[0].toInt()
-                        val month = parts[1].toInt() - 1
-                        val year = parts[2].toInt()
-                        c.set(year, month, day)
-                    }
-                } catch (e: Exception) {
-                    // Use current date
-                }
-            }
-            val dpd = android.app.DatePickerDialog(this, { _, y, m, d -> etTanggalExpired.setText("$d/${m + 1}/$y") }, c.get(java.util.Calendar.YEAR), c.get(java.util.Calendar.MONTH), c.get(java.util.Calendar.DAY_OF_MONTH))
+            val dpd = android.app.DatePickerDialog(this, { _, y, m, d ->
+                val newDate = "$d/${m + 1}/$y"
+                etTanggalExpired.setText(newDate)
+                Log.d("DocumentActivity", "Date changed to: $newDate")
+            }, c.get(java.util.Calendar.YEAR), c.get(java.util.Calendar.MONTH), c.get(java.util.Calendar.DAY_OF_MONTH))
             dpd.show()
         }
         val dialog = AlertDialog.Builder(this)
@@ -393,9 +360,12 @@ class DocumentActivity : AppCompatActivity() {
             .create()
 
         btnSimpanDokumen.setOnClickListener {
+            Log.d("DocumentActivity", "Save button clicked")
             val jenis = etJenisDokumen.text.toString()
             val tanggalExpired = etTanggalExpired.text.toString()
+            Log.d("DocumentActivity", "jenis='$jenis', tanggalExpired='$tanggalExpired', currentKapal=${currentKapal?.nama}")
             if (jenis.isNotEmpty() && currentKapal != null) {
+                Log.d("DocumentActivity", "Proceeding to save dokumen")
                 // For new documents, filePath can be empty or null
                 val newDokumen = DokumenEntity(
                     kapalId = currentKapal!!.id,
@@ -415,35 +385,64 @@ class DocumentActivity : AppCompatActivity() {
                                 val createdDokumen = response.body()?.data
                                 if (createdDokumen != null) {
                                     // Save to local
-                                    database.dokumenDao().insertDokumen(createdDokumen)
-                                    Toast.makeText(this@DocumentActivity, "Dokumen berhasil ditambahkan", Toast.LENGTH_SHORT).show()
-                                    currentKapal?.id?.let { loadDokumenForKapal(it) }
-                                    dialog.dismiss()
+                                    try {
+                                        database.dokumenDao().insertDokumen(createdDokumen)
+                                        Toast.makeText(this@DocumentActivity, "Dokumen berhasil ditambahkan", Toast.LENGTH_SHORT).show()
+                                        currentKapal?.id?.let { loadDokumenForKapal(it) }
+                                        dialog.dismiss()
+                                    } catch (e: Exception) {
+                                        Log.e("DocumentActivity", "Failed to insert created dokumen: ${e.message}")
+                                        Toast.makeText(this@DocumentActivity, "Failed to save locally", Toast.LENGTH_SHORT).show()
+                                    }
                                 } else {
-                                    Toast.makeText(this@DocumentActivity, "Failed to create dokumen", Toast.LENGTH_SHORT).show()
+                                    // API succeeded but no data, fallback to local
+                                    try {
+                                        database.dokumenDao().insertDokumen(newDokumen)
+                                        Toast.makeText(this@DocumentActivity, "Dokumen berhasil ditambahkan (local only)", Toast.LENGTH_SHORT).show()
+                                        currentKapal?.id?.let { loadDokumenForKapal(it) }
+                                        dialog.dismiss()
+                                    } catch (e: Exception) {
+                                        Log.e("DocumentActivity", "Failed to insert new dokumen: ${e.message}")
+                                        Toast.makeText(this@DocumentActivity, "Failed to save locally", Toast.LENGTH_SHORT).show()
+                                    }
                                 }
                             } else {
                                 Toast.makeText(this@DocumentActivity, "Failed to sync to online DB", Toast.LENGTH_SHORT).show()
                                 // Fallback to local
-                                database.dokumenDao().insertDokumen(newDokumen)
-                                Toast.makeText(this@DocumentActivity, "Dokumen berhasil ditambahkan (local only)", Toast.LENGTH_SHORT).show()
-                                currentKapal?.id?.let { loadDokumenForKapal(it) }
-                                dialog.dismiss()
+                                try {
+                                    database.dokumenDao().insertDokumen(newDokumen)
+                                    Toast.makeText(this@DocumentActivity, "Dokumen berhasil ditambahkan (local only)", Toast.LENGTH_SHORT).show()
+                                    currentKapal?.id?.let { loadDokumenForKapal(it) }
+                                    dialog.dismiss()
+                                } catch (e: Exception) {
+                                    Log.e("DocumentActivity", "Failed to insert new dokumen fallback: ${e.message}")
+                                    Toast.makeText(this@DocumentActivity, "Failed to save locally", Toast.LENGTH_SHORT).show()
+                                }
                             }
                         } catch (e: Exception) {
                             Toast.makeText(this@DocumentActivity, "Failed to sync to online DB", Toast.LENGTH_SHORT).show()
                             // Fallback to local
-                            database.dokumenDao().insertDokumen(newDokumen)
-                            Toast.makeText(this@DocumentActivity, "Dokumen berhasil ditambahkan (local only)", Toast.LENGTH_SHORT).show()
-                            currentKapal?.id?.let { loadDokumenForKapal(it) }
-                            dialog.dismiss()
+                            try {
+                                database.dokumenDao().insertDokumen(newDokumen)
+                                Toast.makeText(this@DocumentActivity, "Dokumen berhasil ditambahkan (local only)", Toast.LENGTH_SHORT).show()
+                                currentKapal?.id?.let { loadDokumenForKapal(it) }
+                                dialog.dismiss()
+                            } catch (e: Exception) {
+                                Log.e("DocumentActivity", "Failed to insert new dokumen catch: ${e.message}")
+                                Toast.makeText(this@DocumentActivity, "Failed to save locally", Toast.LENGTH_SHORT).show()
+                            }
                         }
                     } else {
                         // No token, save local only
-                        database.dokumenDao().insertDokumen(newDokumen)
-                        Toast.makeText(this@DocumentActivity, "Dokumen berhasil ditambahkan", Toast.LENGTH_SHORT).show()
-                        currentKapal?.id?.let { loadDokumenForKapal(it) }
-                        dialog.dismiss()
+                        try {
+                            database.dokumenDao().insertDokumen(newDokumen)
+                            Toast.makeText(this@DocumentActivity, "Dokumen berhasil ditambahkan", Toast.LENGTH_SHORT).show()
+                            currentKapal?.id?.let { loadDokumenForKapal(it) }
+                            dialog.dismiss()
+                        } catch (e: Exception) {
+                            Log.e("DocumentActivity", "Failed to insert new dokumen no token: ${e.message}")
+                            Toast.makeText(this@DocumentActivity, "Failed to save locally", Toast.LENGTH_SHORT).show()
+                        }
                     }
                 }
             } else {
@@ -510,7 +509,11 @@ class DocumentActivity : AppCompatActivity() {
 
         etTanggalExpired.setOnClickListener {
             val c = java.util.Calendar.getInstance()
-            val dpd = android.app.DatePickerDialog(this, { _, y, m, d -> etTanggalExpired.setText("$d/${m + 1}/$y") }, c.get(java.util.Calendar.YEAR), c.get(java.util.Calendar.MONTH), c.get(java.util.Calendar.DAY_OF_MONTH))
+            val dpd = android.app.DatePickerDialog(this, { _, y, m, d ->
+                val newDate = "$d/${m + 1}/$y"
+                etTanggalExpired.setText(newDate)
+                Log.d("DocumentActivity", "Date changed to: $newDate")
+            }, c.get(java.util.Calendar.YEAR), c.get(java.util.Calendar.MONTH), c.get(java.util.Calendar.DAY_OF_MONTH))
             dpd.show()
         }
 
@@ -568,6 +571,8 @@ class DocumentActivity : AppCompatActivity() {
                     // tanggalTerbit is preserved from the original dokumenEntity
                 )
 
+                Log.d("DocumentActivity", "Updating document: jenis=$jenis, tanggalExpired=$tanggalExpired, images=${allImages.size}, pdfs=${allPdfs.size}")
+
                 lifecycleScope.launch {
                     val token = getToken()
                     if (token.isNotEmpty()) {
@@ -577,14 +582,26 @@ class DocumentActivity : AppCompatActivity() {
                                 // Update local
                                 database.dokumenDao().updateDokumen(updatedDokumen)
                                 Toast.makeText(this@DocumentActivity, "Dokumen berhasil diperbarui", Toast.LENGTH_SHORT).show()
-                                currentKapal?.id?.let { loadDokumenForKapal(it) }
+                                Log.d("DocumentActivity", "Document updated successfully")
+                                // Update the list and refresh adapter without fetching from API
+                                val index = listDokumen.indexOfFirst { it.id == updatedDokumen.id }
+                                if (index != -1) {
+                                    listDokumen[index] = updatedDokumen
+                                }
+                                setupDokumenAdapter()
                                 dialog.dismiss()
                             } else {
                                 Toast.makeText(this@DocumentActivity, "Failed to sync to online DB", Toast.LENGTH_SHORT).show()
                                 // Fallback to local
                                 database.dokumenDao().updateDokumen(updatedDokumen)
                                 Toast.makeText(this@DocumentActivity, "Dokumen berhasil diperbarui (local only)", Toast.LENGTH_SHORT).show()
-                                currentKapal?.id?.let { loadDokumenForKapal(it) }
+                                Log.d("DocumentActivity", "Document updated successfully (local only)")
+                                // Update the list and refresh adapter
+                                val index = listDokumen.indexOfFirst { it.id == updatedDokumen.id }
+                                if (index != -1) {
+                                    listDokumen[index] = updatedDokumen
+                                }
+                                setupDokumenAdapter()
                                 dialog.dismiss()
                             }
                         } catch (e: Exception) {
@@ -592,14 +609,26 @@ class DocumentActivity : AppCompatActivity() {
                             // Fallback to local
                             database.dokumenDao().updateDokumen(updatedDokumen)
                             Toast.makeText(this@DocumentActivity, "Dokumen berhasil diperbarui (local only)", Toast.LENGTH_SHORT).show()
-                            currentKapal?.id?.let { loadDokumenForKapal(it) }
+                            Log.d("DocumentActivity", "Document updated successfully (local only)")
+                            // Update the list and refresh adapter
+                            val index = listDokumen.indexOfFirst { it.id == updatedDokumen.id }
+                            if (index != -1) {
+                                listDokumen[index] = updatedDokumen
+                            }
+                            setupDokumenAdapter()
                             dialog.dismiss()
                         }
                     } else {
                         // No token, update local only
                         database.dokumenDao().updateDokumen(updatedDokumen)
                         Toast.makeText(this@DocumentActivity, "Dokumen berhasil diperbarui", Toast.LENGTH_SHORT).show()
-                        currentKapal?.id?.let { loadDokumenForKapal(it) }
+                        Log.d("DocumentActivity", "Document updated successfully")
+                        // Update the list and refresh adapter
+                        val index = listDokumen.indexOfFirst { it.id == updatedDokumen.id }
+                        if (index != -1) {
+                            listDokumen[index] = updatedDokumen
+                        }
+                        setupDokumenAdapter()
                         dialog.dismiss()
                     }
                 }

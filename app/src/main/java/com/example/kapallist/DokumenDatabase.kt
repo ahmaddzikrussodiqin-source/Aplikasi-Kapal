@@ -6,10 +6,11 @@ import androidx.room.Room
 import androidx.room.RoomDatabase
 import androidx.room.TypeConverters
 
-@Database(entities = [DokumenEntity::class], version = 1, exportSchema = false)
+@Database(entities = [DokumenEntity::class, KapalEntity::class], version = 1, exportSchema = false)
 @TypeConverters(Converters::class)
 abstract class DokumenDatabase : RoomDatabase() {
     abstract fun dokumenDao(): DokumenDao
+    abstract fun kapalDao(): KapalDao
 
     companion object {
         @Volatile
