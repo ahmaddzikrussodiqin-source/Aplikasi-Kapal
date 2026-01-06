@@ -999,9 +999,10 @@ app.get('/api/kapal/names', authenticateToken, async (req, res) => {
 // Dokumen routes (protected)
 app.get('/api/dokumen', authenticateToken, async (req, res) => {
     if (!dokumenPool) {
-        return res.status(503).json({
-            success: false,
-            message: 'Dokumen database not configured'
+        return res.json({
+            success: true,
+            message: 'Dokumen database not configured - no documents available',
+            data: []
         });
     }
 
@@ -1023,9 +1024,10 @@ app.get('/api/dokumen', authenticateToken, async (req, res) => {
 
 app.get('/api/dokumen/kapal/:kapalId', authenticateToken, async (req, res) => {
     if (!dokumenPool) {
-        return res.status(503).json({
-            success: false,
-            message: 'Dokumen database not configured'
+        return res.json({
+            success: true,
+            message: 'Dokumen database not configured - no documents available for this ship',
+            data: []
         });
     }
 

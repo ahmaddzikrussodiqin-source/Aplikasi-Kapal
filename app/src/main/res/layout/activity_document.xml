@@ -51,20 +51,6 @@
         android:scaleX="1.2"
         android:scaleY="1.2" />
 
-    <!-- Tombol Add Kapal berupa FloatingActionButton di tengah bawah -->
-    <com.google.android.material.floatingactionbutton.FloatingActionButton
-        android:id="@+id/btn_add_kapal"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_alignParentBottom="true"
-        android:layout_centerHorizontal="true"
-        android:layout_margin="16dp"
-        android:contentDescription="Tambah Kapal"
-        app:backgroundTint="@color/primary"
-        app:srcCompat="@android:drawable/ic_input_add"
-        android:scaleX="1.2"
-        android:scaleY="1.2" />
-
     <!-- Tombol Add Dokumen berupa FloatingActionButton di kanan bawah -->
     <com.google.android.material.floatingactionbutton.FloatingActionButton
         android:id="@+id/btn_add_dokumen"

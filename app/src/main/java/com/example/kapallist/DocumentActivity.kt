@@ -25,11 +25,12 @@ import com.google.android.material.floatingactionbutton.FloatingActionButton
 import org.json.JSONArray
 import org.json.JSONObject
 import kotlinx.coroutines.launch
+import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import java.io.File
 import java.io.FileOutputStream
 import java.io.IOException
-import com.example.kapallist.ApiClient
-import com.example.kapallist.ApiService
+
+
 
 class DocumentActivity : AppCompatActivity() {
 
@@ -37,15 +38,9 @@ class DocumentActivity : AppCompatActivity() {
         const val REQUEST_CODE_PICK_FILE = 1001
     }
 
-    private fun getToken(): String {
-        val sharedPref = getSharedPreferences("login_prefs", MODE_PRIVATE)
-        return sharedPref.getString("token", "") ?: ""
-    }
-
     private lateinit var kapalAdapter: DocumentKapalAdapter
     private var listKapal = mutableListOf<KapalEntity>()
     private lateinit var database: KapalDatabase
-    private lateinit var apiService: ApiService
 
     private var currentKapalPosition: Int = -1
     private var currentDokumenPosition: Int = -1
@@ -55,7 +50,6 @@ class DocumentActivity : AppCompatActivity() {
     private lateinit var swipeRefreshLayout: SwipeRefreshLayout
     private lateinit var btnBack: FloatingActionButton
     private lateinit var btnAddDokumen: FloatingActionButton
-    private lateinit var btnAddKapal: FloatingActionButton
 
     private var currentKapal: KapalEntity? = null
     private var listDokumen = mutableListOf<DokumenEntity>()
@@ -68,6 +62,8 @@ class DocumentActivity : AppCompatActivity() {
     private var currentPendingGambarDeletions = mutableListOf<Int>()
     private var currentPendingPdfDeletions = mutableListOf<Int>()
     private var currentDokumen: DokumenKapal? = null
+    private var savedKapalId: Int = -1
+    private var isConfigChange: Boolean = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -86,27 +82,19 @@ class DocumentActivity : AppCompatActivity() {
             )
         }
 
-        database = KapalDatabase.getDatabase(this)
-        apiService = ApiClient.apiService
-
         rvKapalList = findViewById(R.id.rv_kapal_list)
         swipeRefreshLayout = findViewById(R.id.swipe_refresh_layout)
         btnBack = findViewById(R.id.btn_back)
         btnAddDokumen = findViewById(R.id.btn_add_dokumen)
-        btnAddKapal = findViewById(R.id.btn_add_kapal)
         btnBack.setOnClickListener { finish() }
         btnAddDokumen.setOnClickListener {
             if (currentKapal != null) {
                 showTambahDokumenDialog()
             }
         }
-        btnAddKapal.setOnClickListener {
-            showTambahKapalDialog()
-        }
 
         swipeRefreshLayout.setOnRefreshListener {
-            // No refresh since manual
-            swipeRefreshLayout.isRefreshing = false
+            refreshData()
         }
 
         kapalAdapter = DocumentKapalAdapter(listKapal) { kapal ->
@@ -117,13 +105,27 @@ class DocumentActivity : AppCompatActivity() {
         rvKapalList.adapter = kapalAdapter
         rvKapalList.addItemDecoration(DividerItemDecoration(this, LinearLayoutManager.VERTICAL))
 
-        // Start with ship list, btnAddKapal visible
-        showShipList()
+        isConfigChange = savedInstanceState != null
+        val sharedPref = getSharedPreferences("document_prefs", MODE_PRIVATE)
+        savedKapalId = savedInstanceState?.getInt("currentKapalId", -1) ?: sharedPref.getInt("currentKapalId", -1)
     }
 
     override fun onResume() {
         super.onResume()
+        val sharedPref = getSharedPreferences("document_prefs", MODE_PRIVATE)
+        savedKapalId = sharedPref.getInt("currentKapalId", -1)
         loadKapalList()
+        // Reload documents if we're currently viewing a ship's documents
+        currentKapal?.let { loadDokumenForKapal(it.id) }
+    }
+
+    override fun onSaveInstanceState(outState: Bundle) {
+        super.onSaveInstanceState(outState)
+        currentKapal?.id?.let {
+            outState.putInt("currentKapalId", it)
+            val sharedPref = getSharedPreferences("document_prefs", MODE_PRIVATE)
+            sharedPref.edit().putInt("currentKapalId", it).apply()
+        }
     }
 
     override fun onDestroy() {
@@ -132,71 +134,276 @@ class DocumentActivity : AppCompatActivity() {
 
     private fun loadKapalList() {
         lifecycleScope.launch {
-            listKapal.clear()
-            listKapal.addAll(database.kapalDao().getAllKapal())
-            kapalAdapter.notifyDataSetChanged()
-        }
-    }
-
-    private fun showTambahKapalDialog() {
-        val editText = android.widget.EditText(this)
-        editText.hint = "Nama Kapal"
-
-        val dialog = AlertDialog.Builder(this)
-            .setTitle("Tambah Kapal Baru")
-            .setView(editText)
-            .setPositiveButton("Tambah") { _, _ ->
-                val nama = editText.text.toString()
-                if (nama.isNotEmpty()) {
-                    createKapal(nama)
-                } else {
-                    Toast.makeText(this, "Nama kapal harus diisi", Toast.LENGTH_SHORT).show()
+            try {
+                val sharedPref = getSharedPreferences("login_prefs", MODE_PRIVATE)
+                val token = sharedPref.getString("token", "") ?: ""
+                if (token.isEmpty()) {
+                    Toast.makeText(this@DocumentActivity, "Token tidak ditemukan", Toast.LENGTH_SHORT).show()
+                    return@launch
                 }
-            }
-            .setNegativeButton("Batal", null)
-            .create()
 
-        dialog.show()
+                val response = ApiClient.apiService.getAllKapal("Bearer $token")
+                if (response.isSuccessful) {
+                    val apiResponse = response.body()
+                    if (apiResponse?.success == true) {
+                        val kapalEntities = apiResponse.data ?: emptyList()
+                        listKapal.clear()
+                        listKapal.addAll(kapalEntities)
+                        kapalAdapter.notifyDataSetChanged()
+
+                        if (isConfigChange && savedKapalId != -1 && currentKapal == null) {
+                            val kapal = listKapal.find { it.id == savedKapalId }
+                            if (kapal != null) {
+                                showDocumentList(kapal)
+                            }
+                        }
+                    } else {
+                        Toast.makeText(this@DocumentActivity, "Gagal memuat data kapal", Toast.LENGTH_LONG).show()
+                    }
+                } else {
+                    Toast.makeText(this@DocumentActivity, "Gagal memuat data kapal: ${response.message()}", Toast.LENGTH_LONG).show()
+                }
+            } catch (e: Exception) {
+                Toast.makeText(this@DocumentActivity, "Gagal memuat data", Toast.LENGTH_LONG).show()
+                Log.e("DocumentActivity", "Load kapal error: ${e.message}")
+            } finally {
+                Log.d("DocumentActivity", "Setting isRefreshing to false")
+                swipeRefreshLayout.isRefreshing = false
+            }
+        }
     }
 
-    private fun createKapal(nama: String) {
-        lifecycleScope.launch {
-            val newKapal = KapalEntity(nama = nama)
-            val insertedId = database.kapalDao().insertKapal(newKapal)
-            newKapal.id = insertedId.toInt()
-            listKapal.add(newKapal)
-            kapalAdapter.notifyDataSetChanged()
-            Toast.makeText(this@DocumentActivity, "Kapal berhasil ditambahkan", Toast.LENGTH_SHORT).show()
-        }
+    private fun refreshData() {
+        loadKapalList()
+        currentKapal?.let { loadDokumenForKapal(it.id) }
     }
 
     fun setCurrentDokumenPosition(position: Int) {
         currentDokumenPosition = position
     }
 
+    // Fungsi untuk menampilkan dialog detail kapal (hanya lihat dan hapus)
+    private fun showDetailKapalDialog(kapal: KapalEntity) {
+        val dialogView = layoutInflater.inflate(R.layout.dialog_detail_kapal, null)
+        val tvNamaPemilik = dialogView.findViewById<TextView>(R.id.tv_nama_pemilik)
+        val tvTandaSelar = dialogView.findViewById<TextView>(R.id.tv_tanda_selar)
+        val tvTandaPengenal = dialogView.findViewById<TextView>(R.id.tv_tanda_pengenal)
+        val tvBeratKotor = dialogView.findViewById<TextView>(R.id.tv_berat_kotor)
+        val tvBeratBersih = dialogView.findViewById<TextView>(R.id.tv_berat_bersih)
+        val tvMerekMesin = dialogView.findViewById<TextView>(R.id.tv_merek_mesin)
+        val tvNomorSeriMesin = dialogView.findViewById<TextView>(R.id.tv_nomor_seri_mesin)
+        val tvJenisAlatTangkap = dialogView.findViewById<TextView>(R.id.tv_jenis_alat_tangkap)
+        // Isi data kapal ke TextView (sesuaikan dengan data KapalEntity)
+        tvNamaPemilik.text = "Nama Pemilik: ${kapal.nama ?: "Tidak ada"}"
+        tvTandaSelar.text = "Tanda Selar: ${kapal.tanggalInput ?: "Tidak ada"}"  // Sesuaikan field jika berbeda
+        tvTandaPengenal.text = "Tanda Pengenal: ${kapal.tanggalKeberangkatan ?: "Tidak ada"}"
+        tvBeratKotor.text = "Berat Kotor: ${kapal.totalHariPersiapan ?: "Tidak ada"}"
+        tvBeratBersih.text = "Berat Bersih: ${kapal.tanggalBerangkat ?: "Tidak ada"}"
+        tvMerekMesin.text = "Merek Mesin: ${kapal.tanggalKembali ?: "Tidak ada"}"
+        tvNomorSeriMesin.text = "Nomor Seri Mesin: ${kapal.listPersiapan.size}"  // Contoh, sesuaikan
+        tvJenisAlatTangkap.text = "Jenis Alat Tangkap: ${kapal.listDokumen.size}"  // Contoh, sesuaikan
+
+        val dialog = AlertDialog.Builder(this)
+            .setView(dialogView)
+            .setCancelable(false)
+            .create()
+
+        dialog.show()
+    }
+
+    private fun showTambahDokumenDialog() {
+        val dialogView = layoutInflater.inflate(R.layout.dialog_tambah_dokumen, null)
+        val etJenisDokumen = dialogView.findViewById<android.widget.EditText>(R.id.et_jenis_dokumen_dialog)
+        val etTanggalExpired = dialogView.findViewById<android.widget.EditText>(R.id.et_tanggal_expired_dialog)
+        val btnSimpanDokumen = dialogView.findViewById<Button>(R.id.btn_simpan_dokumen)
+
+        etTanggalExpired.setOnClickListener {
+            val c = java.util.Calendar.getInstance()
+            val dpd = android.app.DatePickerDialog(this, { _, y, m, d -> etTanggalExpired.setText("$d/${m + 1}/$y") }, c.get(java.util.Calendar.YEAR), c.get(java.util.Calendar.MONTH), c.get(java.util.Calendar.DAY_OF_MONTH))
+            dpd.show()
+        }
+        val dialog = AlertDialog.Builder(this)
+            .setView(dialogView)
+            .setCancelable(true)
+            .create()
+
+        btnSimpanDokumen.setOnClickListener {
+            val jenis = etJenisDokumen.text.toString()
+            val tanggalExpired = etTanggalExpired.text.toString()
+            if (jenis.isNotEmpty() && currentKapal != null) {
+                // For new documents, filePath can be empty or null
+                val newDokumen = DokumenEntity(
+                    kapalId = currentKapal!!.id,
+                    nama = jenis, // Use jenis as nama for now
+                    jenis = jenis,
+                    tanggalKadaluarsa = tanggalExpired,
+                    status = "aktif",
+                    filePath = null // New documents start with no files
+                )
+
+                lifecycleScope.launch {
+                    try {
+                        val sharedPref = getSharedPreferences("login_prefs", MODE_PRIVATE)
+                        val token = sharedPref.getString("token", "") ?: ""
+                        if (token.isEmpty()) {
+                            Toast.makeText(this@DocumentActivity, "Token tidak ditemukan", Toast.LENGTH_SHORT).show()
+                            return@launch
+                        }
+
+                        val response = ApiClient.apiService.createDokumen("Bearer $token", newDokumen)
+                        if (response.isSuccessful) {
+                            val apiResponse = response.body()
+                            if (apiResponse?.success == true) {
+                                Toast.makeText(this@DocumentActivity, "Dokumen berhasil ditambahkan", Toast.LENGTH_SHORT).show()
+                                // Reload documents from API to reflect changes
+                                currentKapal?.id?.let { loadDokumenForKapal(it) }
+                                dialog.dismiss()
+                            } else {
+                                Toast.makeText(this@DocumentActivity, "Gagal menambah dokumen", Toast.LENGTH_SHORT).show()
+                            }
+                        } else {
+                            Toast.makeText(this@DocumentActivity, "Gagal menambah dokumen: ${response.message()}", Toast.LENGTH_SHORT).show()
+                        }
+                    } catch (e: Exception) {
+                        Toast.makeText(this@DocumentActivity, "Error: ${e.message}", Toast.LENGTH_SHORT).show()
+                        Log.e("DocumentActivity", "Create dokumen error: ${e.message}")
+                    }
+                }
+            } else {
+                Toast.makeText(this, "Jenis dokumen harus diisi", Toast.LENGTH_SHORT).show()
+            }
+        }
+
+        dialog.show()
+    }
+
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+        if (requestCode == REQUEST_CODE_PICK_FILE && resultCode == Activity.RESULT_OK) {
+            val uris = mutableListOf<Uri>()
+            data?.clipData?.let { clipData ->
+                for (i in 0 until clipData.itemCount) {
+                    clipData.getItemAt(i).uri?.let { uris.add(it) }
+                }
+            } ?: data?.data?.let { uris.add(it) }
+
+            lifecycleScope.launch {
+                uris.forEach { uri ->
+                    val mimeType = contentResolver.getType(uri) ?: ""
+                    val fileUrl = uploadFileToServer(uri, mimeType)
+                    if (fileUrl != null) {
+                        if (mimeType.startsWith("image")) {
+                            pendingGambarAdditions.add(fileUrl)
+                            Log.d("DocumentActivity", "Added to pendingGambarAdditions: $fileUrl")
+                        } else if (mimeType.contains("pdf")) {
+                            pendingPdfAdditions.add(fileUrl)
+                            Log.d("DocumentActivity", "Added to pendingPdfAdditions: $fileUrl")
+                        } else {
+                            Toast.makeText(this@DocumentActivity, "File tipe ini tidak didukung", Toast.LENGTH_SHORT).show()
+                        }
+                    } else {
+                        Toast.makeText(this@DocumentActivity, "Gagal upload file", Toast.LENGTH_SHORT).show()
+                    }
+                }
+                // Update the counts in the dialog
+                updateFileCounts()
+                // Note: No database update here - changes only happen on save
+                currentDokumenPosition = -1
+            }
+        }
+    }
+
+    private suspend fun uploadFileToServer(uri: Uri, mimeType: String): String? {
+        return try {
+            val inputStream = contentResolver.openInputStream(uri) ?: return null
+            val extension = when {
+                mimeType.contains("pdf") -> ".pdf"
+                mimeType.startsWith("image") -> ".jpg"
+                else -> ""
+            }
+            val fileName = "file_${System.currentTimeMillis()}$extension"
+
+            // Create MultipartBody.Part
+            val requestBody = okhttp3.RequestBody.create(
+                mimeType.toMediaTypeOrNull(),
+                inputStream.readBytes()
+            )
+            val filePart = okhttp3.MultipartBody.Part.createFormData("file", fileName, requestBody)
+
+            // Upload to server
+            val sharedPref = getSharedPreferences("login_prefs", MODE_PRIVATE)
+            val token = sharedPref.getString("token", "") ?: return null
+
+            Log.d("DocumentActivity", "Uploading file: $fileName, mimeType: $mimeType")
+            val response = ApiClient.apiService.uploadFile("Bearer $token", filePart)
+            Log.d("DocumentActivity", "Upload response code: ${response.code()}, message: ${response.message()}")
+            if (response.isSuccessful) {
+                val apiResponse = response.body()
+                Log.d("DocumentActivity", "Upload API response: $apiResponse")
+                if (apiResponse?.success == true) {
+                    val filename = apiResponse.data?.filename
+                    if (filename != null) {
+                        val fileUrl = "${Config.BASE_URL}/uploads/$filename"
+                        Log.d("DocumentActivity", "Upload successful, URL: $fileUrl")
+                        return fileUrl
+                    }
+                }
+            }
+            Log.e("DocumentActivity", "Upload failed: ${response.message()}")
+            null
+        } catch (e: Exception) {
+            Log.e("DocumentActivity", "Error upload file: ${e.message}")
+            null
+        }
+    }
+
     private fun showDocumentList(kapal: KapalEntity) {
         currentKapal = kapal
+        val sharedPref = getSharedPreferences("document_prefs", MODE_PRIVATE)
+        sharedPref.edit().putInt("currentKapalId", kapal.id).apply()
         showingShipList = false
         loadDokumenForKapal(kapal.id)
         btnBack.setOnClickListener {
             showShipList()
         }
-        btnAddKapal.visibility = View.GONE
         btnAddDokumen.visibility = View.VISIBLE
     }
 
     private fun loadDokumenForKapal(kapalId: Int) {
-        // Always load from local to ensure updated data is shown
-        loadFromLocal(kapalId)
-    }
-
-    private fun loadFromLocal(kapalId: Int) {
         lifecycleScope.launch {
-            listDokumen.clear()
-            listDokumen.addAll(database.dokumenDao().getDokumenByKapalId(kapalId))
-            setupDokumenAdapter()
+            loadFromApi(kapalId)
         }
     }
+
+    private suspend fun loadFromApi(kapalId: Int) {
+        val sharedPref = getSharedPreferences("login_prefs", MODE_PRIVATE)
+        val token = sharedPref.getString("token", "") ?: ""
+        if (token.isEmpty()) {
+            Toast.makeText(this@DocumentActivity, "Token tidak ditemukan", Toast.LENGTH_SHORT).show()
+            return
+        }
+
+        Log.d("DocumentActivity", "Fetching dokumen for kapalId: $kapalId")
+        val response = ApiClient.apiService.getDokumenByKapalId("Bearer $token", kapalId)
+        Log.d("DocumentActivity", "Response code: ${response.code()}, message: ${response.message()}")
+        if (response.isSuccessful) {
+            val apiResponse = response.body()
+            Log.d("DocumentActivity", "API Response: success=${apiResponse?.success}, message=${apiResponse?.message}, data size=${apiResponse?.data?.size}")
+            if (apiResponse?.success == true) {
+                val dokumenForKapal = apiResponse.data ?: emptyList()
+                Log.d("DocumentActivity", "Dokumen count: ${dokumenForKapal.size}")
+                listDokumen.clear()
+                listDokumen.addAll(dokumenForKapal)
+                setupDokumenAdapter()
+            } else {
+                Toast.makeText(this@DocumentActivity, "Gagal memuat data dokumen: ${apiResponse?.message}", Toast.LENGTH_LONG).show()
+            }
+        } else {
+            Toast.makeText(this@DocumentActivity, "Gagal memuat data dokumen: ${response.message()}", Toast.LENGTH_LONG).show()
+        }
+    }
+
+
 
     private fun setupDokumenAdapter() {
         val dokumenKapalList = listDokumen.map { dokumenEntity ->
@@ -275,7 +482,6 @@ class DocumentActivity : AppCompatActivity() {
         showingShipList = true
         rvKapalList.adapter = kapalAdapter
         btnBack.setOnClickListener { finish() }
-        btnAddKapal.visibility = View.VISIBLE
         btnAddDokumen.visibility = View.GONE
     }
 
@@ -300,24 +506,34 @@ class DocumentActivity : AppCompatActivity() {
     }
 
     private fun openPdf(pdfPath: String) {
-        val file = File(pdfPath)
-        if (file.exists()) {
-            val uri = androidx.core.content.FileProvider.getUriForFile(
-                this,
-                "${packageName}.provider",
-                file
-            )
-            val intent = Intent(Intent.ACTION_VIEW).apply {
-                setDataAndType(uri, "application/pdf")
-                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-            }
+        if (pdfPath.startsWith("http")) {
+            // Open URL in browser
+            val intent = Intent(Intent.ACTION_VIEW, android.net.Uri.parse(pdfPath))
             try {
                 startActivity(intent)
             } catch (e: Exception) {
                 Toast.makeText(this, "Tidak ada aplikasi untuk membuka PDF", Toast.LENGTH_SHORT).show()
             }
         } else {
-            Toast.makeText(this, "File PDF tidak ditemukan", Toast.LENGTH_SHORT).show()
+            val file = File(pdfPath)
+            if (file.exists()) {
+                val uri = androidx.core.content.FileProvider.getUriForFile(
+                    this,
+                    "${packageName}.provider",
+                    file
+                )
+                val intent = Intent(Intent.ACTION_VIEW).apply {
+                    setDataAndType(uri, "application/pdf")
+                    addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                }
+                try {
+                    startActivity(intent)
+                } catch (e: Exception) {
+                    Toast.makeText(this, "Tidak ada aplikasi untuk membuka PDF", Toast.LENGTH_SHORT).show()
+                }
+            } else {
+                Toast.makeText(this, "File PDF tidak ditemukan", Toast.LENGTH_SHORT).show()
+            }
         }
     }
 
@@ -328,7 +544,12 @@ class DocumentActivity : AppCompatActivity() {
         }
 
         val pdfNames = pdfPaths.map { path ->
-            File(path).name
+            if (path.startsWith("http")) {
+                // Extract filename from URL
+                path.substringAfterLast('/')
+            } else {
+                File(path).name
+            }
         }
         val builder = AlertDialog.Builder(this)
         builder.setTitle("Pilih PDF")
@@ -337,120 +558,6 @@ class DocumentActivity : AppCompatActivity() {
         }
         builder.setNegativeButton("Batal", null)
         builder.show()
-    }
-
-    private fun showTambahDokumenDialog() {
-        val dialogView = layoutInflater.inflate(R.layout.dialog_tambah_dokumen, null)
-        val etJenisDokumen = dialogView.findViewById<android.widget.EditText>(R.id.et_jenis_dokumen_dialog)
-        val etTanggalExpired = dialogView.findViewById<android.widget.EditText>(R.id.et_tanggal_expired_dialog)
-        val btnSimpanDokumen = dialogView.findViewById<Button>(R.id.btn_simpan_dokumen)
-
-        etTanggalExpired.setOnClickListener {
-            val c = java.util.Calendar.getInstance()
-            val dpd = android.app.DatePickerDialog(this, { _, y, m, d ->
-                val newDate = "$d/${m + 1}/$y"
-                etTanggalExpired.setText(newDate)
-                Log.d("DocumentActivity", "Date changed to: $newDate")
-            }, c.get(java.util.Calendar.YEAR), c.get(java.util.Calendar.MONTH), c.get(java.util.Calendar.DAY_OF_MONTH))
-            dpd.show()
-        }
-        val dialog = AlertDialog.Builder(this)
-            .setView(dialogView)
-            .setCancelable(true)
-            .create()
-
-        btnSimpanDokumen.setOnClickListener {
-            Log.d("DocumentActivity", "Save button clicked")
-            val jenis = etJenisDokumen.text.toString()
-            val tanggalExpired = etTanggalExpired.text.toString()
-            Log.d("DocumentActivity", "jenis='$jenis', tanggalExpired='$tanggalExpired', currentKapal=${currentKapal?.nama}")
-            if (jenis.isNotEmpty() && currentKapal != null) {
-                Log.d("DocumentActivity", "Proceeding to save dokumen")
-                // For new documents, filePath can be empty or null
-                val newDokumen = DokumenEntity(
-                    kapalId = currentKapal!!.id,
-                    nama = jenis, // Use jenis as nama for now
-                    jenis = jenis,
-                    tanggalKadaluarsa = tanggalExpired,
-                    status = "aktif",
-                    filePath = null // New documents start with no files
-                )
-
-                lifecycleScope.launch {
-                    val token = getToken()
-                    if (token.isNotEmpty()) {
-                        try {
-                            val response = apiService.createDokumen("Bearer $token", newDokumen)
-                            if (response.isSuccessful) {
-                                val createdDokumen = response.body()?.data
-                                if (createdDokumen != null) {
-                                    // Save to local
-                                    try {
-                                        database.dokumenDao().insertDokumen(createdDokumen)
-                                        Toast.makeText(this@DocumentActivity, "Dokumen berhasil ditambahkan", Toast.LENGTH_SHORT).show()
-                                        currentKapal?.id?.let { loadDokumenForKapal(it) }
-                                        dialog.dismiss()
-                                    } catch (e: Exception) {
-                                        Log.e("DocumentActivity", "Failed to insert created dokumen: ${e.message}")
-                                        Toast.makeText(this@DocumentActivity, "Failed to save locally", Toast.LENGTH_SHORT).show()
-                                    }
-                                } else {
-                                    // API succeeded but no data, fallback to local
-                                    try {
-                                        database.dokumenDao().insertDokumen(newDokumen)
-                                        Toast.makeText(this@DocumentActivity, "Dokumen berhasil ditambahkan (local only)", Toast.LENGTH_SHORT).show()
-                                        currentKapal?.id?.let { loadDokumenForKapal(it) }
-                                        dialog.dismiss()
-                                    } catch (e: Exception) {
-                                        Log.e("DocumentActivity", "Failed to insert new dokumen: ${e.message}")
-                                        Toast.makeText(this@DocumentActivity, "Failed to save locally", Toast.LENGTH_SHORT).show()
-                                    }
-                                }
-                            } else {
-                                Toast.makeText(this@DocumentActivity, "Failed to sync to online DB", Toast.LENGTH_SHORT).show()
-                                // Fallback to local
-                                try {
-                                    database.dokumenDao().insertDokumen(newDokumen)
-                                    Toast.makeText(this@DocumentActivity, "Dokumen berhasil ditambahkan (local only)", Toast.LENGTH_SHORT).show()
-                                    currentKapal?.id?.let { loadDokumenForKapal(it) }
-                                    dialog.dismiss()
-                                } catch (e: Exception) {
-                                    Log.e("DocumentActivity", "Failed to insert new dokumen fallback: ${e.message}")
-                                    Toast.makeText(this@DocumentActivity, "Failed to save locally", Toast.LENGTH_SHORT).show()
-                                }
-                            }
-                        } catch (e: Exception) {
-                            Toast.makeText(this@DocumentActivity, "Failed to sync to online DB", Toast.LENGTH_SHORT).show()
-                            // Fallback to local
-                            try {
-                                database.dokumenDao().insertDokumen(newDokumen)
-                                Toast.makeText(this@DocumentActivity, "Dokumen berhasil ditambahkan (local only)", Toast.LENGTH_SHORT).show()
-                                currentKapal?.id?.let { loadDokumenForKapal(it) }
-                                dialog.dismiss()
-                            } catch (e: Exception) {
-                                Log.e("DocumentActivity", "Failed to insert new dokumen catch: ${e.message}")
-                                Toast.makeText(this@DocumentActivity, "Failed to save locally", Toast.LENGTH_SHORT).show()
-                            }
-                        }
-                    } else {
-                        // No token, save local only
-                        try {
-                            database.dokumenDao().insertDokumen(newDokumen)
-                            Toast.makeText(this@DocumentActivity, "Dokumen berhasil ditambahkan", Toast.LENGTH_SHORT).show()
-                            currentKapal?.id?.let { loadDokumenForKapal(it) }
-                            dialog.dismiss()
-                        } catch (e: Exception) {
-                            Log.e("DocumentActivity", "Failed to insert new dokumen no token: ${e.message}")
-                            Toast.makeText(this@DocumentActivity, "Failed to save locally", Toast.LENGTH_SHORT).show()
-                        }
-                    }
-                }
-            } else {
-                Toast.makeText(this, "Jenis dokumen harus diisi", Toast.LENGTH_SHORT).show()
-            }
-        }
-
-        dialog.show()
     }
 
     private fun showEditDokumenDialog(dokumenEntity: DokumenEntity) {
@@ -509,11 +616,7 @@ class DocumentActivity : AppCompatActivity() {
 
         etTanggalExpired.setOnClickListener {
             val c = java.util.Calendar.getInstance()
-            val dpd = android.app.DatePickerDialog(this, { _, y, m, d ->
-                val newDate = "$d/${m + 1}/$y"
-                etTanggalExpired.setText(newDate)
-                Log.d("DocumentActivity", "Date changed to: $newDate")
-            }, c.get(java.util.Calendar.YEAR), c.get(java.util.Calendar.MONTH), c.get(java.util.Calendar.DAY_OF_MONTH))
+            val dpd = android.app.DatePickerDialog(this, { _, y, m, d -> etTanggalExpired.setText("$d/${m + 1}/$y") }, c.get(java.util.Calendar.YEAR), c.get(java.util.Calendar.MONTH), c.get(java.util.Calendar.DAY_OF_MONTH))
             dpd.show()
         }
 
@@ -526,13 +629,15 @@ class DocumentActivity : AppCompatActivity() {
         }
 
         tvGambarList.setOnClickListener {
-            // TODO: Show delete dialog for images
-            Toast.makeText(this, "Hapus gambar belum diimplementasi", Toast.LENGTH_SHORT).show()
+            showDeleteFileDialog(existingPathGambar, "Gambar", 0, null, currentPendingGambarDeletions) {
+                updateFileCounts()
+            }
         }
 
         tvPdfList.setOnClickListener {
-            // TODO: Show delete dialog for PDFs
-            Toast.makeText(this, "Hapus PDF belum diimplementasi", Toast.LENGTH_SHORT).show()
+            showDeleteFileDialog(existingPathPdf, "PDF", 0, null, currentPendingPdfDeletions) {
+                updateFileCounts()
+            }
         }
 
         val dialog = AlertDialog.Builder(this)
@@ -544,15 +649,17 @@ class DocumentActivity : AppCompatActivity() {
             val jenis = etJenisDokumen.text.toString()
             val tanggalExpired = etTanggalExpired.text.toString()
             if (jenis.isNotEmpty()) {
-                // Merge existing files with new additions
-                val allImages = existingPathGambar + pendingGambarAdditions
-                val allPdfs = existingPathPdf + pendingPdfAdditions
+                // Merge existing files with new additions, excluding deleted ones
+                val allImages = existingPathGambar.filterIndexed { index, _ -> index !in currentPendingGambarDeletions } + pendingGambarAdditions
+                val allPdfs = existingPathPdf.filterIndexed { index, _ -> index !in currentPendingPdfDeletions } + pendingPdfAdditions
 
                 Log.d("DocumentActivity", "existingPathGambar: $existingPathGambar")
                 Log.d("DocumentActivity", "pendingGambarAdditions: $pendingGambarAdditions")
+                Log.d("DocumentActivity", "currentPendingGambarDeletions: $currentPendingGambarDeletions")
                 Log.d("DocumentActivity", "allImages: $allImages")
                 Log.d("DocumentActivity", "existingPathPdf: $existingPathPdf")
                 Log.d("DocumentActivity", "pendingPdfAdditions: $pendingPdfAdditions")
+                Log.d("DocumentActivity", "currentPendingPdfDeletions: $currentPendingPdfDeletions")
                 Log.d("DocumentActivity", "allPdfs: $allPdfs")
 
                 // Serialize file paths as JSON for storage
@@ -571,65 +678,37 @@ class DocumentActivity : AppCompatActivity() {
                     // tanggalTerbit is preserved from the original dokumenEntity
                 )
 
-                Log.d("DocumentActivity", "Updating document: jenis=$jenis, tanggalExpired=$tanggalExpired, images=${allImages.size}, pdfs=${allPdfs.size}")
-
                 lifecycleScope.launch {
-                    val token = getToken()
-                    if (token.isNotEmpty()) {
-                        try {
-                            val response = apiService.updateDokumen("Bearer $token", updatedDokumen.id, updatedDokumen)
-                            if (response.isSuccessful) {
-                                // Update local
-                                database.dokumenDao().updateDokumen(updatedDokumen)
+                    try {
+                        val sharedPref = getSharedPreferences("login_prefs", MODE_PRIVATE)
+                        val token = sharedPref.getString("token", "") ?: ""
+                        if (token.isEmpty()) {
+                            Toast.makeText(this@DocumentActivity, "Token tidak ditemukan", Toast.LENGTH_SHORT).show()
+                            return@launch
+                        }
+
+                        val response = ApiClient.apiService.updateDokumen("Bearer $token", dokumenEntity.id, updatedDokumen)
+                        if (response.isSuccessful) {
+                            val apiResponse = response.body()
+                            if (apiResponse?.success == true) {
                                 Toast.makeText(this@DocumentActivity, "Dokumen berhasil diperbarui", Toast.LENGTH_SHORT).show()
-                                Log.d("DocumentActivity", "Document updated successfully")
-                                // Update the list and refresh adapter without fetching from API
-                                val index = listDokumen.indexOfFirst { it.id == updatedDokumen.id }
-                                if (index != -1) {
-                                    listDokumen[index] = updatedDokumen
-                                }
-                                setupDokumenAdapter()
+                                // Clear pending changes
+                                pendingGambarAdditions.clear()
+                                pendingPdfAdditions.clear()
+                                currentPendingGambarDeletions.clear()
+                                currentPendingPdfDeletions.clear()
+                                // Reload documents from API to reflect changes
+                                currentKapal?.id?.let { loadDokumenForKapal(it) }
                                 dialog.dismiss()
                             } else {
-                                Toast.makeText(this@DocumentActivity, "Failed to sync to online DB", Toast.LENGTH_SHORT).show()
-                                // Fallback to local
-                                database.dokumenDao().updateDokumen(updatedDokumen)
-                                Toast.makeText(this@DocumentActivity, "Dokumen berhasil diperbarui (local only)", Toast.LENGTH_SHORT).show()
-                                Log.d("DocumentActivity", "Document updated successfully (local only)")
-                                // Update the list and refresh adapter
-                                val index = listDokumen.indexOfFirst { it.id == updatedDokumen.id }
-                                if (index != -1) {
-                                    listDokumen[index] = updatedDokumen
-                                }
-                                setupDokumenAdapter()
-                                dialog.dismiss()
+                                Toast.makeText(this@DocumentActivity, "Gagal memperbarui dokumen", Toast.LENGTH_SHORT).show()
                             }
-                        } catch (e: Exception) {
-                            Toast.makeText(this@DocumentActivity, "Failed to sync to online DB", Toast.LENGTH_SHORT).show()
-                            // Fallback to local
-                            database.dokumenDao().updateDokumen(updatedDokumen)
-                            Toast.makeText(this@DocumentActivity, "Dokumen berhasil diperbarui (local only)", Toast.LENGTH_SHORT).show()
-                            Log.d("DocumentActivity", "Document updated successfully (local only)")
-                            // Update the list and refresh adapter
-                            val index = listDokumen.indexOfFirst { it.id == updatedDokumen.id }
-                            if (index != -1) {
-                                listDokumen[index] = updatedDokumen
-                            }
-                            setupDokumenAdapter()
-                            dialog.dismiss()
+                        } else {
+                            Toast.makeText(this@DocumentActivity, "Gagal memperbarui dokumen: ${response.message()}", Toast.LENGTH_SHORT).show()
                         }
-                    } else {
-                        // No token, update local only
-                        database.dokumenDao().updateDokumen(updatedDokumen)
-                        Toast.makeText(this@DocumentActivity, "Dokumen berhasil diperbarui", Toast.LENGTH_SHORT).show()
-                        Log.d("DocumentActivity", "Document updated successfully")
-                        // Update the list and refresh adapter
-                        val index = listDokumen.indexOfFirst { it.id == updatedDokumen.id }
-                        if (index != -1) {
-                            listDokumen[index] = updatedDokumen
-                        }
-                        setupDokumenAdapter()
-                        dialog.dismiss()
+                    } catch (e: Exception) {
+                        Toast.makeText(this@DocumentActivity, "Error: ${e.message}", Toast.LENGTH_SHORT).show()
+                        Log.e("DocumentActivity", "Update dokumen error: ${e.message}")
                     }
                 }
             } else {
@@ -644,7 +723,7 @@ class DocumentActivity : AppCompatActivity() {
         fileList: MutableList<String>,
         fileType: String,
         dokumenPosition: Int,
-        dokumenAdapter: DokumenAdapter,
+        dokumenAdapter: DokumenAdapter? = null,
         pendingDeletions: MutableList<Int>,
         onFileDeleted: (() -> Unit)? = null
     ) {
@@ -665,64 +744,6 @@ class DocumentActivity : AppCompatActivity() {
         }
         builder.setNegativeButton("Batal", null)
         builder.show()
-    }
-
-    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
-        super.onActivityResult(requestCode, resultCode, data)
-        if (requestCode == REQUEST_CODE_PICK_FILE && resultCode == Activity.RESULT_OK) {
-            val uris = mutableListOf<Uri>()
-            data?.clipData?.let { clipData ->
-                for (i in 0 until clipData.itemCount) {
-                    clipData.getItemAt(i).uri?.let { uris.add(it) }
-                }
-            } ?: data?.data?.let { uris.add(it) }
-
-            lifecycleScope.launch {
-                uris.forEach { uri ->
-                    val mimeType = contentResolver.getType(uri) ?: ""
-                    val fileUrl = copyFileToLocal(uri, mimeType)
-                    if (fileUrl != null) {
-                        if (mimeType.startsWith("image")) {
-                            pendingGambarAdditions.add(fileUrl)
-                            Log.d("DocumentActivity", "Added to pendingGambarAdditions: $fileUrl")
-                        } else if (mimeType.contains("pdf")) {
-                            pendingPdfAdditions.add(fileUrl)
-                            Log.d("DocumentActivity", "Added to pendingPdfAdditions: $fileUrl")
-                        } else {
-                            Toast.makeText(this@DocumentActivity, "File tipe ini tidak didukung", Toast.LENGTH_SHORT).show()
-                        }
-                    } else {
-                        Toast.makeText(this@DocumentActivity, "Gagal copy file", Toast.LENGTH_SHORT).show()
-                    }
-                }
-                // Update the counts in the dialog
-                updateFileCounts()
-                // Note: No database update here - changes only happen on save
-                currentDokumenPosition = -1
-            }
-        }
-    }
-
-    private suspend fun copyFileToLocal(uri: Uri, mimeType: String): String? {
-        return try {
-            val inputStream = contentResolver.openInputStream(uri) ?: return null
-            val extension = when {
-                mimeType.contains("pdf") -> ".pdf"
-                mimeType.startsWith("image") -> ".jpg"
-                else -> ""
-            }
-            val fileName = "file_${System.currentTimeMillis()}$extension"
-            val dir = File(filesDir, "documents")
-            if (!dir.exists()) dir.mkdirs()
-            val file = File(dir, fileName)
-            file.outputStream().use { output ->
-                inputStream.copyTo(output)
-            }
-            file.absolutePath
-        } catch (e: Exception) {
-            Log.e("DocumentActivity", "Error copy file: ${e.message}")
-            null
-        }
     }
 
     private fun pickFile(mimeType: String) {
