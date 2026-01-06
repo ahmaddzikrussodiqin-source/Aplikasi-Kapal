@@ -380,6 +380,9 @@ class DocumentActivity : AppCompatActivity() {
         val token = sharedPref.getString("token", "") ?: ""
         if (token.isEmpty()) {
             Toast.makeText(this@DocumentActivity, "Token tidak ditemukan", Toast.LENGTH_SHORT).show()
+            // Even if token is empty, switch to document view with empty list
+            listDokumen.clear()
+            setupDokumenAdapter()
             return
         }
 
@@ -397,9 +400,15 @@ class DocumentActivity : AppCompatActivity() {
                 setupDokumenAdapter()
             } else {
                 Toast.makeText(this@DocumentActivity, "Gagal memuat data dokumen: ${apiResponse?.message}", Toast.LENGTH_LONG).show()
+                // Switch to document view with empty list
+                listDokumen.clear()
+                setupDokumenAdapter()
             }
         } else {
             Toast.makeText(this@DocumentActivity, "Gagal memuat data dokumen: ${response.message()}", Toast.LENGTH_LONG).show()
+            // Switch to document view with empty list
+            listDokumen.clear()
+            setupDokumenAdapter()
         }
     }
 
