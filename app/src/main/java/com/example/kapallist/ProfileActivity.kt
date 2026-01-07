@@ -18,7 +18,11 @@ import androidx.core.content.ContextCompat
 import androidx.lifecycle.lifecycleScope
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
+import io.socket.client.IO
+import io.socket.client.Socket
+import io.socket.emitter.Emitter
 import kotlinx.coroutines.launch
+import org.json.JSONObject
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Date
@@ -29,6 +33,7 @@ class ProfileActivity : AppCompatActivity() {
     private val listKapal = mutableListOf<Kapal>()
     private lateinit var userRole: String
     private var isProgrammaticChange = false
+    private lateinit var socket: Socket
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -40,6 +45,39 @@ class ProfileActivity : AppCompatActivity() {
         }
         val sharedPref = getSharedPreferences("login_prefs", MODE_PRIVATE)
         userRole = sharedPref.getString("role", "Member") ?: "Member"  // Load role
+
+        // Initialize Socket.io
+        val token = sharedPref.getString("token", "") ?: ""
+        if (token.isNotEmpty()) {
+            try {
+                val opts = IO.Options()
+                opts.auth = mapOf("token" to token)
+                socket = IO.socket("http://10.0.2.2:3000", opts) // Use 10.0.2.2 for Android emulator
+                socket.connect()
+
+                socket.on(Socket.EVENT_CONNECT) {
+                    Log.d("Socket", "Connected")
+                }
+
+                socket.on(Socket.EVENT_DISCONNECT) {
+                    Log.d("Socket", "Disconnected")
+                }
+
+                socket.on("checklist-updated") { args ->
+                    runOnUiThread {
+                        val data = args[0] as JSONObject
+                        val kapalId = data.getInt("kapalId")
+                        val checklistStates = Gson().fromJson(data.getJSONObject("checklistStates").toString(), Map::class.java) as Map<String, Boolean>
+                        val checklistDates = Gson().fromJson(data.getJSONObject("checklistDates").toString(), Map::class.java) as Map<String, String>
+                        // Update local data and refresh UI
+                        updateChecklistForKapal(kapalId, checklistStates, checklistDates)
+                    }
+                }
+            } catch (e: Exception) {
+                Log.e("Socket", "Error initializing socket: ${e.message}")
+            }
+        }
+
         loadDataAndBuildUI()
     }
 
@@ -196,7 +234,7 @@ class ProfileActivity : AppCompatActivity() {
 
                         val checkBox = CheckBox(this)
                         checkBox.text = item
-                        checkBox.isChecked = checkBoxStates[item] ?: false
+                        checkBox.isChecked = kapal.checklistStates[item] ?: false
                         checkBox.isEnabled = !kapal.isFinished
                         if (checkBox.isChecked) {
                             checkBox.paintFlags = checkBox.paintFlags or android.graphics.Paint.STRIKE_THRU_TEXT_FLAG
@@ -204,7 +242,7 @@ class ProfileActivity : AppCompatActivity() {
                         checkBox.layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
 
                         val tvDate = TextView(this)
-                        tvDate.text = checkBoxDates[item] ?: ""
+                        tvDate.text = kapal.checklistDates[item] ?: ""
                         tvDate.setTextColor(android.graphics.Color.BLACK)
                         tvDate.textSize = 12f
                         tvDate.layoutParams = LinearLayout.LayoutParams(
@@ -223,21 +261,25 @@ class ProfileActivity : AppCompatActivity() {
                                     val alertDialog = AlertDialog.Builder(this@ProfileActivity)
                                     alertDialog.setMessage("Yakin ingin menyelesaikan ?")
                                     alertDialog.setPositiveButton("Yakin") { _, _ ->
-                                        checkBoxStates[item] = true
+                                        kapal.checklistStates[item] = true
                                         val dateFormat = SimpleDateFormat("dd/MM/yyyy")
                                         val currentDate = dateFormat.format(Date())
-                                        checkBoxDates[item] = currentDate
+                                        kapal.checklistDates[item] = currentDate
                                         tvDate.text = currentDate
                                         checkBox.paintFlags = checkBox.paintFlags or android.graphics.Paint.STRIKE_THRU_TEXT_FLAG
 
-                                        val editor = getSharedPreferences("kapal_data", MODE_PRIVATE).edit()
-                                        val updatedStateJson = Gson().toJson(checkBoxStates)
-                                        editor.putString("checkbox_states", updatedStateJson)
-                                        val updatedDateJson = Gson().toJson(checkBoxDates)
-                                        editor.putString("checkbox_dates", updatedDateJson)
-                                        editor.apply()
+                                        // Emit to Socket.io
+                                        if (::socket.isInitialized && socket.connected()) {
+                                            val data = JSONObject().apply {
+                                                put("kapalId", kapal.id)
+                                                put("item", item)
+                                                put("checked", true)
+                                                put("date", currentDate)
+                                            }
+                                            socket.emit("update-checklist", data)
+                                        }
 
-                                        val allCheckedNow = items.all { checkBoxStates[it] == true }
+                                        val allCheckedNow = items.all { kapal.checklistStates[it] == true }
                                         btnFinish.isEnabled = allCheckedNow && !kapal.isFinished
                                     }
                                     alertDialog.setNegativeButton("Batal") { _, _ ->
@@ -252,19 +294,23 @@ class ProfileActivity : AppCompatActivity() {
                                     val alertDialog = AlertDialog.Builder(this@ProfileActivity)
                                     alertDialog.setMessage("Yakin ingin membatalkan ?")
                                     alertDialog.setPositiveButton("Yakin") { _, _ ->
-                                        checkBoxStates[item] = false
-                                        checkBoxDates.remove(item)
+                                        kapal.checklistStates[item] = false
+                                        kapal.checklistDates.remove(item)
                                         tvDate.text = ""
                                         checkBox.paintFlags = checkBox.paintFlags and android.graphics.Paint.STRIKE_THRU_TEXT_FLAG.inv()
 
-                                        val editor = getSharedPreferences("kapal_data", MODE_PRIVATE).edit()
-                                        val updatedStateJson = Gson().toJson(checkBoxStates)
-                                        editor.putString("checkbox_states", updatedStateJson)
-                                        val updatedDateJson = Gson().toJson(checkBoxDates)
-                                        editor.putString("checkbox_dates", updatedDateJson)
-                                        editor.apply()
+                                        // Emit to Socket.io
+                                        if (::socket.isInitialized && socket.connected()) {
+                                            val data = JSONObject().apply {
+                                                put("kapalId", kapal.id)
+                                                put("item", item)
+                                                put("checked", false)
+                                                put("date", "")
+                                            }
+                                            socket.emit("update-checklist", data)
+                                        }
 
-                                        val allCheckedNow = items.all { checkBoxStates[it] == true }
+                                        val allCheckedNow = items.all { kapal.checklistStates[it] == true }
                                         btnFinish.isEnabled = allCheckedNow && !kapal.isFinished
                                     }
                                     alertDialog.setNegativeButton("Batal") { _, _ ->
@@ -554,5 +600,25 @@ class ProfileActivity : AppCompatActivity() {
     private fun getMonthName(month: Int): String {
         val months = arrayOf("januari", "februari", "maret", "april", "mei", "juni", "juli", "agustus", "september", "oktober", "november", "desember")
         return months[month]
+    }
+
+    private fun updateChecklistForKapal(kapalId: Int, newStates: Map<String, Boolean>, newDates: Map<String, String>) {
+        val kapal = listKapal.find { it.id == kapalId }
+        if (kapal != null) {
+            kapal.checklistStates.clear()
+            kapal.checklistStates.putAll(newStates)
+            kapal.checklistDates.clear()
+            kapal.checklistDates.putAll(newDates)
+            // Refresh UI
+            val llChecklist = findViewById<LinearLayout>(R.id.ll_checklist)
+            buildUI(llChecklist)
+        }
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        if (::socket.isInitialized) {
+            socket.disconnect()
+        }
     }
 }

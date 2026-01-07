@@ -6,6 +6,8 @@ const jwt = require('jsonwebtoken');
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
+const { createServer } = require('http');
+const { Server } = require('socket.io');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -141,6 +143,71 @@ console.log('✅ All database pools created');
 app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+
+// Create HTTP server and attach Socket.io
+const server = createServer(app);
+const io = new Server(server, {
+    cors: {
+        origin: "*", // Allow all origins for now, adjust in production
+        methods: ["GET", "POST"]
+    }
+});
+
+// Socket.io middleware for authentication
+io.use((socket, next) => {
+    const token = socket.handshake.auth.token;
+    if (!token) {
+        return next(new Error('Authentication error'));
+    }
+
+    jwt.verify(token, JWT_SECRET, (err, user) => {
+        if (err) {
+            return next(new Error('Authentication error'));
+        }
+        socket.user = user;
+        next();
+    });
+});
+
+// Socket.io connection handling
+io.on('connection', (socket) => {
+    console.log('User connected:', socket.user.userId);
+
+    // Join a room for checklist updates
+    socket.on('join-checklist', (kapalId) => {
+        socket.join(`checklist-${kapalId}`);
+        console.log(`User ${socket.user.userId} joined checklist room for kapal ${kapalId}`);
+    });
+
+    // Handle checklist update
+    socket.on('update-checklist', async (data) => {
+        const { kapalId, checklistStates, checklistDates } = data;
+        try {
+            // Update database
+            await kapalMasukPool.query(`
+                UPDATE kapal_masuk_schema.kapal_masuk SET
+                    checklistStates = $1, checklistDates = $2
+                WHERE id = $3
+            `, [JSON.stringify(checklistStates), JSON.stringify(checklistDates), kapalId]);
+
+            // Broadcast to all clients in the room
+            socket.to(`checklist-${kapalId}`).emit('checklist-updated', {
+                kapalId,
+                checklistStates,
+                checklistDates
+            });
+
+            console.log(`Checklist updated for kapal ${kapalId} by user ${socket.user.userId}`);
+        } catch (error) {
+            console.error('Error updating checklist:', error);
+            socket.emit('checklist-update-error', { message: 'Failed to update checklist' });
+        }
+    });
+
+    socket.on('disconnect', () => {
+        console.log('User disconnected:', socket.user.userId);
+    });
+});
 
 // Serve static files from uploads directory
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
@@ -327,28 +394,33 @@ async function initializeDatabase() {
                 perkiraanKeberangkatan TEXT,
                 durasiSelesaiPersiapan TEXT,
                 durasiBerlayar TEXT,
-                statusKerja TEXT NOT NULL DEFAULT 'persiapan'
+                statusKerja TEXT NOT NULL DEFAULT 'persiapan',
+                checklistStates TEXT NOT NULL DEFAULT '{}',
+                checklistDates TEXT NOT NULL DEFAULT '{}'
             )
         `);
 
-        // Add missing column if it doesn't exist
-        try {
-            const columnCheck = await kapalMasukPool.query(`
-                SELECT column_name
-                FROM information_schema.columns
-                WHERE table_schema = 'kapal_masuk_schema'
-                AND table_name = 'kapal_masuk'
-                AND column_name = 'durasiBerlayar'
-            `);
+        // Add missing columns if they don't exist
+        const columnsToCheck = ['durasiBerlayar', 'checklistStates', 'checklistDates'];
+        for (const col of columnsToCheck) {
+            try {
+                const columnCheck = await kapalMasukPool.query(`
+                    SELECT column_name
+                    FROM information_schema.columns
+                    WHERE table_schema = 'kapal_masuk_schema'
+                    AND table_name = 'kapal_masuk'
+                    AND column_name = $1
+                `, [col]);
 
-            if (columnCheck.rows.length === 0) {
-                await kapalMasukPool.query(`ALTER TABLE kapal_masuk_schema.kapal_masuk ADD COLUMN durasiBerlayar TEXT`);
-                console.log('✅ Added missing column durasiBerlayar');
-            } else {
-                console.log('Column durasiBerlayar already exists');
+                if (columnCheck.rows.length === 0) {
+                    await kapalMasukPool.query(`ALTER TABLE kapal_masuk_schema.kapal_masuk ADD COLUMN "${col}" TEXT NOT NULL DEFAULT '{}'`);
+                    console.log(`✅ Added missing column ${col}`);
+                } else {
+                    console.log(`Column ${col} already exists`);
+                }
+            } catch (alterError) {
+                console.log(`Migration error for ${col} (this may be expected):`, alterError.message);
             }
-        } catch (alterError) {
-            console.log('Migration error (this may be expected):', alterError.message);
         }
         console.log('✅ Kapal Masuk table created successfully');
 
@@ -1544,7 +1616,9 @@ app.get('/api/kapal-masuk', authenticateToken, async (req, res) => {
             perkiraanKeberangkatan: k.perkiraankeberangkatan,
             durasiSelesaiPersiapan: k.durasiselesaiPersiapan,
             durasiBerlayar: k.durasiberlayar,
-            statusKerja: k.statuskerja
+            statusKerja: k.statuskerja,
+            checklistStates: JSON.parse(k.checkliststates || '{}'),
+            checklistDates: JSON.parse(k.checklistdates || '{}')
         }));
 
         res.json({
@@ -1596,7 +1670,9 @@ app.get('/api/kapal-masuk/:id', authenticateToken, async (req, res) => {
             perkiraanKeberangkatan: kapalMasuk.perkiraankeberangkatan,
             durasiSelesaiPersiapan: kapalMasuk.durasiselesaiPersiapan,
             durasiBerlayar: kapalMasuk.durasiberlayar,
-            statusKerja: kapalMasuk.statuskerja
+            statusKerja: kapalMasuk.statuskerja,
+            checklistStates: JSON.parse(kapalMasuk.checkliststates || '{}'),
+            checklistDates: JSON.parse(kapalMasuk.checklistdates || '{}')
         };
 
         res.json({

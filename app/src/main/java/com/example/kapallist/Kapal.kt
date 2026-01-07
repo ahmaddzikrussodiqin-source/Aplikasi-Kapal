@@ -16,8 +16,10 @@ data class Kapal(
     var perkiraanKeberangkatan: String? = null,
     var durasiSelesaiPersiapan: String? = null,
     var durasiBerlayar: String? = null,
-    var id: Int = 0
-) {
+    var id: Int = 0,
+    var checklistStates: MutableMap<String, Boolean> = mutableMapOf(),
+    var checklistDates: MutableMap<String, String> = mutableMapOf()
+)
     constructor(kapalEntity: KapalEntity) : this(
         nama = kapalEntity.nama,
         tanggalInput = kapalEntity.tanggalInput,

@@ -1,33 +1,17 @@
-# TODO: Fix UI Update for Expiration Date in DocumentActivity
+# TODO: Implement Online Checklist Sync in ProfileActivity
 
-## Problem
-In DocumentActivity, when updating the expiration date (tanggal expired):
-1. Add/update expired date
-2. Press Save
-3. Date updated on UI
-4. Refresh page with scroll down (pull to refresh)
-5. Date that was updated is now gone
+## Backend Changes
+- [x] Add checklistStates and checklistDates columns to kapal_masuk table
+- [x] Update package.json to include socket.io
+- [x] Modify server.js: add Socket.io setup, update kapal-masuk APIs to include new fields, add real-time emit on updates
 
-## Root Cause
-The showEditTanggalExpiredDialog function was manually updating the local listDokumen and calling setupDokumenAdapter, which showed the updated value immediately. However, when refreshing (pull to refresh), it fetched data from API again. If the DB update failed but API returned success, or if there was any inconsistency, the UI would show old data on refresh.
-
-## Solution
-Change showEditTanggalExpiredDialog to reload the documents from API after successful update, instead of manually updating the list. This ensures the UI is always in sync with the database.
-
-## Steps Completed
-- [x] Analyzed DocumentActivity.kt and related files
-- [x] Identified the issue in showEditTanggalExpiredDialog
-- [x] Modified the success handler to call loadDokumenForKapal(currentKapal?.id ?: return) instead of manually updating listDokumen and setupDokumenAdapter
-- [x] This matches the behavior in showTambahDokumenDialog and showEditDokumenDialog
+## Android App Changes
+- [x] Update KapalMasukEntity.kt to include checklistStates and checklistDates fields
+- [x] Update ApiService.kt to include new fields in responses
+- [x] Add Socket.io client dependency to app/build.gradle.kts
+- [x] Modify ApiClient.kt to include Socket.io client setup
+- [x] Modify ProfileActivity.kt: load states from API, send updates on checkbox change, listen for Socket.io updates to refresh UI
 
 ## Testing
-- Attempted to build the Android app, but encountered environment issues with gradle on Windows
-- Created and ran a specific test for tanggalKadaluarsa update (test-tanggal-expired-update.js)
-- Test ran successfully but failed due to invalid credentials on production server (testuser doesn't exist)
-- Code review confirms the logic is correct: after update, reload from API ensures UI reflects DB state
-- The change aligns with existing patterns in the codebase
-- Backend API testing fixed - test now runs without interruption
-
-## Files Modified
-- app/src/main/java/com/example/kapallist/DocumentActivity.kt
-- backend/server.js (added logging for tanggalKadaluarsa changes, fixed column name quoting in UPDATE query and CREATE TABLE to use lowercase column names, added migration for existing lowercase column names)
+- [ ] Test real-time sync across devices
+- [ ] Ensure backward compatibility
