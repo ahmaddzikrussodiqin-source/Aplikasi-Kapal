@@ -265,6 +265,28 @@ async function initializeDatabase() {
                     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 )
             `);
+
+            // Check if filePath column exists and add it if missing
+            try {
+                const columnCheck = await dokumenPool.query(`
+                    SELECT column_name
+                    FROM information_schema.columns
+                    WHERE table_schema = 'public'
+                    AND table_name = 'dokumen'
+                    AND column_name = 'filePath'
+                `);
+
+                if (columnCheck.rows.length === 0) {
+                    console.log('❌ filePath column missing in dokumen database, adding it...');
+                    await dokumenPool.query(`ALTER TABLE dokumen ADD COLUMN "filePath" TEXT`);
+                    console.log('✅ filePath column added successfully to dokumen database');
+                } else {
+                    console.log('✅ filePath column already exists in dokumen database');
+                }
+            } catch (alterError) {
+                console.log('Error checking/adding filePath column in dokumen database:', alterError.message);
+            }
+
             console.log('✅ Dokumen table created successfully');
         } else {
             console.log('⚠️  Skipping dokumen table creation - DATABASE_URL_DOKUMEN not configured');
