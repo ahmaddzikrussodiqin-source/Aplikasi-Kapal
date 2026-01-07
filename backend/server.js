@@ -1114,7 +1114,7 @@ app.get('/api/kapal/names', authenticateToken, async (req, res) => {
 
 // Dokumen routes (protected)
 app.get('/api/dokumen', authenticateToken, async (req, res) => {
-    const pool = dokumenPool || kapalPool;
+    const pool = kapalPool;
     if (!pool) {
         return res.json({
             success: true,
@@ -1140,7 +1140,7 @@ app.get('/api/dokumen', authenticateToken, async (req, res) => {
 });
 
 app.get('/api/dokumen/kapal/:kapalId', authenticateToken, async (req, res) => {
-    const pool = dokumenPool || kapalPool;
+    const pool = kapalPool;
     if (!pool) {
         return res.json({
             success: true,
@@ -1169,7 +1169,7 @@ app.get('/api/dokumen/kapal/:kapalId', authenticateToken, async (req, res) => {
 });
 
 app.get('/api/dokumen/:id', authenticateToken, async (req, res) => {
-    const pool = dokumenPool || kapalPool;
+    const pool = kapalPool;
     if (!pool) {
         return res.status(503).json({
             success: false,
@@ -1204,7 +1204,7 @@ app.get('/api/dokumen/:id', authenticateToken, async (req, res) => {
 });
 
 app.post('/api/dokumen', authenticateToken, async (req, res) => {
-    const pool = dokumenPool || kapalPool;
+    const pool = kapalPool;
     if (!pool) {
         return res.status(200).json({
             success: true,
@@ -1241,7 +1241,7 @@ app.post('/api/dokumen', authenticateToken, async (req, res) => {
 });
 
 app.put('/api/dokumen/:id', authenticateToken, async (req, res) => {
-    const pool = dokumenPool || kapalPool;
+    const pool = kapalPool;
     console.log('PUT /api/dokumen/:id called, pool available:', !!pool);
     if (!pool) {
         return res.status(503).json({
@@ -1321,7 +1321,7 @@ app.put('/api/dokumen/:id', authenticateToken, async (req, res) => {
 });
 
 app.delete('/api/dokumen/:id', authenticateToken, async (req, res) => {
-    const pool = dokumenPool || kapalPool;
+    const pool = kapalPool;
     if (!pool) {
         return res.status(503).json({
             success: false,

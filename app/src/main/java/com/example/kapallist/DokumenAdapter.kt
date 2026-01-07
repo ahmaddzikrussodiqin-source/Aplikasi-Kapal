@@ -34,7 +34,7 @@ class DokumenAdapter(
     override fun onBindViewHolder(holder: DokumenViewHolder, position: Int) {
         val dokumen = dokumenList[position]
 
-        android.util.Log.d("DokumenAdapter", "Binding item at position $position: jenis=${dokumen.jenis}, gambar=${dokumen.pathGambar.size}, pdf=${dokumen.pathPdf.size}")
+        android.util.Log.d("DokumenAdapter", "Binding item at position $position: jenis=${dokumen.jenis}, tanggalExpired=${dokumen.tanggalExpired}, gambar=${dokumen.pathGambar.size}, pdf=${dokumen.pathPdf.size}")
 
         holder.tvNamaDokumen.text = dokumen.jenis ?: "Tidak ada jenis"
         holder.tvTanggalExpired.text = dokumen.tanggalExpired ?: "-"

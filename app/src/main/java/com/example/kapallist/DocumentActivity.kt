@@ -396,7 +396,7 @@ class DocumentActivity : AppCompatActivity() {
                 val dokumenForKapal = apiResponse.data ?: emptyList()
                 Log.d("DocumentActivity", "Dokumen count: ${dokumenForKapal.size}")
                 dokumenForKapal.forEachIndexed { index, dokumen ->
-                    Log.d("DocumentActivity", "Dokumen $index: id=${dokumen.id}, jenis=${dokumen.jenis}, filePath=${dokumen.filePath}")
+                    Log.d("DocumentActivity", "Dokumen $index: id=${dokumen.id}, jenis=${dokumen.jenis}, tanggalKadaluarsa=${dokumen.tanggalKadaluarsa}, filePath=${dokumen.filePath}")
                 }
                 listDokumen.clear()
                 listDokumen.addAll(dokumenForKapal)
@@ -452,7 +452,7 @@ class DocumentActivity : AppCompatActivity() {
 
         Log.d("DocumentActivity", "Setting up DokumenAdapter with ${dokumenKapalList.size} items")
         dokumenKapalList.forEachIndexed { index, dokumenKapal ->
-            Log.d("DocumentActivity", "Item $index: jenis=${dokumenKapal.jenis}, gambar=${dokumenKapal.pathGambar.size}, pdf=${dokumenKapal.pathPdf.size}")
+            Log.d("DocumentActivity", "Item $index: jenis=${dokumenKapal.jenis}, tanggalExpired=${dokumenKapal.tanggalExpired}, gambar=${dokumenKapal.pathGambar.size}, pdf=${dokumenKapal.pathPdf.size}")
         }
 
         if (currentDokumenAdapter == null) {
@@ -835,8 +835,12 @@ class DocumentActivity : AppCompatActivity() {
                         if (response.isSuccessful) {
                             val apiResponse = response.body()
                         if (apiResponse?.success == true) {
-                            // Reload documents from API to reflect changes
-                            currentKapal?.id?.let { loadDokumenForKapal(it) }
+                            // Update the local list immediately to reflect changes
+                            val position = listDokumen.indexOf(dokumenEntity)
+                            if (position != -1) {
+                                listDokumen[position] = updatedDokumen
+                                setupDokumenAdapter()
+                            }
                             Toast.makeText(this@DocumentActivity, "Tanggal expired berhasil diperbarui", Toast.LENGTH_SHORT).show()
                             dialog.dismiss()
                         } else {
