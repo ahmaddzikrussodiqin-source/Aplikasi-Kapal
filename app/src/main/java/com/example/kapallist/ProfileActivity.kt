@@ -117,6 +117,12 @@ class ProfileActivity : AppCompatActivity() {
                         }
                         runOnUiThread {
                             buildUI(llChecklist)
+                            // Join checklist rooms for each kapal
+                            if (::socket.isInitialized && socket.connected()) {
+                                listKapal.forEach { kapal ->
+                                    socket.emit("join-checklist", kapal.id)
+                                }
+                            }
                         }
                     } else {
                         Toast.makeText(this@ProfileActivity, "Gagal memuat data kapal masuk", Toast.LENGTH_SHORT).show()

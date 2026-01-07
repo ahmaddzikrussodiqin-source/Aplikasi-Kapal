@@ -19,3 +19,6 @@
 - [ ] Run migration script for checklist columns
 - [ ] Test real-time sync across devices
 - [ ] Ensure backward compatibility
+
+## Fixes Applied
+- [x] Added code to join Socket.io checklist rooms after loading data
