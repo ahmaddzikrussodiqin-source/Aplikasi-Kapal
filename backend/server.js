@@ -266,7 +266,7 @@ async function initializeDatabase() {
                     jenis TEXT NOT NULL,
                     nomor TEXT,
                     tanggalTerbit TEXT,
-                    tanggalKadaluarsa TEXT,
+                    "tanggalKadaluarsa" TEXT,
                     status TEXT NOT NULL DEFAULT 'aktif',
                     "filePath" TEXT,
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -1217,7 +1217,7 @@ app.post('/api/dokumen', authenticateToken, async (req, res) => {
         const dokumenData = req.body;
         const result = await pool.query(`
             INSERT INTO dokumen (
-                kapalId, nama, jenis, nomor, tanggalTerbit, tanggalKadaluarsa, status, filePath
+                kapalId, nama, jenis, nomor, tanggalTerbit, "tanggalKadaluarsa", status, filePath
             ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
             RETURNING *
         `, [
@@ -1274,13 +1274,13 @@ app.put('/api/dokumen/:id', authenticateToken, async (req, res) => {
         console.log('Updating dokumen id:', id, 'with data:', JSON.stringify(dokumenData, null, 2));
 
         // Get current dokumen data for logging
-        const currentResult = await pool.query('SELECT tanggalKadaluarsa FROM dokumen WHERE id = $1', [id]);
+        const currentResult = await pool.query('SELECT "tanggalKadaluarsa" FROM dokumen WHERE id = $1', [id]);
         const currentDokumen = currentResult.rows[0];
 
         const result = await pool.query(`
             UPDATE dokumen SET
                 kapalId = $1, nama = $2, jenis = $3, nomor = $4,
-                tanggalTerbit = $5, tanggalKadaluarsa = $6, status = $7, "filePath" = $8,
+                tanggalTerbit = $5, "tanggalKadaluarsa" = $6, status = $7, "filePath" = $8,
                 updated_at = CURRENT_TIMESTAMP
             WHERE id = $9
         `, [
