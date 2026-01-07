@@ -1207,7 +1207,8 @@ app.put('/api/dokumen/:id', authenticateToken, async (req, res) => {
         const result = await pool.query(`
             UPDATE dokumen SET
                 kapalId = $1, nama = $2, jenis = $3, nomor = $4,
-                tanggalTerbit = $5, tanggalKadaluarsa = $6, status = $7, filePath = $8
+                tanggalTerbit = $5, tanggalKadaluarsa = $6, status = $7, "filePath" = $8,
+                updated_at = CURRENT_TIMESTAMP
             WHERE id = $9
         `, [
             dokumenData.kapalId, dokumenData.nama, dokumenData.jenis, dokumenData.nomor,
