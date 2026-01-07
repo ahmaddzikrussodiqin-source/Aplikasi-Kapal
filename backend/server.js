@@ -82,7 +82,14 @@ async function ensureDokumenTable() {
             )
         `);
 
-        // Add updated_at column if it doesn't exist (for existing tables)
+        // Add missing columns if they don't exist (for existing tables)
+        try {
+            await kapalPool.query(`ALTER TABLE dokumen ADD COLUMN IF NOT EXISTS "filePath" TEXT`);
+            console.log('✅ filePath column ensured in dokumen table');
+        } catch (alterError) {
+            console.log('filePath column already exists or could not be added');
+        }
+
         try {
             await kapalPool.query(`ALTER TABLE dokumen ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP`);
             console.log('✅ Updated_at column ensured in dokumen table');
@@ -1203,7 +1210,7 @@ app.put('/api/dokumen/:id', authenticateToken, async (req, res) => {
                 tanggalTerbit TEXT,
                 tanggalKadaluarsa TEXT,
                 status TEXT NOT NULL DEFAULT 'aktif',
-                "filePath" TEXT,
+                filepath TEXT,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
@@ -1217,7 +1224,7 @@ app.put('/api/dokumen/:id', authenticateToken, async (req, res) => {
         const result = await pool.query(`
             UPDATE dokumen SET
                 kapalId = $1, nama = $2, jenis = $3, nomor = $4,
-                tanggalTerbit = $5, tanggalKadaluarsa = $6, status = $7, "filePath" = $8,
+                tanggalTerbit = $5, tanggalKadaluarsa = $6, status = $7, filepath = $8,
                 updated_at = CURRENT_TIMESTAMP
             WHERE id = $9
         `, [
