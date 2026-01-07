@@ -1182,6 +1182,24 @@ app.put('/api/dokumen/:id', authenticateToken, async (req, res) => {
     }
 
     try {
+        // Ensure dokumen table exists
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS dokumen (
+                id SERIAL PRIMARY KEY,
+                kapalId INTEGER NOT NULL,
+                nama TEXT NOT NULL,
+                jenis TEXT NOT NULL,
+                nomor TEXT,
+                tanggalTerbit TEXT,
+                tanggalKadaluarsa TEXT,
+                status TEXT NOT NULL DEFAULT 'aktif',
+                filePath TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        `);
+        console.log('Ensured dokumen table exists for update operation');
+
         const { id } = req.params;
         const dokumenData = req.body;
         console.log('Updating dokumen id:', id, 'with data:', dokumenData);
