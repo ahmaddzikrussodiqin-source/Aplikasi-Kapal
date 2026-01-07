@@ -185,7 +185,7 @@ io.on('connection', (socket) => {
         try {
             // Get current checklist data
             const currentResult = await kapalMasukPool.query(`
-                SELECT checklistStates, checklistDates FROM kapal_masuk_schema.kapal_masuk WHERE id = $1
+                SELECT "checklistStates", "checklistDates" FROM kapal_masuk_schema.kapal_masuk WHERE id = $1
             `, [kapalId]);
 
             if (currentResult.rows.length === 0) {
@@ -193,8 +193,8 @@ io.on('connection', (socket) => {
                 return;
             }
 
-            const currentStates = JSON.parse(currentResult.rows[0].checkliststates || '{}');
-            const currentDates = JSON.parse(currentResult.rows[0].checklistdates || '{}');
+            const currentStates = JSON.parse(currentResult.rows[0]["checklistStates"] || '{}');
+            const currentDates = JSON.parse(currentResult.rows[0]["checklistDates"] || '{}');
 
             // Update the specific item
             currentStates[item] = checked;
@@ -207,7 +207,7 @@ io.on('connection', (socket) => {
             // Update database
             await kapalMasukPool.query(`
                 UPDATE kapal_masuk_schema.kapal_masuk SET
-                    checklistStates = $1, checklistDates = $2
+                    "checklistStates" = $1, "checklistDates" = $2
                 WHERE id = $3
             `, [JSON.stringify(currentStates), JSON.stringify(currentDates), kapalId]);
 
@@ -1638,8 +1638,8 @@ app.get('/api/kapal-masuk', authenticateToken, async (req, res) => {
             durasiSelesaiPersiapan: k.durasiselesaiPersiapan,
             durasiBerlayar: k.durasiberlayar,
             statusKerja: k.statuskerja,
-            checklistStates: JSON.parse(k.checkliststates || '{}'),
-            checklistDates: JSON.parse(k.checklistdates || '{}')
+            checklistStates: JSON.parse(k.checklistStates || '{}'),
+            checklistDates: JSON.parse(k.checklistDates || '{}')
         }));
 
         res.json({
