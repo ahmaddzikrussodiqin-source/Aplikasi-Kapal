@@ -1173,6 +1173,7 @@ app.post('/api/dokumen', authenticateToken, async (req, res) => {
 
 app.put('/api/dokumen/:id', authenticateToken, async (req, res) => {
     const pool = dokumenPool || kapalPool;
+    console.log('PUT /api/dokumen/:id called, pool available:', !!pool);
     if (!pool) {
         return res.status(503).json({
             success: false,
@@ -1183,6 +1184,7 @@ app.put('/api/dokumen/:id', authenticateToken, async (req, res) => {
     try {
         const { id } = req.params;
         const dokumenData = req.body;
+        console.log('Updating dokumen id:', id, 'with data:', dokumenData);
 
         const result = await pool.query(`
             UPDATE dokumen SET
@@ -1195,6 +1197,7 @@ app.put('/api/dokumen/:id', authenticateToken, async (req, res) => {
             dokumenData.filePath, id
         ]);
 
+        console.log('Update result rowCount:', result.rowCount);
         if (result.rowCount === 0) {
             return res.status(404).json({
                 success: false,
@@ -1202,6 +1205,7 @@ app.put('/api/dokumen/:id', authenticateToken, async (req, res) => {
             });
         }
 
+        console.log('Dokumen updated successfully');
         res.json({
             success: true,
             message: 'Dokumen updated successfully'
