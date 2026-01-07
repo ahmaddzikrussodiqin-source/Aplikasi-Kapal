@@ -81,6 +81,15 @@ async function ensureDokumenTable() {
                 updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         `);
+
+        // Add updated_at column if it doesn't exist (for existing tables)
+        try {
+            await kapalPool.query(`ALTER TABLE dokumen ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP`);
+            console.log('✅ Updated_at column ensured in dokumen table');
+        } catch (alterError) {
+            console.log('Updated_at column already exists or could not be added');
+        }
+
         console.log('✅ Dokumen table ensured in kapal database');
     } catch (error) {
         console.error('❌ Failed to create dokumen table:', error);
@@ -223,7 +232,8 @@ async function initializeDatabase() {
                     tanggalKadaluarsa TEXT,
                     status TEXT NOT NULL DEFAULT 'aktif',
                     "filePath" TEXT,
-                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 )
             `);
             console.log('✅ Dokumen table created successfully');
@@ -1202,7 +1212,7 @@ app.put('/api/dokumen/:id', authenticateToken, async (req, res) => {
 
         const { id } = req.params;
         const dokumenData = req.body;
-        console.log('Updating dokumen id:', id, 'with data:', dokumenData);
+        console.log('Updating dokumen id:', id, 'with data:', JSON.stringify(dokumenData, null, 2));
 
         const result = await pool.query(`
             UPDATE dokumen SET
@@ -1218,6 +1228,7 @@ app.put('/api/dokumen/:id', authenticateToken, async (req, res) => {
 
         console.log('Update result rowCount:', result.rowCount);
         if (result.rowCount === 0) {
+            console.log('Dokumen not found for id:', id);
             return res.status(404).json({
                 success: false,
                 message: 'Dokumen not found'
@@ -1230,10 +1241,11 @@ app.put('/api/dokumen/:id', authenticateToken, async (req, res) => {
             message: 'Dokumen updated successfully'
         });
     } catch (error) {
-        console.error('Update dokumen error:', error);
+        console.error('Update dokumen error:', error.message);
+        console.error('Stack trace:', error.stack);
         res.status(500).json({
             success: false,
-            message: 'Failed to update dokumen'
+            message: 'Failed to update dokumen: ' + error.message
         });
     }
 });
