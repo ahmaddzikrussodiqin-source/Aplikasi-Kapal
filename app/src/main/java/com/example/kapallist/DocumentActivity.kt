@@ -700,6 +700,8 @@ class DocumentActivity : AppCompatActivity() {
                     // tanggalTerbit is preserved from the original dokumenEntity
                 )
 
+                Log.d("DocumentActivity", "Updating dokumen with tanggalKadaluarsa: $tanggalExpired")
+
                 lifecycleScope.launch {
                     try {
                         val sharedPref = getSharedPreferences("login_prefs", MODE_PRIVATE)
@@ -712,17 +714,21 @@ class DocumentActivity : AppCompatActivity() {
                         val response = ApiClient.apiService.updateDokumen("Bearer $token", dokumenEntity.id, updatedDokumen)
                         if (response.isSuccessful) {
                             val apiResponse = response.body()
-                            if (apiResponse?.success == true) {
-                                Toast.makeText(this@DocumentActivity, "Dokumen berhasil diperbarui", Toast.LENGTH_SHORT).show()
-                                // Clear pending changes
-                                pendingGambarAdditions.clear()
-                                pendingPdfAdditions.clear()
-                                currentPendingGambarDeletions.clear()
-                                currentPendingPdfDeletions.clear()
-                                // Reload documents from API to reflect changes
-                                currentKapal?.id?.let { loadDokumenForKapal(it) }
-                                dialog.dismiss()
-                            } else {
+                        if (apiResponse?.success == true) {
+                            Toast.makeText(this@DocumentActivity, "Dokumen berhasil diperbarui", Toast.LENGTH_SHORT).show()
+                            // Clear pending changes
+                            pendingGambarAdditions.clear()
+                            pendingPdfAdditions.clear()
+                            currentPendingGambarDeletions.clear()
+                            currentPendingPdfDeletions.clear()
+                            // Update the list and refresh UI immediately
+                            val position = listDokumen.indexOf(dokumenEntity)
+                            if (position != -1) {
+                                listDokumen[position] = updatedDokumen
+                                setupDokumenAdapter()
+                            }
+                            dialog.dismiss()
+                        } else {
                                 Toast.makeText(this@DocumentActivity, "Gagal memperbarui dokumen", Toast.LENGTH_SHORT).show()
                             }
                         } else {
@@ -828,18 +834,17 @@ class DocumentActivity : AppCompatActivity() {
                         val response = ApiClient.apiService.updateDokumen("Bearer $token", dokumenEntity.id, updatedDokumen)
                         if (response.isSuccessful) {
                             val apiResponse = response.body()
-                            if (apiResponse?.success == true) {
-                                // Update the DokumenKapal in the adapter
-                                dokumenKapal.tanggalExpired = newTanggalExpired
-                                currentDokumenAdapter?.notifyItemChanged(position)
-                                Toast.makeText(this@DocumentActivity, "Tanggal expired berhasil diperbarui", Toast.LENGTH_SHORT).show()
-                                dialog.dismiss()
-                            } else {
-                                Toast.makeText(this@DocumentActivity, "Gagal memperbarui tanggal expired", Toast.LENGTH_SHORT).show()
-                            }
+                        if (apiResponse?.success == true) {
+                            // Reload documents from API to reflect changes
+                            currentKapal?.id?.let { loadDokumenForKapal(it) }
+                            Toast.makeText(this@DocumentActivity, "Tanggal expired berhasil diperbarui", Toast.LENGTH_SHORT).show()
+                            dialog.dismiss()
                         } else {
-                            Toast.makeText(this@DocumentActivity, "Gagal memperbarui tanggal expired: ${response.message()}", Toast.LENGTH_SHORT).show()
+                            Toast.makeText(this@DocumentActivity, "Gagal memperbarui tanggal expired", Toast.LENGTH_SHORT).show()
                         }
+                    } else {
+                        Toast.makeText(this@DocumentActivity, "Gagal memperbarui tanggal expired: ${response.message()}", Toast.LENGTH_SHORT).show()
+                    }
                     } catch (e: Exception) {
                         Toast.makeText(this@DocumentActivity, "Error: ${e.message}", Toast.LENGTH_SHORT).show()
                         Log.e("DocumentActivity", "Update tanggal expired error: ${e.message}")

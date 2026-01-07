@@ -1265,6 +1265,10 @@ app.put('/api/dokumen/:id', authenticateToken, async (req, res) => {
         const dokumenData = req.body;
         console.log('Updating dokumen id:', id, 'with data:', JSON.stringify(dokumenData, null, 2));
 
+        // Get current dokumen data for logging
+        const currentResult = await pool.query('SELECT tanggalKadaluarsa FROM dokumen WHERE id = $1', [id]);
+        const currentDokumen = currentResult.rows[0];
+
         const result = await pool.query(`
             UPDATE dokumen SET
                 kapalId = $1, nama = $2, jenis = $3, nomor = $4,
@@ -1284,6 +1288,13 @@ app.put('/api/dokumen/:id', authenticateToken, async (req, res) => {
                 success: false,
                 message: 'Dokumen not found'
             });
+        }
+
+        // Log tanggalKadaluarsa changes
+        if (currentDokumen && currentDokumen.tanggalkadaluarsa !== dokumenData.tanggalKadaluarsa) {
+            console.log(`📅 Tanggal Kadaluarsa updated for dokumen id ${id}:`);
+            console.log(`   Old: ${currentDokumen.tanggalkadaluarsa || 'null'}`);
+            console.log(`   New: ${dokumenData.tanggalKadaluarsa || 'null'}`);
         }
 
         console.log('Dokumen updated successfully');
