@@ -100,8 +100,8 @@ class ProfileActivity : AppCompatActivity() {
 
                 val response = ApiClient.apiService.getAllKapalMasuk("Bearer $token")
                 if (response.isSuccessful) {
-                    val apiResponse = response.body()
-                    if (apiResponse?.success == true) {
+                    val apiResponse = try { response.body() } catch (e: Exception) { null }
+                    if (apiResponse != null) {
                         val kapalMasukList = apiResponse.data ?: emptyList()
                         Log.d("ProfileActivity", "Received kapal masuk data: ${kapalMasukList.size} items")
                         kapalMasukList.forEach { kapalMasuk ->
@@ -131,7 +131,7 @@ class ProfileActivity : AppCompatActivity() {
                     Toast.makeText(this@ProfileActivity, "Gagal memuat data kapal masuk: ${response.message()}", Toast.LENGTH_SHORT).show()
                 }
             } catch (e: Exception) {
-                Toast.makeText(this@ProfileActivity, "Error: ${e.message}", Toast.LENGTH_SHORT).show()
+                Log.e("ProfileActivity", "Error: ${e.message}")
             }
         }
     }
@@ -217,7 +217,7 @@ class ProfileActivity : AppCompatActivity() {
                 btnFinish.setBackgroundResource(R.drawable.button_rounded)
                 btnFinish.setTextColor(android.graphics.Color.WHITE)
                 btnFinish.layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
-                val allCheckedInitial = items.all { checkBoxStates[it] == true }
+                val allCheckedInitial = items.all { kapal.checklistStates[it] == true }
                 btnFinish.isEnabled = allCheckedInitial && !kapal.isFinished  // Disable jika sudah finished
 
                 // Kontrol akses untuk Member: disable "Batal" jika role Member
@@ -393,21 +393,15 @@ class ProfileActivity : AppCompatActivity() {
                                     val response = ApiClient.apiService.updateKapalMasuk("Bearer $token", kapal.id, updatedKapal.toKapalMasukEntity())
                                     Log.d("ProfileActivity", "Response code: ${response.code()}, message: ${response.message()}")
                                     if (response.isSuccessful) {
-                                        val apiResponse = response.body()
-                                        Log.d("ProfileActivity", "API response: $apiResponse")
-                                        if (apiResponse?.success == true) {
-                                            // Simpan state checkbox yang direset
-                                            val editor = getSharedPreferences("kapal_data", MODE_PRIVATE).edit()
-                                            val updatedStateJson = Gson().toJson(checkBoxStates)
-                                            editor.putString("checkbox_states", updatedStateJson)
-                                            val updatedDateJson = Gson().toJson(checkBoxDates)
-                                            editor.putString("checkbox_dates", updatedDateJson)
-                                            editor.apply()
-                                            loadDataAndBuildUI()  // Reload UI
-                                            Toast.makeText(this@ProfileActivity, "Proses finish dibatalkan", Toast.LENGTH_SHORT).show()
-                                        } else {
-                                            Toast.makeText(this@ProfileActivity, "Gagal membatalkan finish: ${apiResponse?.message}", Toast.LENGTH_SHORT).show()
-                                        }
+                                        // Simpan state checkbox yang direset
+                                        val editor = getSharedPreferences("kapal_data", MODE_PRIVATE).edit()
+                                        val updatedStateJson = Gson().toJson(checkBoxStates)
+                                        editor.putString("checkbox_states", updatedStateJson)
+                                        val updatedDateJson = Gson().toJson(checkBoxDates)
+                                        editor.putString("checkbox_dates", updatedDateJson)
+                                        editor.apply()
+                                        loadDataAndBuildUI()  // Reload UI
+                                        Toast.makeText(this@ProfileActivity, "Proses finish dibatalkan", Toast.LENGTH_SHORT).show()
                                     } else {
                                         if (response.code() == 403) {
                                             val intent = Intent(this@ProfileActivity, LoginActivity::class.java)
@@ -419,7 +413,7 @@ class ProfileActivity : AppCompatActivity() {
                                         }
                                     }
                                 } catch (e: Exception) {
-                                    Toast.makeText(this@ProfileActivity, "Error: ${e.message}", Toast.LENGTH_SHORT).show()
+                                    Log.e("ProfileActivity", "Error: ${e.message}")
                                 }
                             }
                         }
@@ -430,7 +424,7 @@ class ProfileActivity : AppCompatActivity() {
                         alertDialog.show()
                     } else {
                         // Kode finish asli
-                        val allChecked = items.all { checkBoxStates[it] == true }
+                        val allChecked = items.all { kapal.checklistStates[it] == true }
                         if (allChecked) {
                             val alertDialog = AlertDialog.Builder(this@ProfileActivity)
                             alertDialog.setMessage("Tentukan tanggal keberangkatan kapal")
@@ -467,14 +461,8 @@ class ProfileActivity : AppCompatActivity() {
                                             val response = ApiClient.apiService.updateKapalMasuk("Bearer $token", kapal.id, updatedKapal.toKapalMasukEntity())
                                             Log.d("ProfileActivity", "Response code: ${response.code()}, message: ${response.message()}")
                                             if (response.isSuccessful) {
-                                                val apiResponse = response.body()
-                                                Log.d("ProfileActivity", "API response: $apiResponse")
-                                                if (apiResponse?.success == true) {
-                                                    loadDataAndBuildUI()
-                                                    Toast.makeText(this@ProfileActivity, "Kapal selesai!", Toast.LENGTH_SHORT).show()
-                                                } else {
-                                                    Toast.makeText(this@ProfileActivity, "Gagal update kapal: ${apiResponse?.message}", Toast.LENGTH_SHORT).show()
-                                                }
+                                                loadDataAndBuildUI()
+                                                Toast.makeText(this@ProfileActivity, "Kapal selesai!", Toast.LENGTH_SHORT).show()
                                             } else {
                                                 if (response.code() == 403) {
                                                     val intent = Intent(this@ProfileActivity, LoginActivity::class.java)

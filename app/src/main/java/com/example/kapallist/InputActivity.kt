@@ -81,12 +81,12 @@ class InputActivity : AppCompatActivity() {
 
                     val response = ApiClient.apiService.getAllKapal("Bearer $token")
                     if (response.isSuccessful) {
-                        val apiResponse = response.body()
-                        if (apiResponse?.success == true) {
+                        val apiResponse = try { response.body() } catch (e: Exception) { null }
+                        if (apiResponse != null) {
                             val kapalList = apiResponse.data ?: emptyList()
                             val namaKapalList = kapalList.mapNotNull { it.nama }
                             if (namaKapalList.isNotEmpty()) {
-                            val builder = AlertDialog.Builder(this@InputActivity)
+                                val builder = AlertDialog.Builder(this@InputActivity)
                                 builder.setTitle("Pilih Nama Kapal (Referensi)")
                                 builder.setItems(namaKapalList.toTypedArray()) { _, which ->
                                     val selectedKapal = kapalList[which]
@@ -105,7 +105,7 @@ class InputActivity : AppCompatActivity() {
                         Toast.makeText(this@InputActivity, "Gagal memuat data kapal: ${response.message()}", Toast.LENGTH_SHORT).show()
                     }
                 } catch (e: Exception) {
-                    Toast.makeText(this@InputActivity, "Error: ${e.message}", Toast.LENGTH_SHORT).show()
+                    Log.e("InputActivity", "Error: ${e.message}")
                 }
             }
         }
@@ -201,8 +201,8 @@ class InputActivity : AppCompatActivity() {
                             // Fetch existing kapal masuk to preserve other fields
                             val existingResponse = ApiClient.apiService.getKapalMasukById("Bearer $token", selectedKapalId!!)
                             if (existingResponse.isSuccessful) {
-                                val apiResponse = existingResponse.body()
-                                if (apiResponse?.success == true) {
+                                val apiResponse = try { existingResponse.body() } catch (e: Exception) { null }
+                                if (apiResponse != null) {
                                     val existingKapal = apiResponse.data
                                     if (existingKapal != null) {
                                         // Update only the edited fields
@@ -221,7 +221,6 @@ class InputActivity : AppCompatActivity() {
                                         val response = ApiClient.apiService.updateKapalMasuk("Bearer $token", selectedKapalId!!, updatedKapalMasukEntity)
                                         if (response.isSuccessful) {
                                             Toast.makeText(this@InputActivity, "Kapal Masuk diperbarui!", Toast.LENGTH_SHORT).show()
-                                            finish()
                                         } else {
                                             Toast.makeText(this@InputActivity, "Gagal memperbarui kapal masuk: ${response.message()}", Toast.LENGTH_SHORT).show()
                                         }
@@ -229,7 +228,7 @@ class InputActivity : AppCompatActivity() {
                                         Toast.makeText(this@InputActivity, "Data kapal tidak ditemukan", Toast.LENGTH_SHORT).show()
                                     }
                                 } else {
-                                    Toast.makeText(this@InputActivity, "Gagal memuat data kapal: ${apiResponse?.message}", Toast.LENGTH_SHORT).show()
+                                    Toast.makeText(this@InputActivity, "Gagal memuat data kapal", Toast.LENGTH_SHORT).show()
                                 }
                             } else {
                                 Toast.makeText(this@InputActivity, "Gagal memuat data kapal: ${existingResponse.message()}", Toast.LENGTH_SHORT).show()
@@ -255,13 +254,20 @@ class InputActivity : AppCompatActivity() {
 
                             if (response.isSuccessful) {
                                 Toast.makeText(this@InputActivity, "Kapal Masuk disimpan!", Toast.LENGTH_SHORT).show()
-                                finish()
                             } else {
                                 Toast.makeText(this@InputActivity, "Gagal menyimpan kapal masuk: ${response.message()}", Toast.LENGTH_SHORT).show()
                             }
                         }
+                        val intent = Intent(this@InputActivity, ProfileActivity::class.java)
+                        intent.flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_NEW_TASK
+                        startActivity(intent)
+                        finish()
                     } catch (e: Exception) {
-                        Toast.makeText(this@InputActivity, "Error: ${e.message}", Toast.LENGTH_SHORT).show()
+                        Log.e("InputActivity", "Error: ${e.message}")
+                        val intent = Intent(this@InputActivity, ProfileActivity::class.java)
+                        intent.flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_NEW_TASK
+                        startActivity(intent)
+                        finish()
                     }
                 }
             } else {
@@ -299,8 +305,8 @@ class InputActivity : AppCompatActivity() {
 
                 val response = ApiClient.apiService.getKapalMasukById("Bearer $token", kapalId)
                 if (response.isSuccessful) {
-                    val apiResponse = response.body()
-                    if (apiResponse?.success == true) {
+                    val apiResponse = try { response.body() } catch (e: Exception) { null }
+                    if (apiResponse != null) {
                         val kapal = apiResponse.data
                         if (kapal != null) {
                             etNamaKapal.setText(kapal.nama)
@@ -333,7 +339,7 @@ class InputActivity : AppCompatActivity() {
                     Toast.makeText(this@InputActivity, "Gagal memuat data kapal: ${response.message()}", Toast.LENGTH_SHORT).show()
                 }
             } catch (e: Exception) {
-                Toast.makeText(this@InputActivity, "Error: ${e.message}", Toast.LENGTH_SHORT).show()
+                Log.e("InputActivity", "Error: ${e.message}")
             }
         }
     }
