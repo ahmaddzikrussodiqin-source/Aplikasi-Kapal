@@ -583,6 +583,8 @@ class DocumentActivity : AppCompatActivity() {
         val btnSimpanDokumen = dialogView.findViewById<Button>(R.id.btn_simpan_edit)
         val btnBatal = dialogView.findViewById<Button>(R.id.btn_batal_edit)
 
+        var isSaving = false
+
         etJenisDokumen.setText(dokumenEntity.jenis)
         etTanggalExpired.setText(dokumenEntity.tanggalKadaluarsa)
 
@@ -658,6 +660,10 @@ class DocumentActivity : AppCompatActivity() {
             .create()
 
         btnSimpanDokumen.setOnClickListener {
+            if (isSaving) return@setOnClickListener
+            isSaving = true
+            btnSimpanDokumen.isEnabled = false
+
             val jenis = etJenisDokumen.text.toString()
             val tanggalExpired = etTanggalExpired.text.toString()
             if (jenis.isNotEmpty()) {
@@ -721,10 +727,15 @@ class DocumentActivity : AppCompatActivity() {
                     } catch (e: Exception) {
                         Toast.makeText(this@DocumentActivity, "Error: ${e.message}", Toast.LENGTH_SHORT).show()
                         Log.e("DocumentActivity", "Update dokumen error: ${e.message}")
+                    } finally {
+                        isSaving = false
+                        btnSimpanDokumen.isEnabled = true
                     }
                 }
             } else {
                 Toast.makeText(this, "Jenis dokumen harus diisi", Toast.LENGTH_SHORT).show()
+                isSaving = false
+                btnSimpanDokumen.isEnabled = true
             }
         }
 

@@ -246,7 +246,7 @@ async function initializeDatabase() {
                     tanggalTerbit TEXT,
                     tanggalKadaluarsa TEXT,
                     status TEXT NOT NULL DEFAULT 'aktif',
-                    filepath TEXT,
+                    "filePath" TEXT,
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 )
