@@ -1,7 +1,7 @@
 #!/bin/bash
 
-# Deploy script for IDCloudHost
-echo "🚀 Deploying KapalList Backend to IDCloudHost"
+# Deploy script for Railway/IDCloudHost
+echo "🚀 Deploying KapalList Backend"
 
 # Install dependencies
 echo "📦 Installing dependencies..."
@@ -9,6 +9,11 @@ npm install
 
 # Create uploads directory if it doesn't exist
 mkdir -p uploads
+
+# Run database migrations
+echo "🗄️ Running database migrations..."
+node migrate-users.js
+node migrate-checklist-columns.js
 
 # Set production environment
 export NODE_ENV=production
@@ -18,4 +23,3 @@ echo "🔥 Starting server..."
 npm start
 
 echo "✅ Backend deployed successfully!"
-echo "🌐 Your API will be available at your IDCloudHost domain"
