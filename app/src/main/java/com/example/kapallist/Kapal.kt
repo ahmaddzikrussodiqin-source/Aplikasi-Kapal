@@ -49,7 +49,9 @@ data class Kapal(
         perkiraanKeberangkatan = kapalMasukEntity.perkiraanKeberangkatan?.toString(),
         durasiSelesaiPersiapan = kapalMasukEntity.durasiSelesaiPersiapan,
         durasiBerlayar = kapalMasukEntity.durasiBerlayar,
-        id = kapalMasukEntity.id
+        id = kapalMasukEntity.id,
+        checklistStates = kapalMasukEntity.checklistStates.toMutableMap(),
+        checklistDates = kapalMasukEntity.checklistDates.toMutableMap()
     )
 
     fun toKapalEntity(): KapalEntity {
@@ -92,7 +94,9 @@ data class Kapal(
             perkiraanKeberangkatan = this.perkiraanKeberangkatan?.let { LocalDate.parse(it) },
             durasiSelesaiPersiapan = this.durasiSelesaiPersiapan,
             durasiBerlayar = this.durasiBerlayar,
-            statusKerja = "persiapan" // default
+            statusKerja = "persiapan", // default
+            checklistStates = this.checklistStates,
+            checklistDates = this.checklistDates
         )
     }
 }

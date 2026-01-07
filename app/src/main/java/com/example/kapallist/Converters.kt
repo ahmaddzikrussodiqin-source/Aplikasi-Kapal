@@ -60,4 +60,30 @@ class Converters {
     fun toLocalDate(date: LocalDate?): String? {
         return date?.format(DateTimeFormatter.ISO_LOCAL_DATE)
     }
+
+    @TypeConverter
+    fun fromStringBooleanMap(value: String?): Map<String, Boolean> {
+        if (value.isNullOrEmpty()) return emptyMap()
+        val adapter: JsonAdapter<Map<String, Boolean>> = moshi.adapter(Types.newParameterizedType(Map::class.java, String::class.java, Boolean::class.javaObjectType))
+        return adapter.fromJson(value) ?: emptyMap()
+    }
+
+    @TypeConverter
+    fun toStringBooleanMap(map: Map<String, Boolean>?): String {
+        val adapter: JsonAdapter<Map<String, Boolean>> = moshi.adapter(Types.newParameterizedType(Map::class.java, String::class.java, Boolean::class.javaObjectType))
+        return adapter.toJson(map ?: emptyMap())
+    }
+
+    @TypeConverter
+    fun fromStringStringMap(value: String?): Map<String, String> {
+        if (value.isNullOrEmpty()) return emptyMap()
+        val adapter: JsonAdapter<Map<String, String>> = moshi.adapter(Types.newParameterizedType(Map::class.java, String::class.java, String::class.java))
+        return adapter.fromJson(value) ?: emptyMap()
+    }
+
+    @TypeConverter
+    fun toStringStringMap(map: Map<String, String>?): String {
+        val adapter: JsonAdapter<Map<String, String>> = moshi.adapter(Types.newParameterizedType(Map::class.java, String::class.java, String::class.java))
+        return adapter.toJson(map ?: emptyMap())
+    }
 }

@@ -22,3 +22,4 @@
 
 ## Fixes Applied
 - [x] Added code to join Socket.io checklist rooms after loading data
+- [x] Fixed checklist persistence issue: checklist states now loaded from API instead of local SharedPreferences, ensuring states persist across activity navigation

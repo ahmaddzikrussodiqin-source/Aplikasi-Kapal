@@ -27,5 +27,7 @@ data class KapalMasukEntity(
     var perkiraanKeberangkatan: LocalDate? = null,
     var durasiSelesaiPersiapan: String? = null,
     var durasiBerlayar: String? = null,
-    var statusKerja: String? = "persiapan"
+    var statusKerja: String? = "persiapan",
+    var checklistStates: Map<String, Boolean> = emptyMap(),
+    var checklistDates: Map<String, String> = emptyMap()
 )
