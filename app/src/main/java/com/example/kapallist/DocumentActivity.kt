@@ -480,12 +480,16 @@ class DocumentActivity : AppCompatActivity() {
                 },
                 onEditClick = { position ->
                     showEditDokumenDialog(listDokumen[position])
+                },
+                onTanggalExpiredEditClick = { position ->
+                    showEditTanggalExpiredDialog(position)
                 }
             )
             rvKapalList.adapter = currentDokumenAdapter
         } else {
             currentDokumenAdapter?.updateList(dokumenKapalList)
         }
+        rvKapalList.adapter = currentDokumenAdapter
         Log.d("DocumentActivity", "Adapter updated")
     }
 
@@ -784,5 +788,68 @@ class DocumentActivity : AppCompatActivity() {
             currentTvGambarList?.text = "Lihat Gambar: $gambarCount"
             currentTvPdfList?.text = "Lihat PDF: $pdfCount"
         }
+    }
+
+    private fun showEditTanggalExpiredDialog(position: Int) {
+        val dokumenKapal = currentDokumenAdapter?.getItem(position) ?: return
+        val dokumenEntity = listDokumen.getOrNull(position) ?: return
+
+        val dialogView = layoutInflater.inflate(R.layout.dialog_edit_tanggal_expired, null)
+        val etTanggalExpired = dialogView.findViewById<android.widget.EditText>(R.id.et_tanggal_expired_edit)
+        val btnSimpan = dialogView.findViewById<Button>(R.id.btn_simpan_tanggal_expired)
+
+        etTanggalExpired.setText(dokumenKapal.tanggalExpired)
+
+        etTanggalExpired.setOnClickListener {
+            val c = java.util.Calendar.getInstance()
+            val dpd = android.app.DatePickerDialog(this, { _, y, m, d -> etTanggalExpired.setText("$d/${m + 1}/$y") }, c.get(java.util.Calendar.YEAR), c.get(java.util.Calendar.MONTH), c.get(java.util.Calendar.DAY_OF_MONTH))
+            dpd.show()
+        }
+
+        val dialog = AlertDialog.Builder(this)
+            .setView(dialogView)
+            .setCancelable(true)
+            .create()
+
+        btnSimpan.setOnClickListener {
+            val newTanggalExpired = etTanggalExpired.text.toString()
+            if (newTanggalExpired.isNotEmpty()) {
+                val updatedDokumen = dokumenEntity.copy(tanggalKadaluarsa = newTanggalExpired)
+
+                lifecycleScope.launch {
+                    try {
+                        val sharedPref = getSharedPreferences("login_prefs", MODE_PRIVATE)
+                        val token = sharedPref.getString("token", "") ?: ""
+                        if (token.isEmpty()) {
+                            Toast.makeText(this@DocumentActivity, "Token tidak ditemukan", Toast.LENGTH_SHORT).show()
+                            return@launch
+                        }
+
+                        val response = ApiClient.apiService.updateDokumen("Bearer $token", dokumenEntity.id, updatedDokumen)
+                        if (response.isSuccessful) {
+                            val apiResponse = response.body()
+                            if (apiResponse?.success == true) {
+                                // Update the DokumenKapal in the adapter
+                                dokumenKapal.tanggalExpired = newTanggalExpired
+                                currentDokumenAdapter?.notifyItemChanged(position)
+                                Toast.makeText(this@DocumentActivity, "Tanggal expired berhasil diperbarui", Toast.LENGTH_SHORT).show()
+                                dialog.dismiss()
+                            } else {
+                                Toast.makeText(this@DocumentActivity, "Gagal memperbarui tanggal expired", Toast.LENGTH_SHORT).show()
+                            }
+                        } else {
+                            Toast.makeText(this@DocumentActivity, "Gagal memperbarui tanggal expired: ${response.message()}", Toast.LENGTH_SHORT).show()
+                        }
+                    } catch (e: Exception) {
+                        Toast.makeText(this@DocumentActivity, "Error: ${e.message}", Toast.LENGTH_SHORT).show()
+                        Log.e("DocumentActivity", "Update tanggal expired error: ${e.message}")
+                    }
+                }
+            } else {
+                Toast.makeText(this, "Tanggal expired harus diisi", Toast.LENGTH_SHORT).show()
+            }
+        }
+
+        dialog.show()
     }
 }

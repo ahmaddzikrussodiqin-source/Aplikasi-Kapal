@@ -14,7 +14,8 @@ class DokumenAdapter(
     private val dokumenList: MutableList<DokumenKapal>,
     private val onImagePreviewClick: (position: Int) -> Unit,
     private val onPdfPreviewClick: (position: Int) -> Unit,
-    private val onEditClick: (position: Int) -> Unit
+    private val onEditClick: (position: Int) -> Unit,
+    private val onTanggalExpiredEditClick: (position: Int) -> Unit
 ) : RecyclerView.Adapter<DokumenAdapter.DokumenViewHolder>() {
 
     inner class DokumenViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
@@ -57,6 +58,10 @@ class DokumenAdapter(
 
         holder.btnEditDokumen.setOnClickListener {
             onEditClick(position)
+        }
+
+        holder.tvTanggalExpired.setOnClickListener {
+            onTanggalExpiredEditClick(position)
         }
 
         // Add wiggle animation to indicate the button is clickable
