@@ -52,7 +52,7 @@ class ProfileActivity : AppCompatActivity() {
             try {
                 val opts = IO.Options()
                 opts.auth = mapOf("token" to token)
-                socket = IO.socket("http://10.0.2.2:3000", opts) // Use 10.0.2.2 for Android emulator
+                socket = IO.socket(Config.BASE_URL, opts)
                 socket.connect()
 
                 socket.on(Socket.EVENT_CONNECT) {

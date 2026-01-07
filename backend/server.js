@@ -181,23 +181,44 @@ io.on('connection', (socket) => {
 
     // Handle checklist update
     socket.on('update-checklist', async (data) => {
-        const { kapalId, checklistStates, checklistDates } = data;
+        const { kapalId, item, checked, date } = data;
         try {
+            // Get current checklist data
+            const currentResult = await kapalMasukPool.query(`
+                SELECT checklistStates, checklistDates FROM kapal_masuk_schema.kapal_masuk WHERE id = $1
+            `, [kapalId]);
+
+            if (currentResult.rows.length === 0) {
+                socket.emit('checklist-update-error', { message: 'Kapal not found' });
+                return;
+            }
+
+            const currentStates = JSON.parse(currentResult.rows[0].checkliststates || '{}');
+            const currentDates = JSON.parse(currentResult.rows[0].checklistdates || '{}');
+
+            // Update the specific item
+            currentStates[item] = checked;
+            if (checked) {
+                currentDates[item] = date;
+            } else {
+                delete currentDates[item];
+            }
+
             // Update database
             await kapalMasukPool.query(`
                 UPDATE kapal_masuk_schema.kapal_masuk SET
                     checklistStates = $1, checklistDates = $2
                 WHERE id = $3
-            `, [JSON.stringify(checklistStates), JSON.stringify(checklistDates), kapalId]);
+            `, [JSON.stringify(currentStates), JSON.stringify(currentDates), kapalId]);
 
             // Broadcast to all clients in the room
             socket.to(`checklist-${kapalId}`).emit('checklist-updated', {
                 kapalId,
-                checklistStates,
-                checklistDates
+                checklistStates: currentStates,
+                checklistDates: currentDates
             });
 
-            console.log(`Checklist updated for kapal ${kapalId} by user ${socket.user.userId}`);
+            console.log(`Checklist item '${item}' updated for kapal ${kapalId} by user ${socket.user.userId}`);
         } catch (error) {
             console.error('Error updating checklist:', error);
             socket.emit('checklist-update-error', { message: 'Failed to update checklist' });
@@ -1841,7 +1862,7 @@ app.use('*', (req, res) => {
 });
 
 // Start server
-app.listen(PORT, () => {
+server.listen(PORT, () => {
     console.log(`🚀 KapalList Backend server is running on port ${PORT}`);
     console.log(`📊 Health check: http://localhost:${PORT}/`);
 });
