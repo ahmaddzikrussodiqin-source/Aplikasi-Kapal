@@ -92,10 +92,24 @@ async function ensureDokumenTable() {
 
         // Add missing columns if they don't exist (for existing tables)
         try {
-            await kapalPool.query(`ALTER TABLE dokumen ADD COLUMN IF NOT EXISTS "filePath" TEXT`);
-            console.log('✅ filePath column ensured in dokumen table');
+            // Check if filePath column exists
+            const columnCheck = await kapalPool.query(`
+                SELECT column_name
+                FROM information_schema.columns
+                WHERE table_schema = 'public'
+                AND table_name = 'dokumen'
+                AND column_name = 'filePath'
+            `);
+
+            if (columnCheck.rows.length === 0) {
+                console.log('❌ filePath column missing, adding it...');
+                await kapalPool.query(`ALTER TABLE dokumen ADD COLUMN "filePath" TEXT`);
+                console.log('✅ filePath column added successfully');
+            } else {
+                console.log('✅ filePath column already exists');
+            }
         } catch (alterError) {
-            console.log('filePath column already exists or could not be added');
+            console.log('Error checking/adding filePath column:', alterError.message);
         }
 
         try {
