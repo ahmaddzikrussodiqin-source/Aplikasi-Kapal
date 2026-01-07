@@ -76,7 +76,7 @@ async function ensureDokumenTable() {
                 tanggalTerbit TEXT,
                 tanggalKadaluarsa TEXT,
                 status TEXT NOT NULL DEFAULT 'aktif',
-                filePath TEXT,
+                "filePath" TEXT,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
@@ -222,7 +222,7 @@ async function initializeDatabase() {
                     tanggalTerbit TEXT,
                     tanggalKadaluarsa TEXT,
                     status TEXT NOT NULL DEFAULT 'aktif',
-                    filePath TEXT,
+                    "filePath" TEXT,
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 )
             `);
@@ -1193,7 +1193,7 @@ app.put('/api/dokumen/:id', authenticateToken, async (req, res) => {
                 tanggalTerbit TEXT,
                 tanggalKadaluarsa TEXT,
                 status TEXT NOT NULL DEFAULT 'aktif',
-                filePath TEXT,
+                "filePath" TEXT,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )

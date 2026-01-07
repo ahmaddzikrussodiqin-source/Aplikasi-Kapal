@@ -53,19 +53,19 @@ async function setupDokumenDatabase() {
 
         // Create dokumen table optimized for storing images and PDFs
         await dokumenPool.query(`
-            CREATE TABLE IF NOT EXISTS dokumen (
-                id SERIAL PRIMARY KEY,
-                kapalId INTEGER NOT NULL,
-                nama TEXT NOT NULL,
-                jenis TEXT NOT NULL,
-                nomor TEXT,
-                tanggalTerbit TEXT,
-                tanggalKadaluarsa TEXT,
-                status TEXT NOT NULL DEFAULT 'aktif',
-                filePath TEXT,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            )
+    CREATE TABLE IF NOT EXISTS dokumen (
+        id SERIAL PRIMARY KEY,
+        kapalId INTEGER NOT NULL,
+        nama TEXT NOT NULL,
+        jenis TEXT NOT NULL,
+        nomor TEXT,
+        tanggalTerbit TEXT,
+        tanggalKadaluarsa TEXT,
+        status TEXT NOT NULL DEFAULT 'aktif',
+        "filePath" TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )
         `);
 
         console.log('✅ Dokumen table created successfully');

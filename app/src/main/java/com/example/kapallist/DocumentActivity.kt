@@ -395,6 +395,9 @@ class DocumentActivity : AppCompatActivity() {
             if (apiResponse?.success == true) {
                 val dokumenForKapal = apiResponse.data ?: emptyList()
                 Log.d("DocumentActivity", "Dokumen count: ${dokumenForKapal.size}")
+                dokumenForKapal.forEachIndexed { index, dokumen ->
+                    Log.d("DocumentActivity", "Dokumen $index: id=${dokumen.id}, jenis=${dokumen.jenis}, filePath=${dokumen.filePath}")
+                }
                 listDokumen.clear()
                 listDokumen.addAll(dokumenForKapal)
                 setupDokumenAdapter()
