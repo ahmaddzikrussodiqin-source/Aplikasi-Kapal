@@ -90,6 +90,14 @@ async function ensureDokumenTable() {
             console.log('Rename column failed or already renamed');
         }
 
+        // Rename tanggalKadaluarsa column if it exists as lowercase
+        try {
+            await kapalPool.query(`ALTER TABLE dokumen RENAME COLUMN tanggalkadaluarsa TO "tanggalKadaluarsa"`);
+            console.log('✅ Renamed tanggalkadaluarsa to "tanggalKadaluarsa"');
+        } catch (alterError) {
+            console.log('Rename tanggalKadaluarsa column failed or already renamed');
+        }
+
         // Add missing columns if they don't exist (for existing tables)
         try {
             // Check if filePath column exists
@@ -1272,7 +1280,7 @@ app.put('/api/dokumen/:id', authenticateToken, async (req, res) => {
         const result = await pool.query(`
             UPDATE dokumen SET
                 kapalId = $1, nama = $2, jenis = $3, nomor = $4,
-                tanggalTerbit = $5, "tanggalKadaluarsa" = $6, status = $7, "filePath" = $8,
+                tanggalTerbit = $5, tanggalKadaluarsa = $6, status = $7, "filePath" = $8,
                 updated_at = CURRENT_TIMESTAMP
             WHERE id = $9
         `, [
