@@ -30,4 +30,4 @@ Change showEditTanggalExpiredDialog to reload the documents from API after succe
 
 ## Files Modified
 - app/src/main/java/com/example/kapallist/DocumentActivity.kt
-- backend/server.js (added logging for tanggalKadaluarsa changes, fixed column name quoting in UPDATE query, added migration for existing lowercase column names)
+- backend/server.js (added logging for tanggalKadaluarsa changes, fixed column name quoting in UPDATE query and CREATE TABLE to use lowercase column names, added migration for existing lowercase column names)

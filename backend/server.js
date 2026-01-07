@@ -74,7 +74,7 @@ async function ensureDokumenTable() {
                 jenis TEXT NOT NULL,
                 nomor TEXT,
                 tanggalTerbit TEXT,
-                "tanggalKadaluarsa" TEXT,
+                tanggalKadaluarsa TEXT,
                 status TEXT NOT NULL DEFAULT 'aktif',
                 "filePath" TEXT,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -1260,7 +1260,7 @@ app.put('/api/dokumen/:id', authenticateToken, async (req, res) => {
                 jenis TEXT NOT NULL,
                 nomor TEXT,
                 tanggalTerbit TEXT,
-                "tanggalKadaluarsa" TEXT,
+                tanggalKadaluarsa TEXT,
                 status TEXT NOT NULL DEFAULT 'aktif',
                 "filePath" TEXT,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -1274,7 +1274,7 @@ app.put('/api/dokumen/:id', authenticateToken, async (req, res) => {
         console.log('Updating dokumen id:', id, 'with data:', JSON.stringify(dokumenData, null, 2));
 
         // Get current dokumen data for logging
-        const currentResult = await pool.query('SELECT "tanggalKadaluarsa" FROM dokumen WHERE id = $1', [id]);
+        const currentResult = await pool.query('SELECT tanggalKadaluarsa FROM dokumen WHERE id = $1', [id]);
         const currentDokumen = currentResult.rows[0];
 
         const result = await pool.query(`
