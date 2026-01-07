@@ -13,21 +13,22 @@ const path = require('path');
 console.log('🚀 Setup Railway Dokumen Database');
 console.log('==================================\n');
 
-// Check if DATABASE_URL_DOKUMEN is provided
-const dokumenDbUrl = process.env.DATABASE_URL_DOKUMEN;
+// Check if DATABASE_URL_DOKUMEN is provided, otherwise use DATABASE_URL_KAPAL
+const dokumenDbUrl = process.env.DATABASE_URL_DOKUMEN || process.env.DATABASE_URL_KAPAL;
 
 if (!dokumenDbUrl) {
-    console.log('❌ DATABASE_URL_DOKUMEN environment variable is not set!');
+    console.log('❌ Neither DATABASE_URL_DOKUMEN nor DATABASE_URL_KAPAL environment variable is set!');
     console.log('\n📋 Setup Instructions:');
     console.log('1. Go to your Railway project dashboard');
-    console.log('2. Create a new PostgreSQL database (separate from existing ones)');
-    console.log('3. Copy the DATABASE_URL from the new database');
-    console.log('4. Set the environment variable: DATABASE_URL_DOKUMEN=<your_database_url>');
+    console.log('2. Ensure you have a PostgreSQL database');
+    console.log('3. Copy the DATABASE_URL from the database');
+    console.log('4. Set the environment variable: DATABASE_URL_KAPAL=<your_database_url>');
     console.log('5. Run this script again');
     process.exit(1);
 }
 
-console.log('✅ DATABASE_URL_DOKUMEN found');
+const dbType = process.env.DATABASE_URL_DOKUMEN ? 'dokumen' : 'kapal';
+console.log(`✅ Using ${dbType} database for dokumen table`);
 
 // Create connection pool
 const dokumenPool = new Pool({
