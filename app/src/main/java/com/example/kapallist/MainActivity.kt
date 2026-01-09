@@ -561,7 +561,8 @@ class MainActivity : AppCompatActivity() {
                     val body = response.body()
                     Log.d("VersionCheck", "Response body: $body")
                     val serverVersion = body?.get("version") as? String
-                    Log.d("VersionCheck", "Server version: $serverVersion")
+                    val updateLink = body?.get("updateLink") as? String
+                    Log.d("VersionCheck", "Server version: $serverVersion, updateLink: $updateLink")
                     if (serverVersion != null) {
                         val packageInfo = packageManager.getPackageInfo(packageName, 0)
                         val currentVersion = packageInfo.versionName
@@ -570,7 +571,7 @@ class MainActivity : AppCompatActivity() {
                         if (serverVersion != currentVersion) {
                             // Version mismatch, show dialog to force update
                             Log.d("VersionCheck", "Versions don't match, showing update dialog")
-                            showUpdateRequiredDialog(serverVersion, currentVersion)
+                            showUpdateRequiredDialog(serverVersion, currentVersion, updateLink)
                             return@launch
                         } else {
                             Log.d("VersionCheck", "Versions match, proceeding with app initialization")
@@ -578,7 +579,7 @@ class MainActivity : AppCompatActivity() {
                     } else {
                         // Server didn't return version, assume update required for safety
                         Log.d("VersionCheck", "Server version is null, showing update dialog")
-                        showUpdateRequiredDialog("terbaru", packageManager.getPackageInfo(packageName, 0).versionName)
+                        showUpdateRequiredDialog("terbaru", packageManager.getPackageInfo(packageName, 0).versionName, updateLink)
                         return@launch
                     }
                 } else {
@@ -704,15 +705,16 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun showUpdateRequiredDialog(serverVersion: String, currentVersion: String?) {
+    private fun showUpdateRequiredDialog(serverVersion: String, currentVersion: String?, updateLink: String?) {
         val builder = AlertDialog.Builder(this)
         builder.setTitle("Update Diperlukan")
         builder.setMessage("Versi aplikasi Anda (${currentVersion ?: "tidak diketahui"}) sudah lama. Versi terbaru adalah $serverVersion. Silakan update aplikasi untuk melanjutkan.")
         builder.setCancelable(false) // Prevent dismissing
         builder.setPositiveButton("Update Sekarang") { _, _ ->
             // Open Google Drive link for update
+            val link = updateLink ?: "https://drive.google.com/drive/folders/1--rbjtMEQtxAlJEYjxonWl-yf5vX3frP?usp=drive_link"
             try {
-                startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://drive.google.com/drive/folders/1--rbjtMEQtxAlJEYjxonWl-yf5vX3frP?usp=drive_link")))
+                startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(link)))
             } catch (e: Exception) {
                 Toast.makeText(this, "Tidak dapat membuka link update", Toast.LENGTH_SHORT).show()
             }
