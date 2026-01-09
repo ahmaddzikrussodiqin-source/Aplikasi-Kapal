@@ -710,12 +710,11 @@ class MainActivity : AppCompatActivity() {
         builder.setMessage("Versi aplikasi Anda (${currentVersion ?: "tidak diketahui"}) sudah lama. Versi terbaru adalah $serverVersion. Silakan update aplikasi untuk melanjutkan.")
         builder.setCancelable(false) // Prevent dismissing
         builder.setPositiveButton("Update Sekarang") { _, _ ->
-            // Open Play Store or app store link
+            // Open Google Drive link for update
             try {
-                startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("market://details?id=$packageName")))
+                startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://drive.google.com/drive/folders/1--rbjtMEQtxAlJEYjxonWl-yf5vX3frP?usp=drive_link")))
             } catch (e: Exception) {
-                // Fallback to browser
-                startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://play.google.com/store/apps/details?id=$packageName")))
+                Toast.makeText(this, "Tidak dapat membuka link update", Toast.LENGTH_SHORT).show()
             }
             finish() // Close app
         }
