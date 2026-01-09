@@ -162,6 +162,19 @@ class ProfileActivity : AppCompatActivity() {
                 )
                 shipInfoLayout.setPadding(0, 16, 0, 8)
 
+                // Add berthing duration above ship name if return date is set and departure is not
+                if (!kapal.tanggalKembali.isNullOrEmpty() && kapal.perkiraanKeberangkatan.isNullOrEmpty()) {
+                    val tvDurasiBerlabuh = TextView(this)
+                    tvDurasiBerlabuh.text = "Durasi Berlabuh: ${hitungDurasiBerlabuh(kapal.tanggalKembali)}"
+                    tvDurasiBerlabuh.textSize = 14f
+                    tvDurasiBerlabuh.setTextColor(ContextCompat.getColor(this, R.color.primary))
+                    tvDurasiBerlabuh.layoutParams = LinearLayout.LayoutParams(
+                        LinearLayout.LayoutParams.MATCH_PARENT,
+                        LinearLayout.LayoutParams.WRAP_CONTENT
+                    )
+                    shipInfoLayout.addView(tvDurasiBerlabuh)
+                }
+
                 // Add sailing duration above ship name if departure date is set
                 if (!kapal.perkiraanKeberangkatan.isNullOrEmpty()) {
                     val tvDurasiBerlayar = TextView(this)
@@ -178,10 +191,17 @@ class ProfileActivity : AppCompatActivity() {
                 val tvKapal = TextView(this)
                 val formattedKembali = if (kapal.tanggalKembali.isNullOrEmpty()) "Belum ditentukan" else formatTanggal(kapal.tanggalKembali!!)
                 val namaKapal = kapal.nama ?: ""
-                tvKapal.text = "Nama: $namaKapal, Kembali: $formattedKembali"
+                tvKapal.text = "Nama: $namaKapal"
                 tvKapal.textSize = 16f
                 tvKapal.layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT)
                 shipInfoLayout.addView(tvKapal)
+
+                val tvKembali = TextView(this)
+                tvKembali.text = "Kembali: $formattedKembali"
+                tvKembali.textSize = 14f
+                tvKembali.setTextColor(ContextCompat.getColor(this, R.color.text_secondary))
+                tvKembali.layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT)
+                shipInfoLayout.addView(tvKembali)
 
                 // Add departure date under the ship name always
                 val tvDeparture = TextView(this)
@@ -560,6 +580,85 @@ class ProfileActivity : AppCompatActivity() {
             Log.e("ProfileActivity", "Error calculating sailing duration: ${e.message}")
         }
         return "Belum berlayar"
+    }
+
+    private fun hitungDurasiBerlabuh(tanggalKembali: String?): String {
+        if (tanggalKembali.isNullOrEmpty()) return "Belum berlabuh"
+        try {
+            // Handle YYYY-MM-DD format (ISO_LOCAL_DATE)
+            if (tanggalKembali.contains("-")) {
+                val parts = tanggalKembali.split("-")
+                if (parts.size == 3) {
+                    val year = parts[0].toInt()
+                    val month = parts[1].toInt() - 1 // Calendar months are 0-based
+                    val day = parts[2].toInt()
+
+                    val kembaliCalendar = Calendar.getInstance().apply {
+                        set(year, month, day, 0, 0, 0)
+                    }
+                    val today = Calendar.getInstance().apply {
+                        set(Calendar.HOUR_OF_DAY, 0)
+                        set(Calendar.MINUTE, 0)
+                        set(Calendar.SECOND, 0)
+                        set(Calendar.MILLISECOND, 0)
+                    }
+
+                    val diffMillis = today.timeInMillis - kembaliCalendar.timeInMillis
+                    val diffDays = (diffMillis / (1000 * 60 * 60 * 24)).toInt()
+                    return "$diffDays hari"
+                }
+            }
+
+            // Handle DD/MM/YYYY format
+            val parts = tanggalKembali.split("/")
+            if (parts.size == 3) {
+                val day = parts[0].toInt()
+                val month = parts[1].toInt() - 1
+                val year = parts[2].toInt()
+
+                val kembaliCalendar = Calendar.getInstance().apply {
+                    set(year, month, day, 0, 0, 0)
+                }
+                val today = Calendar.getInstance().apply {
+                    set(Calendar.HOUR_OF_DAY, 0)
+                    set(Calendar.MINUTE, 0)
+                    set(Calendar.SECOND, 0)
+                    set(Calendar.MILLISECOND, 0)
+                }
+
+                val diffMillis = today.timeInMillis - kembaliCalendar.timeInMillis
+                val diffDays = (diffMillis / (1000 * 60 * 60 * 24)).toInt()
+                return "$diffDays hari"
+            }
+
+            // Fallback for DD Month YYYY
+            val parts2 = tanggalKembali.split(" ")
+            if (parts2.size == 3) {
+                val day = parts2[0].toInt()
+                val monthName = parts2[1].lowercase()
+                val year = parts2[2].toInt()
+                val monthNames = arrayOf("januari", "februari", "maret", "april", "mei", "juni", "juli", "agustus", "september", "oktober", "november", "desember")
+                val month = monthNames.indexOf(monthName)
+                if (month == -1) return "Tanggal invalid"
+
+                val kembaliCalendar = Calendar.getInstance().apply {
+                    set(year, month, day, 0, 0, 0)
+                }
+                val today = Calendar.getInstance().apply {
+                    set(Calendar.HOUR_OF_DAY, 0)
+                    set(Calendar.MINUTE, 0)
+                    set(Calendar.SECOND, 0)
+                    set(Calendar.MILLISECOND, 0)
+                }
+
+                val diffMillis = today.timeInMillis - kembaliCalendar.timeInMillis
+                val diffDays = (diffMillis / (1000 * 60 * 60 * 24)).toInt()
+                return "$diffDays hari"
+            }
+        } catch (e: Exception) {
+            Log.e("ProfileActivity", "Error calculating berthing duration: ${e.message}")
+        }
+        return "Belum berlabuh"
     }
 
     private fun formatTanggal(tanggal: String): String {
