@@ -518,7 +518,7 @@ app.get('/', (req, res) => {
     res.json({
         success: true,
         message: 'KapalList Backend API is running!',
-        version: '1.02.13',
+        version: '1.02.14',
         updateLink: 'https://drive.google.com/drive/folders/1--rbjtMEQtxAlJEYjxonWl-yf5vX3frP?usp=drive_link',
         timestamp: new Date().toISOString()
     });
