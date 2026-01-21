@@ -4,12 +4,15 @@ import android.app.AlertDialog
 import android.app.DatePickerDialog
 import android.content.Intent
 import android.os.Bundle
+import android.text.Editable
+import android.text.TextWatcher
 import com.google.android.material.floatingactionbutton.FloatingActionButton
 import android.util.Log
 import android.view.View
 import android.widget.Button
 import android.widget.CheckBox
 import android.widget.CompoundButton
+import android.widget.EditText
 import android.widget.LinearLayout
 import android.widget.TextView
 import android.widget.Toast
@@ -34,11 +37,24 @@ class ProfileActivity : AppCompatActivity() {
     private lateinit var userRole: String
     private var isProgrammaticChange = false
     private lateinit var socket: Socket
+    private var currentFilterText = ""
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         supportActionBar?.hide()
         setContentView(R.layout.activity_profile)
+
+        // Setup filter
+        val etFilter = findViewById<EditText>(R.id.et_filter_persiapan)
+        etFilter.addTextChangedListener(object : TextWatcher {
+            override fun afterTextChanged(s: Editable?) {
+                currentFilterText = s.toString().trim()
+                applyFilter()
+            }
+            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
+            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
+        })
+
         val btnBack = findViewById<FloatingActionButton>(R.id.btn_back)
         btnBack.setOnClickListener {
             finish()
@@ -116,7 +132,7 @@ class ProfileActivity : AppCompatActivity() {
                             Log.d("ProfileActivity", "Converted Kapal: ${kapal.nama}, perkiraanKeberangkatan: ${kapal.perkiraanKeberangkatan}")
                         }
                         runOnUiThread {
-                            buildUI(llChecklist)
+                            applyFilter()
                             // Join checklist rooms for each kapal
                             if (::socket.isInitialized && socket.connected()) {
                                 listKapal.forEach { kapal ->
@@ -136,7 +152,7 @@ class ProfileActivity : AppCompatActivity() {
         }
     }
 
-    private fun buildUI(llChecklist: LinearLayout) {
+    private fun buildUI(llChecklist: LinearLayout, kapalList: MutableList<Kapal>) {
         val stateJson = getSharedPreferences("kapal_data", MODE_PRIVATE).getString("checkbox_states", "{}")
         val stateType = object : TypeToken<MutableMap<String, Boolean>>() {}.type
         val savedStates: MutableMap<String, Boolean> = Gson().fromJson(stateJson, stateType)
@@ -151,8 +167,8 @@ class ProfileActivity : AppCompatActivity() {
 
         llChecklist.removeAllViews()
 
-        if (listKapal.isNotEmpty()) {
-            for (kapal in listKapal) {
+        if (kapalList.isNotEmpty()) {
+            for (kapal in kapalList) {
                 // Create a vertical layout for ship name and departure date
                 val shipInfoLayout = LinearLayout(this)
                 shipInfoLayout.orientation = LinearLayout.VERTICAL
@@ -695,6 +711,20 @@ class ProfileActivity : AppCompatActivity() {
         return months[month]
     }
 
+    private fun applyFilter() {
+        val llChecklist = findViewById<LinearLayout>(R.id.ll_checklist)
+        if (currentFilterText.isEmpty()) {
+            buildUI(llChecklist, listKapal)
+        } else {
+            val filteredList = listKapal.filter { kapal ->
+                kapal.listPersiapan.any { prep ->
+                    prep.trim().contains(currentFilterText.trim(), ignoreCase = true)
+                }
+            }.toMutableList()
+            buildUI(llChecklist, filteredList)
+        }
+    }
+
     private fun updateChecklistForKapal(kapalId: Int, newStates: Map<String, Boolean>, newDates: Map<String, String>) {
         val kapal = listKapal.find { it.id == kapalId }
         if (kapal != null) {
@@ -702,9 +732,8 @@ class ProfileActivity : AppCompatActivity() {
             kapal.checklistStates.putAll(newStates)
             kapal.checklistDates.clear()
             kapal.checklistDates.putAll(newDates)
-            // Refresh UI
-            val llChecklist = findViewById<LinearLayout>(R.id.ll_checklist)
-            buildUI(llChecklist)
+            // Refresh UI with current filter applied
+            applyFilter()
         }
     }
 
