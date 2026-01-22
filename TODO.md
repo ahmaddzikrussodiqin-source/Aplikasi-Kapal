@@ -1,3 +1,2 @@
-# TODO: Fix Cancel Button in Edit Dokumen Dialog
-
-- [x] Add onClickListener to btn_batal_edit in DocumentActivity.kt to dismiss the dialog without saving changes
+- [x] Edit item_dokumen.xml to place tv_nama_dokumen and tv_perpanjang in horizontal LinearLayout
+- [x] Edit DokumenAdapter.kt to add tvPerpanjang to ViewHolder and update onBindViewHolder logic for expiring documents (red name, show PERPANJANG, change to 60 days)

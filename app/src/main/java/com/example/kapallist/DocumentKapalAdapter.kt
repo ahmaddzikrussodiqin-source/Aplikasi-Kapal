@@ -1,5 +1,6 @@
 package com.example.kapallist
 
+import android.graphics.Color
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -12,6 +13,32 @@ class DocumentKapalAdapter(
     private val kapalList: MutableList<KapalEntity>,
     private val onItemClick: (KapalEntity) -> Unit
 ) : RecyclerView.Adapter<DocumentKapalAdapter.KapalViewHolder>() {
+
+    private val expiringKapalIds = mutableSetOf<Int>()
+
+    fun setExpiringKapalIds(ids: Set<Int>) {
+        expiringKapalIds.clear()
+        expiringKapalIds.addAll(ids)
+        notifyDataSetChanged()
+    }
+
+    fun addExpiringKapalId(id: Int) {
+        if (expiringKapalIds.add(id)) {
+            val position = kapalList.indexOfFirst { it.id == id }
+            if (position != -1) {
+                notifyItemChanged(position)
+            }
+        }
+    }
+
+    fun removeExpiringKapalId(id: Int) {
+        if (expiringKapalIds.remove(id)) {
+            val position = kapalList.indexOfFirst { it.id == id }
+            if (position != -1) {
+                notifyItemChanged(position)
+            }
+        }
+    }
 
     inner class KapalViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
         val tvNamaKapal: TextView = itemView.findViewById(R.id.tv_nama_kapal)
@@ -33,6 +60,15 @@ class DocumentKapalAdapter(
             holder.tvTanggalKembali.visibility = View.VISIBLE
         } else {
             holder.tvTanggalKembali.visibility = View.GONE
+        }
+        if (expiringKapalIds.contains(kapal.id)) {
+            holder.itemView.setBackgroundColor(Color.RED)
+            holder.tvNamaKapal.setTextColor(Color.WHITE)
+            holder.tvTanggalKembali.setTextColor(Color.WHITE)
+        } else {
+            holder.itemView.setBackgroundColor(Color.TRANSPARENT)
+            holder.tvNamaKapal.setTextColor(Color.BLACK)
+            holder.tvTanggalKembali.setTextColor(Color.BLACK)
         }
         holder.itemView.setOnClickListener { onItemClick(kapal) }
         holder.btnEdit.visibility = View.GONE

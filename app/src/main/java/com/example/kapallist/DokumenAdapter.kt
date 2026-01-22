@@ -23,6 +23,7 @@ class DokumenAdapter(
         val tvTanggalExpired: TextView = itemView.findViewById(R.id.tv_tanggal_expired)
         val tvJumlahGambar: TextView = itemView.findViewById(R.id.tv_jumlah_gambar)
         val tvJumlahPdf: TextView = itemView.findViewById(R.id.tv_jumlah_pdf)
+        val tvPerpanjang: TextView = itemView.findViewById(R.id.tv_perpanjang)
         val btnEditDokumen: ImageButton = itemView.findViewById(R.id.btn_edit_dokumen)
     }
 
@@ -43,9 +44,9 @@ class DokumenAdapter(
 
         if (isExpiringSoon(dokumen.tanggalExpired)) {
             holder.tvNamaDokumen.setTextColor(Color.RED)
-            holder.tvNamaDokumen.text = "${dokumen.jenis?.uppercase() ?: ""} ( PERPANJANG )"
+            holder.tvPerpanjang.visibility = View.VISIBLE
         } else {
-            holder.tvNamaDokumen.setTextColor(Color.GREEN)
+            holder.tvPerpanjang.visibility = View.GONE
         }
 
         holder.tvJumlahGambar.setOnClickListener {
@@ -97,7 +98,7 @@ class DokumenAdapter(
             val today = java.util.Calendar.getInstance()
             val diffMillis = calendar.timeInMillis - today.timeInMillis
             val diffDays = java.util.concurrent.TimeUnit.MILLISECONDS.toDays(diffMillis).toInt()
-            diffDays in 0..90
+            diffDays <= 60
         } catch (e: Exception) {
             false
         }

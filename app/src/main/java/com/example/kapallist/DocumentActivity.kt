@@ -42,6 +42,7 @@ class DocumentActivity : AppCompatActivity() {
     private lateinit var kapalAdapter: DocumentKapalAdapter
     private var listKapal = mutableListOf<KapalEntity>()
     private lateinit var database: KapalDatabase
+    private val expiringKapalIds = mutableSetOf<Int>()
 
     private var currentKapalPosition: Int = -1
     private var currentDokumenPosition: Int = -1
@@ -69,6 +70,7 @@ class DocumentActivity : AppCompatActivity() {
     private var progressText: TextView? = null
     private var btnTambahGambar: Button? = null
     private var btnTambahPdf: Button? = null
+    private lateinit var tvTitle: TextView
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -89,6 +91,7 @@ class DocumentActivity : AppCompatActivity() {
 
         rvKapalList = findViewById(R.id.rv_kapal_list)
         swipeRefreshLayout = findViewById(R.id.swipe_refresh_layout)
+        tvTitle = findViewById(R.id.tv_title)
         btnBack = findViewById(R.id.btn_back)
         btnAddDokumen = findViewById(R.id.btn_add_dokumen)
         btnBack.setOnClickListener { finish() }
@@ -155,6 +158,14 @@ class DocumentActivity : AppCompatActivity() {
                         listKapal.clear()
                         listKapal.addAll(kapalEntities)
                         kapalAdapter.notifyDataSetChanged()
+
+                        // Check for expiring documents for each kapal
+                        expiringKapalIds.clear()
+                        for (kapal in kapalEntities) {
+                            lifecycleScope.launch {
+                                checkExpiringDocumentsForKapal(kapal)
+                            }
+                        }
 
                         if (isConfigChange && savedKapalId != -1 && currentKapal == null) {
                             val kapal = listKapal.find { it.id == savedKapalId }
@@ -383,6 +394,7 @@ class DocumentActivity : AppCompatActivity() {
         val sharedPref = getSharedPreferences("document_prefs", MODE_PRIVATE)
         sharedPref.edit().putInt("currentKapalId", kapal.id).apply()
         showingShipList = false
+        tvTitle.text = "DOKUMEN KAPAL - ${kapal.nama ?: "Tidak ada nama"}"
         loadDokumenForKapal(kapal.id)
         btnBack.setOnClickListener {
             showShipList()
@@ -512,14 +524,65 @@ class DocumentActivity : AppCompatActivity() {
         }
         rvKapalList.adapter = currentDokumenAdapter
         Log.d("DocumentActivity", "Adapter updated")
+
+        // Check if any document is expiring
+        val hasExpiring = dokumenKapalList.any { isExpiringSoon(it.tanggalExpired) }
+        if (hasExpiring) {
+            tvTitle.setBackgroundColor(android.graphics.Color.RED)
+        } else {
+            tvTitle.setBackgroundColor(android.graphics.Color.TRANSPARENT)
+        }
     }
 
     private fun showShipList() {
         currentKapal = null
         showingShipList = true
+        tvTitle.text = "DOKUMEN KAPAL"
+        tvTitle.setBackgroundColor(android.graphics.Color.TRANSPARENT)
         rvKapalList.adapter = kapalAdapter
         btnBack.setOnClickListener { finish() }
         btnAddDokumen.visibility = View.GONE
+    }
+
+    private fun isExpiringSoon(tanggalExpired: String?): Boolean {
+        if (tanggalExpired.isNullOrEmpty()) return false
+        return try {
+            val parts = tanggalExpired.split("/")
+            if (parts.size != 3) return false
+            val day = parts[0].toInt()
+            val month = parts[1].toInt() - 1
+            val year = parts[2].toInt()
+            val calendar = java.util.Calendar.getInstance()
+            calendar.set(year, month, day, 0, 0, 0)
+            val today = java.util.Calendar.getInstance()
+            val diffMillis = calendar.timeInMillis - today.timeInMillis
+            val diffDays = java.util.concurrent.TimeUnit.MILLISECONDS.toDays(diffMillis).toInt()
+            diffDays <= 60
+        } catch (e: Exception) {
+            false
+        }
+    }
+
+    private suspend fun checkExpiringDocumentsForKapal(kapal: KapalEntity) {
+        val sharedPref = getSharedPreferences("login_prefs", MODE_PRIVATE)
+        val token = sharedPref.getString("token", "") ?: return
+        try {
+            val response = ApiClient.apiService.getDokumenByKapalId("Bearer $token", kapal.id)
+            if (response.isSuccessful) {
+                val apiResponse = response.body()
+                if (apiResponse?.success == true) {
+                    val dokumenList = apiResponse.data ?: emptyList()
+                    val hasExpiring = dokumenList.any { isExpiringSoon(it.tanggalKadaluarsa) }
+                    if (hasExpiring) {
+                        kapalAdapter.addExpiringKapalId(kapal.id)
+                    } else {
+                        kapalAdapter.removeExpiringKapalId(kapal.id)
+                    }
+                }
+            }
+        } catch (e: Exception) {
+            Log.e("DocumentActivity", "Error checking expiring documents for kapal ${kapal.id}: ${e.message}")
+        }
     }
 
     private fun showImagePreviewDialog(images: List<String>) {
@@ -756,6 +819,7 @@ class DocumentActivity : AppCompatActivity() {
                             if (position != -1) {
                                 listDokumen[position] = updatedDokumen
                                 setupDokumenAdapter()
+                                lifecycleScope.launch { currentKapal?.let { checkExpiringDocumentsForKapal(it) } }
                             }
                             dialog.dismiss()
                         } else {
@@ -870,6 +934,7 @@ class DocumentActivity : AppCompatActivity() {
                             if (position != -1) {
                                 listDokumen[position] = updatedDokumen
                                 setupDokumenAdapter()
+                                lifecycleScope.launch { currentKapal?.let { checkExpiringDocumentsForKapal(it) } }
                             }
                             Toast.makeText(this@DocumentActivity, "Tanggal expired berhasil diperbarui", Toast.LENGTH_SHORT).show()
                             dialog.dismiss()
