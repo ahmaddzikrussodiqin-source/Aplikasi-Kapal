@@ -10,6 +10,7 @@ import android.os.Bundle
 import android.util.Log
 import android.view.View
 import android.widget.Button
+import android.widget.ProgressBar
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
@@ -64,6 +65,10 @@ class DocumentActivity : AppCompatActivity() {
     private var currentDokumen: DokumenKapal? = null
     private var savedKapalId: Int = -1
     private var isConfigChange: Boolean = false
+    private var progressBar: ProgressBar? = null
+    private var progressText: TextView? = null
+    private var btnTambahGambar: Button? = null
+    private var btnTambahPdf: Button? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -288,6 +293,15 @@ class DocumentActivity : AppCompatActivity() {
             } ?: data?.data?.let { uris.add(it) }
 
             lifecycleScope.launch {
+                progressBar?.visibility = View.VISIBLE
+                progressText?.visibility = View.VISIBLE
+                progressBar?.max = uris.size
+                progressBar?.progress = 0
+                progressText?.text = "Mengupload 0 dari ${uris.size}"
+                btnTambahGambar?.isEnabled = false
+                btnTambahPdf?.isEnabled = false
+
+                var uploadedCount = 0
                 uris.forEach { uri ->
                     val mimeType = contentResolver.getType(uri) ?: ""
                     val fileUrl = uploadFileToServer(uri, mimeType)
@@ -304,7 +318,14 @@ class DocumentActivity : AppCompatActivity() {
                     } else {
                         Toast.makeText(this@DocumentActivity, "Gagal upload file", Toast.LENGTH_SHORT).show()
                     }
+                    uploadedCount++
+                    progressBar?.progress = uploadedCount
+                    progressText?.text = "Mengupload $uploadedCount dari ${uris.size}"
                 }
+                progressBar?.visibility = View.GONE
+                progressText?.visibility = View.GONE
+                btnTambahGambar?.isEnabled = true
+                btnTambahPdf?.isEnabled = true
                 // Update the counts in the dialog
                 updateFileCounts()
                 // Note: No database update here - changes only happen on save
@@ -587,6 +608,9 @@ class DocumentActivity : AppCompatActivity() {
         val btnSimpanDokumen = dialogView.findViewById<Button>(R.id.btn_simpan_edit)
         val btnBatal = dialogView.findViewById<Button>(R.id.btn_batal_edit)
 
+        this.btnTambahGambar = btnTambahGambar
+        this.btnTambahPdf = btnTambahPdf
+
         var isSaving = false
 
         etJenisDokumen.setText(dokumenEntity.jenis)
@@ -621,6 +645,8 @@ class DocumentActivity : AppCompatActivity() {
         // Set current references
         currentTvGambarList = tvGambarList
         currentTvPdfList = tvPdfList
+        progressBar = dialogView.findViewById(R.id.progress_bar_upload)
+        progressText = dialogView.findViewById(R.id.tv_upload_progress)
         // Convert DokumenEntity to DokumenKapal for compatibility
         currentDokumen = DokumenKapal(
             jenis = dokumenEntity.jenis ?: "",
@@ -662,6 +688,10 @@ class DocumentActivity : AppCompatActivity() {
             .setView(dialogView)
             .setCancelable(false)
             .create()
+
+        btnBatal.setOnClickListener {
+            dialog.dismiss()
+        }
 
         btnSimpanDokumen.setOnClickListener {
             if (isSaving) return@setOnClickListener

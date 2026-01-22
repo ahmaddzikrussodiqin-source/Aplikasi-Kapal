@@ -1,6 +1,3 @@
-# TODO
+# TODO: Fix Cancel Button in Edit Dokumen Dialog
 
-- [x] Modify showUpdateRequiredDialog in MainActivity.kt to open Google Drive link on "Update Sekarang" button click
-- [x] Make update link synchronized online with Railway server
-- [x] Implement auto-logout when app is closed or in background for 15 minutes
-- [x] Implement auto-logout after app update
+- [x] Add onClickListener to btn_batal_edit in DocumentActivity.kt to dismiss the dialog without saving changes
