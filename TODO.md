@@ -1,2 +1,1 @@
-- [x] Edit item_dokumen.xml to place tv_nama_dokumen and tv_perpanjang in horizontal LinearLayout
-- [x] Edit DokumenAdapter.kt to add tvPerpanjang to ViewHolder and update onBindViewHolder logic for expiring documents (red name, show PERPANJANG, change to 60 days)
+- [x] Ubah tema aplikasi agar tetap dalam mode terang

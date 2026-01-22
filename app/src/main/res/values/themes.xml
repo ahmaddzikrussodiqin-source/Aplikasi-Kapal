@@ -1,6 +1,6 @@
 <resources xmlns:tools="http://schemas.android.com/tools">
     <!-- Base application theme -->
-    <style name="Theme.KapalList" parent="Theme.Material3.DayNight">  <!-- PERBAIKAN: Ganti ke Material3 theme untuk mendukung MaterialCardView attributes -->
+    <style name="Theme.KapalList" parent="Theme.Material3.Light">  <!-- PERBAIKAN: Ganti ke Material3 theme untuk mendukung MaterialCardView attributes -->
         <item name="colorPrimary">@color/primary</item>
         <item name="colorPrimaryDark">@color/primary</item>
         <item name="colorAccent">@color/secondary</item>
