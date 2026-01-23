@@ -524,7 +524,6 @@ app.get('/', (req, res) => {
     });
 });
 
-
 // Debug endpoint to check database (temporary)
 app.get('/debug/database', async (req, res) => {
     try {
