@@ -1,1 +1,3 @@
 - [x] Ubah tema aplikasi agar tetap dalam mode terang
+- [ ] Deploy ulang aplikasi ke Railway dengan konfigurasi volume untuk penyimpanan gambar permanen
+- [ ] Test upload gambar setelah deployment untuk memastikan persistensi data

@@ -46,7 +46,23 @@ npm run dev
 2. Tambahkan PostgreSQL database ke project
 3. Deploy backend menggunakan Dockerfile
 4. Set environment variable `DATABASE_URL` dengan connection string PostgreSQL dari Railway
-5. Update `BASE_URL` di aplikasi Android ke URL Railway yang baru
+5. Railway akan secara otomatis membuat volume persistent untuk direktori uploads berdasarkan konfigurasi `railway.json`
+6. Update `BASE_URL` di aplikasi Android ke URL Railway yang baru
+
+### Penyimpanan File Permanen
+
+Aplikasi ini menggunakan Railway volumes untuk penyimpanan gambar yang permanen. Konfigurasi volume sudah disiapkan di `railway.json`:
+
+```json
+"volumes": [
+  {
+    "name": "uploads",
+    "mountPath": "/app/uploads"
+  }
+]
+```
+
+Volume ini akan memastikan bahwa semua file yang diupload tetap tersimpan meskipun container di-restart atau di-redeploy.
 
 ## Environment Variables
 
