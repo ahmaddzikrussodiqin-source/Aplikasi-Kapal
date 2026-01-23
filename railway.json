@@ -12,7 +12,7 @@
   },
   "volumes": [
     {
-      "name": "uploads",
+      "name": "kapallist-uploads",
       "mountPath": "/app/uploads"
     }
   ]

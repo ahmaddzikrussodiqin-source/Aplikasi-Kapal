@@ -51,18 +51,41 @@ npm run dev
 
 ### Penyimpanan File Permanen
 
-Aplikasi ini menggunakan Railway volumes untuk penyimpanan gambar yang permanen. Konfigurasi volume sudah disiapkan di `railway.json`:
+Aplikasi ini menggunakan Railway volumes untuk penyimpanan file (gambar dan PDF) yang permanen. Konfigurasi volume sudah disiapkan di `railway.json`:
 
 ```json
 "volumes": [
   {
-    "name": "uploads",
+    "name": "kapallist-uploads",
     "mountPath": "/app/uploads"
   }
 ]
 ```
 
-Volume ini akan memastikan bahwa semua file yang diupload tetap tersimpan meskipun container di-restart atau di-redeploy.
+**Langkah Setup Volume di Railway:**
+
+1. **Buat Volume di Railway Dashboard:**
+   - Pergi ke project Railway Anda
+   - Klik tab "Volumes" di sidebar
+   - Klik "Create Volume"
+   - Beri nama volume: `kapallist-uploads`
+   - Pilih environment (production/staging)
+   - Klik "Create"
+
+2. **Attach Volume ke Service:**
+   - Pergi ke service backend Anda
+   - Klik tab "Settings"
+   - Scroll ke bagian "Volumes"
+   - Klik "Attach Volume"
+   - Pilih volume `kapallist-uploads`
+   - Set mount path: `/app/uploads`
+   - Klik "Attach"
+
+3. **Redeploy Service:**
+   - Setelah volume di-attach, lakukan redeploy service
+   - Volume akan otomatis mount ke path `/app/uploads`
+
+Volume ini akan memastikan bahwa semua file yang diupload (gambar dan PDF dokumen kapal) tetap tersimpan meskipun container di-restart atau di-redeploy.
 
 ## Environment Variables
 

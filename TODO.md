@@ -1,3 +1,5 @@
 - [x] Ubah tema aplikasi agar tetap dalam mode terang
-- [ ] Deploy ulang aplikasi ke Railway dengan konfigurasi volume untuk penyimpanan gambar permanen
-- [ ] Test upload gambar setelah deployment untuk memastikan persistensi data
+- [ ] Buat volume "kapallist-uploads" di Railway dashboard
+- [ ] Attach volume ke service backend dengan mount path "/app/uploads"
+- [ ] Deploy ulang aplikasi ke Railway setelah volume di-attach
+- [ ] Test upload PDF/gambar dokumen setelah deployment untuk memastikan persistensi data
