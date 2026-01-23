@@ -2,4 +2,5 @@
 - [ ] Buat volume "kapallist-uploads" di Railway dashboard
 - [ ] Attach volume ke service backend dengan mount path "/app/uploads"
 - [ ] Deploy ulang aplikasi ke Railway setelah volume di-attach
-- [ ] Test upload PDF/gambar dokumen setelah deployment untuk memastikan persistensi data
+- [ ] Test upload gambar dokumen setelah deployment untuk memastikan persistensi data (PDF sudah bekerja)
+- [ ] Perbaiki masalah file extension gambar jika masih ada issue
