@@ -164,6 +164,7 @@ class MainActivity : AppCompatActivity() {
         val btnProfile = findViewById<Button>(R.id.btn_view_profile)
         val btnDokumen = findViewById<Button>(R.id.btn_dokumen_kapal)
         val btnDaftarKapal = findViewById<Button>(R.id.btn_daftar_kapal)  // Tambah tombol baru
+        val cardDaftarKapal = findViewById<View>(R.id.card_daftar_kapal)
 
         when (userRole) {
             "Moderator" -> {
@@ -172,25 +173,26 @@ class MainActivity : AppCompatActivity() {
                 btnProfile.isEnabled = true
                 btnDokumen.isEnabled = true
                 btnDaftarKapal.isEnabled = true  // Enable tombol baru
+                cardDaftarKapal.visibility = View.VISIBLE
                 // Tampilkan fitur buat akun dan manage users
                 showCreateAccountButton()
                 showManageUsersButton()
             }
             "Supervisi" -> {
-                // Akses ke Input dan Profile
+                // Akses ke Input, Profile, dan Dokumen
                 btnInput.isEnabled = true
                 btnProfile.isEnabled = true
-                btnDokumen.isEnabled = false
-                btnDokumen.alpha = 0.5f  // Visual hint disabled
-                btnDaftarKapal.isEnabled = true  // Enable tombol baru
+                btnDokumen.isEnabled = true
+                btnDaftarKapal.isEnabled = false
+                cardDaftarKapal.visibility = View.GONE
             }
             "Member" -> {
-                // Akses ke Input dan Profile
+                // Akses ke Input, Profile, dan Dokumen
                 btnInput.isEnabled = true
                 btnProfile.isEnabled = true
-                btnDokumen.isEnabled = false
-                btnDokumen.alpha = 0.5f
-                btnDaftarKapal.isEnabled = true  // Enable tombol baru
+                btnDokumen.isEnabled = true
+                btnDaftarKapal.isEnabled = false
+                cardDaftarKapal.visibility = View.GONE
             }
         }
 
@@ -635,21 +637,42 @@ class MainActivity : AppCompatActivity() {
 
         Log.d("MainActivity", "userId: $userId, userRole: $userRole")
 
-        // Akses penuh untuk semua role
+        // Kontrol akses berdasarkan role
         val btnInput = findViewById<Button>(R.id.btn_input_status)
         val btnProfile = findViewById<Button>(R.id.btn_view_profile)
         val btnDokumen = findViewById<Button>(R.id.btn_dokumen_kapal)
-        val btnDaftarKapal = findViewById<Button>(R.id.btn_daftar_kapal)  // Tambah tombol baru
+        val btnDaftarKapal = findViewById<Button>(R.id.btn_daftar_kapal)
+        val cardDaftarKapal = findViewById<View>(R.id.card_daftar_kapal)
 
-        // Enable semua tombol untuk semua role
-        btnInput.isEnabled = true
-        btnProfile.isEnabled = true
-        btnDokumen.isEnabled = true
-        btnDaftarKapal.isEnabled = true
-
-        // Tampilkan fitur buat akun dan manage users untuk semua role
-        showCreateAccountButton()
-        showManageUsersButton()
+        when (userRole) {
+            "Moderator" -> {
+                // Akses penuh
+                btnInput.isEnabled = true
+                btnProfile.isEnabled = true
+                btnDokumen.isEnabled = true
+                btnDaftarKapal.isEnabled = true
+                cardDaftarKapal.visibility = View.VISIBLE
+                // Tampilkan fitur buat akun dan manage users
+                showCreateAccountButton()
+                showManageUsersButton()
+            }
+            "Supervisi" -> {
+                // Akses ke Input, Profile, dan Dokumen
+                btnInput.isEnabled = true
+                btnProfile.isEnabled = true
+                btnDokumen.isEnabled = true
+                btnDaftarKapal.isEnabled = false
+                cardDaftarKapal.visibility = View.GONE
+            }
+            "Member" -> {
+                // Akses ke Input, Profile, dan Dokumen
+                btnInput.isEnabled = true
+                btnProfile.isEnabled = true
+                btnDokumen.isEnabled = true
+                btnDaftarKapal.isEnabled = false
+                cardDaftarKapal.visibility = View.GONE
+            }
+        }
 
         btnInput.setOnClickListener {
             val intent = Intent(this@MainActivity, InputActivity::class.java)
@@ -662,12 +685,8 @@ class MainActivity : AppCompatActivity() {
         }
 
         btnDokumen.setOnClickListener {
-            if (btnDokumen.isEnabled) {
-                val intent = Intent(this@MainActivity, DocumentActivity::class.java)
-                startActivity(intent)
-            } else {
-                Toast.makeText(this@MainActivity, "Akses tidak diizinkan", Toast.LENGTH_SHORT).show()
-            }
+            val intent = Intent(this@MainActivity, DocumentActivity::class.java)
+            startActivity(intent)
         }
 
         // Tambah onClick untuk tombol Daftar Kapal
