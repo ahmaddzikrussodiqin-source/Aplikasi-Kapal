@@ -244,15 +244,15 @@ class ProfileActivity : AppCompatActivity() {
 
                 llChecklist.addView(shipInfoLayout)
 
-                val tvStatus = TextView(this)
-                tvStatus.text = if (kapal.isFinished) "Completed" else "Not Complete"
-                tvStatus.setTextColor(if (kapal.isFinished) android.graphics.Color.GREEN else android.graphics.Color.RED)
-                tvStatus.textSize = 12f
-                tvStatus.layoutParams = LinearLayout.LayoutParams(
+                val tvCompletionStatus = TextView(this)
+                tvCompletionStatus.text = if (kapal.isFinished) "Completed" else "Not Complete"
+                tvCompletionStatus.setTextColor(if (kapal.isFinished) android.graphics.Color.GREEN else android.graphics.Color.RED)
+                tvCompletionStatus.textSize = 12f
+                tvCompletionStatus.layoutParams = LinearLayout.LayoutParams(
                     LinearLayout.LayoutParams.WRAP_CONTENT,
                     LinearLayout.LayoutParams.WRAP_CONTENT
                 ).apply { gravity = android.view.Gravity.END }
-                llChecklist.addView(tvStatus)
+                llChecklist.addView(tvCompletionStatus)
 
                 val items = kapal.listPersiapan
                 Log.d("ProfileActivity", "Checklist items for ${kapal.nama}: $items")

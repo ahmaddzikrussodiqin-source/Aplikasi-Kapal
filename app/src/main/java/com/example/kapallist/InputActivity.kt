@@ -53,6 +53,7 @@ class InputActivity : AppCompatActivity() {
 
         val etNamaKapal = findViewById<EditText>(R.id.et_nama_kapal)
         val etTanggalKembali = findViewById<EditText>(R.id.et_tanggal_kembali)
+        val etStatus = findViewById<EditText>(R.id.et_status)
         etPersiapan = findViewById<EditText>(R.id.et_persiapan)
         val btnTambahPersiapan = findViewById<Button>(R.id.btn_tambah_persiapan)
         val llPersiapanList = findViewById<LinearLayout>(R.id.ll_persiapan_list)
@@ -64,9 +65,9 @@ class InputActivity : AppCompatActivity() {
             // Load existing kapal data for editing
             loadKapalDataForEdit(selectedKapalId!!, etNamaKapal, etTanggalKembali, etStatus, llPersiapanList)
         }
-            if (namaKapalFromIntent != null) {
-                etNamaKapal.setText(namaKapalFromIntent)
-            }
+
+        if (namaKapalFromIntent != null) {
+            etNamaKapal.setText(namaKapalFromIntent)
         }
 
         // Load kapal names from API (daftar kapal untuk referensi)

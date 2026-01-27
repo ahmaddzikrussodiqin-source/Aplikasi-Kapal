@@ -17,6 +17,7 @@ data class Kapal(
     var durasiSelesaiPersiapan: String? = null,
     var durasiBerlayar: String? = null,
     var id: Int = 0,
+    var status: String? = null,
     var checklistStates: MutableMap<String, Boolean> = mutableMapOf(),
     var checklistDates: MutableMap<String, String> = mutableMapOf(),
     var newItemsAddedAfterFinish: MutableList<String> = mutableListOf()
