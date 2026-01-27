@@ -423,7 +423,7 @@ async function initializeDatabase() {
         `);
 
         // Add missing columns if they don't exist
-        const columnsToCheck = ['durasiBerlayar', 'checklistStates', 'checklistDates'];
+        const columnsToCheck = ['durasiBerlayar', 'checklistStates', 'checklistDates', 'newItemsAddedAfterFinish'];
         for (const col of columnsToCheck) {
             try {
                 const columnCheck = await kapalMasukPool.query(`
@@ -435,7 +435,8 @@ async function initializeDatabase() {
                 `, [col]);
 
                 if (columnCheck.rows.length === 0) {
-                    await kapalMasukPool.query(`ALTER TABLE kapal_masuk_schema.kapal_masuk ADD COLUMN "${col}" TEXT NOT NULL DEFAULT '{}'`);
+                    const defaultValue = col === 'newItemsAddedAfterFinish' ? "'[]'" : "'{}'";
+                    await kapalMasukPool.query(`ALTER TABLE kapal_masuk_schema.kapal_masuk ADD COLUMN "${col}" TEXT NOT NULL DEFAULT ${defaultValue}`);
                     console.log(`✅ Added missing column ${col}`);
                 } else {
                     console.log(`Column ${col} already exists`);

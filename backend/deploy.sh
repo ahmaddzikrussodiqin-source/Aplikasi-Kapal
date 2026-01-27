@@ -12,9 +12,13 @@ mkdir -p uploads
 
 # Run database migrations
 echo "🗄️ Running database migrations..."
+echo "Running migrate-users.js..."
 node migrate-users.js
+echo "Running migrate-checklist-columns.js..."
 node migrate-checklist-columns.js
+echo "Running migrate-new-items-after-finish.js..."
 node migrate-new-items-after-finish.js
+echo "✅ All migrations completed"
 
 # Set production environment
 export NODE_ENV=production

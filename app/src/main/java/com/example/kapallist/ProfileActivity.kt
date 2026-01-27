@@ -521,12 +521,13 @@ class ProfileActivity : AppCompatActivity() {
                         val alertDialog = AlertDialog.Builder(this@ProfileActivity)
                         alertDialog.setMessage("Yakin ingin membatalkan proses finish?")
                         alertDialog.setPositiveButton("Ya") { _, _ ->
-                            val updatedKapal = kapal.copy(
-                                isFinished = false,
-                                perkiraanKeberangkatan = null,
-                                durasiSelesaiPersiapan = null,
-                                durasiBerlayar = null
-                            )
+                        val updatedKapal = kapal.copy(
+                            isFinished = false,
+                            perkiraanKeberangkatan = null,
+                            durasiSelesaiPersiapan = null,
+                            durasiBerlayar = null,
+                            newItemsAddedAfterFinish = mutableListOf()  // Clear items added after finish
+                        )
                             // Update via API
                             lifecycleScope.launch {
                                 try {
