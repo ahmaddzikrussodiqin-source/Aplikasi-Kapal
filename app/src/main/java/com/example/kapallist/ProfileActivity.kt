@@ -268,7 +268,7 @@ class ProfileActivity : AppCompatActivity() {
 
                         val checkBox = CheckBox(this)
                         checkBox.isChecked = kapal.checklistStates[item] ?: false
-                        checkBox.isEnabled = !kapal.isFinished || (kapal.checklistStates[item] == false)
+                        checkBox.isEnabled = !kapal.isFinished || (kapal.checklistStates[item] == false) || kapal.newItemsAddedAfterFinish.contains(item)
                         if (checkBox.isChecked) {
                             checkBox.paintFlags = checkBox.paintFlags or android.graphics.Paint.STRIKE_THRU_TEXT_FLAG
                         }
@@ -353,7 +353,7 @@ class ProfileActivity : AppCompatActivity() {
 
                         var checkBoxListener: CompoundButton.OnCheckedChangeListener? = null
                         checkBoxListener = CompoundButton.OnCheckedChangeListener { _, isChecked ->
-                            if (!kapal.isFinished || (kapal.isFinished && kapal.checklistStates[item] == false)) {
+                            if (!kapal.isFinished || (kapal.isFinished && kapal.checklistStates[item] == false) || kapal.newItemsAddedAfterFinish.contains(item)) {
                                 if (isChecked) {
                                     // Show confirmation dialog for checking
                                     val alertDialog = AlertDialog.Builder(this@ProfileActivity)
@@ -471,13 +471,17 @@ class ProfileActivity : AppCompatActivity() {
                                 updatedList.add(newItem)
                                 val updatedChecklistStates = kapal.checklistStates.toMutableMap()
                                 val updatedChecklistDates = kapal.checklistDates.toMutableMap()
+                                val updatedNewItemsAddedAfterFinish = kapal.newItemsAddedAfterFinish.toMutableList()
                                 // Initialize checklistStates and checklistDates for new item
                                 updatedChecklistStates[newItem] = false
                                 updatedChecklistDates[newItem] = ""
+                                // Add to newItemsAddedAfterFinish since this is added after finish
+                                updatedNewItemsAddedAfterFinish.add(newItem)
                                 val updatedKapal = kapal.copy(
                                     listPersiapan = updatedList,
                                     checklistStates = updatedChecklistStates,
-                                    checklistDates = updatedChecklistDates
+                                    checklistDates = updatedChecklistDates,
+                                    newItemsAddedAfterFinish = updatedNewItemsAddedAfterFinish
                                 )
                                 // Update via API
                                 lifecycleScope.launch {

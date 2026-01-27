@@ -29,5 +29,6 @@ data class KapalMasukEntity(
     var durasiBerlayar: String? = null,
     var statusKerja: String? = "persiapan",
     var checklistStates: Map<String, Boolean> = emptyMap(),
-    var checklistDates: Map<String, String> = emptyMap()
+    var checklistDates: Map<String, String> = emptyMap(),
+    @ColumnInfo(defaultValue = "[]") var newItemsAddedAfterFinish: List<String> = emptyList()
 )

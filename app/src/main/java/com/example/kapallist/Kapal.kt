@@ -18,8 +18,9 @@ data class Kapal(
     var durasiBerlayar: String? = null,
     var id: Int = 0,
     var checklistStates: MutableMap<String, Boolean> = mutableMapOf(),
-    var checklistDates: MutableMap<String, String> = mutableMapOf()
-) {
+    var checklistDates: MutableMap<String, String> = mutableMapOf(),
+    var newItemsAddedAfterFinish: MutableList<String> = mutableListOf()
+)
     constructor(kapalEntity: KapalEntity) : this(
         nama = kapalEntity.nama,
         tanggalInput = kapalEntity.tanggalInput,
@@ -51,7 +52,8 @@ data class Kapal(
         durasiBerlayar = kapalMasukEntity.durasiBerlayar,
         id = kapalMasukEntity.id,
         checklistStates = kapalMasukEntity.checklistStates.toMutableMap(),
-        checklistDates = kapalMasukEntity.checklistDates.toMutableMap()
+        checklistDates = kapalMasukEntity.checklistDates.toMutableMap(),
+        newItemsAddedAfterFinish = kapalMasukEntity.newItemsAddedAfterFinish.toMutableList()
     )
 
     fun toKapalEntity(): KapalEntity {
@@ -96,7 +98,8 @@ data class Kapal(
             durasiBerlayar = this.durasiBerlayar,
             statusKerja = "persiapan", // default
             checklistStates = this.checklistStates,
-            checklistDates = this.checklistDates
+            checklistDates = this.checklistDates,
+            newItemsAddedAfterFinish = this.newItemsAddedAfterFinish
         )
     }
 }

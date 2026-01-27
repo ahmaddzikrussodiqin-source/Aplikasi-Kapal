@@ -1665,7 +1665,8 @@ app.get('/api/kapal-masuk', authenticateToken, async (req, res) => {
             durasiBerlayar: k.durasiberlayar,
             statusKerja: k.statuskerja,
             checklistStates: JSON.parse(k.checklistStates || '{}'),
-            checklistDates: JSON.parse(k.checklistDates || '{}')
+            checklistDates: JSON.parse(k.checklistDates || '{}'),
+            newItemsAddedAfterFinish: JSON.parse(k.newItemsAddedAfterFinish || '[]')
         }));
 
         res.json({
@@ -1719,7 +1720,8 @@ app.get('/api/kapal-masuk/:id', authenticateToken, async (req, res) => {
             durasiBerlayar: kapalMasuk.durasiberlayar,
             statusKerja: kapalMasuk.statuskerja,
             checklistStates: JSON.parse(kapalMasuk.checklistStates || '{}'),
-            checklistDates: JSON.parse(kapalMasuk.checklistDates || '{}')
+            checklistDates: JSON.parse(kapalMasuk.checklistDates || '{}'),
+            newItemsAddedAfterFinish: JSON.parse(kapalMasuk.newItemsAddedAfterFinish || '[]')
         };
 
         res.json({
@@ -1794,8 +1796,8 @@ app.put('/api/kapal-masuk/:id', authenticateToken, async (req, res) => {
                 totalHariPersiapan = $12, tanggalBerangkat = $13, tanggalKembali = $14,
                 listPersiapan = $15, isFinished = $16, perkiraanKeberangkatan = $17,
                 durasiSelesaiPersiapan = $18, durasiBerlayar = $19, statusKerja = $20,
-                "checklistStates" = $21, "checklistDates" = $22
-            WHERE id = $23
+                "checklistStates" = $21, "checklistDates" = $22, "newItemsAddedAfterFinish" = $23
+            WHERE id = $24
         `, [
             sanitizeTextField(kapalMasukData.nama), sanitizeTextField(kapalMasukData.namaPemilik), sanitizeTextField(kapalMasukData.tandaSelar), sanitizeTextField(kapalMasukData.tandaPengenal),
             sanitizeTextField(kapalMasukData.beratKotor), sanitizeTextField(kapalMasukData.beratBersih), sanitizeTextField(kapalMasukData.merekMesin), sanitizeTextField(kapalMasukData.nomorSeriMesin),
@@ -1804,7 +1806,7 @@ app.put('/api/kapal-masuk/:id', authenticateToken, async (req, res) => {
             JSON.stringify(kapalMasukData.listPersiapan || []), kapalMasukData.isFinished ? 1 : 0,
             sanitizeTextField(kapalMasukData.perkiraanKeberangkatan), sanitizeTextField(kapalMasukData.durasiSelesaiPersiapan),
             sanitizeTextField(kapalMasukData.durasiBerlayar), sanitizeTextField(kapalMasukData.statusKerja),
-            JSON.stringify(kapalMasukData.checklistStates || {}), JSON.stringify(kapalMasukData.checklistDates || {}), id
+            JSON.stringify(kapalMasukData.checklistStates || {}), JSON.stringify(kapalMasukData.checklistDates || {}), JSON.stringify(kapalMasukData.newItemsAddedAfterFinish || []), id
         ]);
 
         if (result.rowCount === 0) {
