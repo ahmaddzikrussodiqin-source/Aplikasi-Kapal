@@ -51,6 +51,7 @@ data class Kapal(
         durasiSelesaiPersiapan = kapalMasukEntity.durasiSelesaiPersiapan,
         durasiBerlayar = kapalMasukEntity.durasiBerlayar,
         id = kapalMasukEntity.id,
+        status = kapalMasukEntity.status,
         checklistStates = kapalMasukEntity.checklistStates.toMutableMap(),
         checklistDates = kapalMasukEntity.checklistDates.toMutableMap(),
         newItemsAddedAfterFinish = kapalMasukEntity.newItemsAddedAfterFinish.toMutableList()
@@ -97,6 +98,7 @@ data class Kapal(
             durasiSelesaiPersiapan = this.durasiSelesaiPersiapan,
             durasiBerlayar = this.durasiBerlayar,
             statusKerja = "persiapan", // default
+            status = this.status,
             checklistStates = this.checklistStates,
             checklistDates = this.checklistDates,
             newItemsAddedAfterFinish = this.newItemsAddedAfterFinish

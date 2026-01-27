@@ -62,8 +62,8 @@ class InputActivity : AppCompatActivity() {
 
         if (editMode && selectedKapalId != null) {
             // Load existing kapal data for editing
-            loadKapalDataForEdit(selectedKapalId!!, etNamaKapal, etTanggalKembali, llPersiapanList)
-        } else {
+            loadKapalDataForEdit(selectedKapalId!!, etNamaKapal, etTanggalKembali, etStatus, llPersiapanList)
+        }
             if (namaKapalFromIntent != null) {
                 etNamaKapal.setText(namaKapalFromIntent)
             }
@@ -187,6 +187,7 @@ class InputActivity : AppCompatActivity() {
         btnSimpan.setOnClickListener {
             val namaKapal = etNamaKapal.text.toString()
             val tanggalKembali = etTanggalKembali.text.toString()
+            val status = etStatus.text.toString().trim()
 
             if (namaKapal.isNotEmpty() && tanggalKembali.isNotEmpty() && listPersiapan.isNotEmpty()) {
                 lifecycleScope.launch {
@@ -215,6 +216,7 @@ class InputActivity : AppCompatActivity() {
                                         val updatedKapalMasukEntity = existingKapal.copy(
                                             nama = namaKapal,
                                             tanggalKembali = parsedDate.toString(),
+                                            status = status,
                                             listPersiapan = listPersiapan,
                                             perkiraanKeberangkatan = existingKapal.perkiraanKeberangkatan
                                         )
@@ -248,6 +250,7 @@ class InputActivity : AppCompatActivity() {
                                 listPersiapan = listPersiapan,
                                 tanggalInput = java.text.SimpleDateFormat("dd/MM/yyyy", java.util.Locale.getDefault()).format(java.util.Date()),
                                 statusKerja = "persiapan",  // Default status
+                                status = status,
                                 perkiraanKeberangkatan = null
                             )
 
@@ -300,7 +303,7 @@ class InputActivity : AppCompatActivity() {
         }
     }
 
-    private fun loadKapalDataForEdit(kapalId: Int, etNamaKapal: EditText, etTanggalKembali: EditText, llPersiapanList: LinearLayout) {
+    private fun loadKapalDataForEdit(kapalId: Int, etNamaKapal: EditText, etTanggalKembali: EditText, etStatus: EditText, llPersiapanList: LinearLayout) {
         lifecycleScope.launch {
             try {
                 val sharedPref = getSharedPreferences("login_prefs", MODE_PRIVATE)
@@ -332,6 +335,7 @@ class InputActivity : AppCompatActivity() {
                             }
                             val formattedDate = localDate?.format(DateTimeFormatter.ofPattern("d/M/yyyy")) ?: ""
                             etTanggalKembali.setText(formattedDate)
+                            etStatus.setText(kapal.status ?: "")
                             listPersiapan.clear()
                             listPersiapan.addAll(kapal.listPersiapan ?: emptyList())
                             updatePersiapanListUI(llPersiapanList)

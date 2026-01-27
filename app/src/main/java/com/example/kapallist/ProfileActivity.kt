@@ -212,6 +212,15 @@ class ProfileActivity : AppCompatActivity() {
                 tvKapal.layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT)
                 shipInfoLayout.addView(tvKapal)
 
+                // Add status below ship name
+                val tvStatus = TextView(this)
+                val statusText = kapal.status ?: "Belum ditentukan"
+                tvStatus.text = "Status: $statusText"
+                tvStatus.textSize = 14f
+                tvStatus.setTextColor(ContextCompat.getColor(this, R.color.text_secondary))
+                tvStatus.layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT)
+                shipInfoLayout.addView(tvStatus)
+
                 val tvKembali = TextView(this)
                 tvKembali.text = "Kembali: $formattedKembali"
                 tvKembali.textSize = 14f
@@ -272,14 +281,14 @@ class ProfileActivity : AppCompatActivity() {
                         if (checkBox.isChecked) {
                             checkBox.paintFlags = checkBox.paintFlags or android.graphics.Paint.STRIKE_THRU_TEXT_FLAG
                         }
-                        checkBox.layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
+                        checkBox.layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT)
 
                         val tvItem = TextView(this)
                         tvItem.text = item
                         tvItem.setTextColor(android.graphics.Color.BLACK)
                         tvItem.textSize = 16f
-                        tvItem.layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 2f)
-                        if (kapal.isFinished) {
+                        tvItem.layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f).apply { marginStart = 8 }
+                        if (kapal.isFinished && kapal.newItemsAddedAfterFinish.contains(item)) {
                             tvItem.setOnClickListener {
                                 // Show edit dialog
                                 val alertDialog = AlertDialog.Builder(this@ProfileActivity)
@@ -334,6 +343,52 @@ class ProfileActivity : AppCompatActivity() {
                                     }
                                 }
                                 alertDialog.setNegativeButton("Batal", null)
+                                alertDialog.setNeutralButton("Delete") { _, _ ->
+                                    // Show confirmation dialog for delete
+                                    val confirmDialog = AlertDialog.Builder(this@ProfileActivity)
+                                    confirmDialog.setMessage("Yakin ingin menghapus kebutuhan ini?")
+                                    confirmDialog.setPositiveButton("Ya") { _, _ ->
+                                        // Remove from listPersiapan
+                                        val updatedList = kapal.listPersiapan.toMutableList()
+                                        updatedList.remove(item)
+                                        val updatedChecklistStates = kapal.checklistStates.toMutableMap()
+                                        val updatedChecklistDates = kapal.checklistDates.toMutableMap()
+                                        val updatedNewItemsAddedAfterFinish = kapal.newItemsAddedAfterFinish.toMutableList()
+                                        // Remove from maps and list
+                                        updatedChecklistStates.remove(item)
+                                        updatedChecklistDates.remove(item)
+                                        updatedNewItemsAddedAfterFinish.remove(item)
+                                        val updatedKapal = kapal.copy(
+                                            listPersiapan = updatedList,
+                                            checklistStates = updatedChecklistStates,
+                                            checklistDates = updatedChecklistDates,
+                                            newItemsAddedAfterFinish = updatedNewItemsAddedAfterFinish
+                                        )
+                                        // Update via API
+                                        lifecycleScope.launch {
+                                            try {
+                                                val sharedPref = getSharedPreferences("login_prefs", MODE_PRIVATE)
+                                                val token = sharedPref.getString("token", "") ?: ""
+                                                if (token.isEmpty()) {
+                                                    Toast.makeText(this@ProfileActivity, "Token tidak ditemukan", Toast.LENGTH_SHORT).show()
+                                                    return@launch
+                                                }
+
+                                                val response = ApiClient.apiService.updateKapalMasuk("Bearer $token", kapal.id, updatedKapal.toKapalMasukEntity())
+                                                if (response.isSuccessful) {
+                                                    loadDataAndBuildUI()  // Reload UI
+                                                    Toast.makeText(this@ProfileActivity, "Kebutuhan berhasil dihapus", Toast.LENGTH_SHORT).show()
+                                                } else {
+                                                    Toast.makeText(this@ProfileActivity, "Gagal menghapus kebutuhan: ${response.message()}", Toast.LENGTH_SHORT).show()
+                                                }
+                                            } catch (e: Exception) {
+                                                Log.e("ProfileActivity", "Error: ${e.message}")
+                                            }
+                                        }
+                                    }
+                                    confirmDialog.setNegativeButton("Tidak", null)
+                                    confirmDialog.show()
+                                }
                                 alertDialog.show()
                             }
                         }

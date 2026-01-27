@@ -423,7 +423,7 @@ async function initializeDatabase() {
         `);
 
         // Add missing columns if they don't exist
-        const columnsToCheck = ['durasiBerlayar', 'checklistStates', 'checklistDates', 'newItemsAddedAfterFinish'];
+        const columnsToCheck = ['durasiBerlayar', 'status', 'checklistStates', 'checklistDates', 'newItemsAddedAfterFinish'];
         for (const col of columnsToCheck) {
             try {
                 const columnCheck = await kapalMasukPool.query(`
@@ -1664,6 +1664,7 @@ app.get('/api/kapal-masuk', authenticateToken, async (req, res) => {
             perkiraanKeberangkatan: k.perkiraankeberangkatan,
             durasiSelesaiPersiapan: k.durasiselesaiPersiapan,
             durasiBerlayar: k.durasiberlayar,
+            status: k.status,
             statusKerja: k.statuskerja,
             checklistStates: JSON.parse(k.checklistStates || '{}'),
             checklistDates: JSON.parse(k.checklistDates || '{}'),
@@ -1748,8 +1749,8 @@ app.post('/api/kapal-masuk', authenticateToken, async (req, res) => {
                 merekMesin, nomorSeriMesin, jenisAlatTangkap, tanggalInput,
                 tanggalKeberangkatan, totalHariPersiapan, tanggalBerangkat, tanggalKembali,
                 listPersiapan, isFinished, perkiraanKeberangkatan, durasiSelesaiPersiapan,
-                durasiBerlayar, statusKerja
-            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20)
+                durasiBerlayar, status, statusKerja
+            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21)
             RETURNING *
         `, [
             sanitizeTextField(kapalMasukData.nama), sanitizeTextField(kapalMasukData.namaPemilik), sanitizeTextField(kapalMasukData.tandaSelar), sanitizeTextField(kapalMasukData.tandaPengenal),
@@ -1758,7 +1759,8 @@ app.post('/api/kapal-masuk', authenticateToken, async (req, res) => {
             kapalMasukData.totalHariPersiapan, sanitizeTextField(kapalMasukData.tanggalBerangkat), sanitizeTextField(kapalMasukData.tanggalKembali),
             JSON.stringify(kapalMasukData.listPersiapan || []), kapalMasukData.isFinished ? 1 : 0,
             sanitizeTextField(kapalMasukData.perkiraanKeberangkatan), sanitizeTextField(kapalMasukData.durasiSelesaiPersiapan),
-            sanitizeTextField(kapalMasukData.durasiBerlayar), sanitizeTextField(kapalMasukData.statusKerja) || 'persiapan'
+            sanitizeTextField(kapalMasukData.durasiBerlayar), sanitizeTextField(kapalMasukData.status) || '',
+            sanitizeTextField(kapalMasukData.statusKerja) || 'persiapan'
         ]);
 
         const kapalMasuk = result.rows[0];
@@ -1796,9 +1798,9 @@ app.put('/api/kapal-masuk/:id', authenticateToken, async (req, res) => {
                 jenisAlatTangkap = $9, tanggalInput = $10, tanggalKeberangkatan = $11,
                 totalHariPersiapan = $12, tanggalBerangkat = $13, tanggalKembali = $14,
                 listPersiapan = $15, isFinished = $16, perkiraanKeberangkatan = $17,
-                durasiSelesaiPersiapan = $18, durasiBerlayar = $19, statusKerja = $20,
-                "checklistStates" = $21, "checklistDates" = $22, "newItemsAddedAfterFinish" = $23
-            WHERE id = $24
+                durasiSelesaiPersiapan = $18, durasiBerlayar = $19, status = $20, statusKerja = $21,
+                "checklistStates" = $22, "checklistDates" = $23, "newItemsAddedAfterFinish" = $24
+            WHERE id = $25
         `, [
             sanitizeTextField(kapalMasukData.nama), sanitizeTextField(kapalMasukData.namaPemilik), sanitizeTextField(kapalMasukData.tandaSelar), sanitizeTextField(kapalMasukData.tandaPengenal),
             sanitizeTextField(kapalMasukData.beratKotor), sanitizeTextField(kapalMasukData.beratBersih), sanitizeTextField(kapalMasukData.merekMesin), sanitizeTextField(kapalMasukData.nomorSeriMesin),
@@ -1806,7 +1808,8 @@ app.put('/api/kapal-masuk/:id', authenticateToken, async (req, res) => {
             kapalMasukData.totalHariPersiapan, sanitizeTextField(kapalMasukData.tanggalBerangkat), sanitizeTextField(kapalMasukData.tanggalKembali),
             JSON.stringify(kapalMasukData.listPersiapan || []), kapalMasukData.isFinished ? 1 : 0,
             sanitizeTextField(kapalMasukData.perkiraanKeberangkatan), sanitizeTextField(kapalMasukData.durasiSelesaiPersiapan),
-            sanitizeTextField(kapalMasukData.durasiBerlayar), sanitizeTextField(kapalMasukData.statusKerja),
+            sanitizeTextField(kapalMasukData.durasiBerlayar), sanitizeTextField(kapalMasukData.status),
+            sanitizeTextField(kapalMasukData.statusKerja),
             JSON.stringify(kapalMasukData.checklistStates || {}), JSON.stringify(kapalMasukData.checklistDates || {}), JSON.stringify(kapalMasukData.newItemsAddedAfterFinish || []), id
         ]);
 

@@ -64,7 +64,11 @@
                 android:focusable="false"
                 android:hint="Tanggal Kembali (DD/MM/YYYY)" />
 
-
+            <EditText
+                android:id="@+id/et_status"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:hint="Status Kapal" />
 
             <EditText
                 android:id="@+id/et_persiapan"
