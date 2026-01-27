@@ -1694,8 +1694,8 @@ app.get('/api/kapal-masuk/:id', authenticateToken, async (req, res) => {
             durasiSelesaiPersiapan: kapalMasuk.durasiselesaiPersiapan,
             durasiBerlayar: kapalMasuk.durasiberlayar,
             statusKerja: kapalMasuk.statuskerja,
-            checklistStates: JSON.parse(kapalMasuk.checkliststates || '{}'),
-            checklistDates: JSON.parse(kapalMasuk.checklistdates || '{}')
+            checklistStates: JSON.parse(kapalMasuk.checklistStates || '{}'),
+            checklistDates: JSON.parse(kapalMasuk.checklistDates || '{}')
         };
 
         res.json({
