@@ -744,17 +744,41 @@ app.put('/api/users/:userId', authenticateToken, async (req, res) => {
         const { userId } = req.params;
         const { password, nama, role, photoUri } = req.body;
 
-        let query = 'UPDATE users SET nama = $1, role = $2, photoUri = $3';
-        let params = [nama, role, photoUri];
+        // Build dynamic query based on provided fields
+        let setParts = [];
+        let params = [];
+        let paramIndex = 1;
+
+        if (nama !== undefined && nama !== null) {
+            setParts.push(`nama = $${paramIndex++}`);
+            params.push(nama);
+        }
+
+        if (role !== undefined && role !== null) {
+            setParts.push(`role = $${paramIndex++}`);
+            params.push(role);
+        }
+
+        if (photoUri !== undefined && photoUri !== null) {
+            setParts.push(`photoUri = $${paramIndex++}`);
+            params.push(photoUri);
+        }
 
         if (password) {
             // Hash the new password
             const hashedPassword = await bcrypt.hash(password, 10);
-            query += ', password = $4';
+            setParts.push(`password = $${paramIndex++}`);
             params.push(hashedPassword);
         }
 
-        query += ' WHERE userId = $' + (params.length + 1);
+        if (setParts.length === 0) {
+            return res.status(400).json({
+                success: false,
+                message: 'No valid fields to update'
+            });
+        }
+
+        const query = `UPDATE users SET ${setParts.join(', ')} WHERE userId = $${paramIndex}`;
         params.push(userId);
 
         const result = await usersPool.query(query, params);

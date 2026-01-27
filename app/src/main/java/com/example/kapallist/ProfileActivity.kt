@@ -267,13 +267,76 @@ class ProfileActivity : AppCompatActivity() {
                         )
 
                         val checkBox = CheckBox(this)
-                        checkBox.text = item
                         checkBox.isChecked = kapal.checklistStates[item] ?: false
                         checkBox.isEnabled = !kapal.isFinished || (kapal.checklistStates[item] == false)
                         if (checkBox.isChecked) {
                             checkBox.paintFlags = checkBox.paintFlags or android.graphics.Paint.STRIKE_THRU_TEXT_FLAG
                         }
                         checkBox.layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
+
+                        val tvItem = TextView(this)
+                        tvItem.text = item
+                        tvItem.setTextColor(android.graphics.Color.BLACK)
+                        tvItem.textSize = 16f
+                        tvItem.layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 2f)
+                        if (kapal.isFinished) {
+                            tvItem.setOnClickListener {
+                                // Show edit dialog
+                                val alertDialog = AlertDialog.Builder(this@ProfileActivity)
+                                val input = EditText(this@ProfileActivity)
+                                input.setText(item)
+                                alertDialog.setView(input)
+                                alertDialog.setTitle("Edit Kebutuhan")
+                                alertDialog.setPositiveButton("Simpan") { _, _ ->
+                                    val newItem = input.text.toString().trim()
+                                    if (newItem.isNotEmpty() && newItem != item) {
+                                        // Replace in listPersiapan
+                                        val updatedList = kapal.listPersiapan.toMutableList()
+                                        val index = updatedList.indexOf(item)
+                                        if (index != -1) {
+                                            updatedList[index] = newItem
+                                        }
+                                        val updatedChecklistStates = kapal.checklistStates.toMutableMap()
+                                        val updatedChecklistDates = kapal.checklistDates.toMutableMap()
+                                        // Move state and date to new key
+                                        updatedChecklistStates[newItem] = updatedChecklistStates.remove(item) ?: false
+                                        updatedChecklistDates[newItem] = updatedChecklistDates.remove(item) ?: ""
+                                        val updatedKapal = kapal.copy(
+                                            listPersiapan = updatedList,
+                                            checklistStates = updatedChecklistStates,
+                                            checklistDates = updatedChecklistDates
+                                        )
+                                        // Update via API
+                                        lifecycleScope.launch {
+                                            try {
+                                                val sharedPref = getSharedPreferences("login_prefs", MODE_PRIVATE)
+                                                val token = sharedPref.getString("token", "") ?: ""
+                                                if (token.isEmpty()) {
+                                                    Toast.makeText(this@ProfileActivity, "Token tidak ditemukan", Toast.LENGTH_SHORT).show()
+                                                    return@launch
+                                                }
+
+                                                val response = ApiClient.apiService.updateKapalMasuk("Bearer $token", kapal.id, updatedKapal.toKapalMasukEntity())
+                                                if (response.isSuccessful) {
+                                                    loadDataAndBuildUI()  // Reload UI
+                                                    Toast.makeText(this@ProfileActivity, "Kebutuhan berhasil diedit", Toast.LENGTH_SHORT).show()
+                                                } else {
+                                                    Toast.makeText(this@ProfileActivity, "Gagal mengedit kebutuhan: ${response.message()}", Toast.LENGTH_SHORT).show()
+                                                }
+                                            } catch (e: Exception) {
+                                                Log.e("ProfileActivity", "Error: ${e.message}")
+                                            }
+                                        }
+                                    } else if (newItem == item) {
+                                        // No change
+                                    } else {
+                                        Toast.makeText(this@ProfileActivity, "Kebutuhan tidak boleh kosong", Toast.LENGTH_SHORT).show()
+                                    }
+                                }
+                                alertDialog.setNegativeButton("Batal", null)
+                                alertDialog.show()
+                            }
+                        }
 
                         val tvDate = TextView(this)
                         tvDate.text = kapal.checklistDates[item] ?: ""
@@ -285,6 +348,7 @@ class ProfileActivity : AppCompatActivity() {
                         ).apply { gravity = android.view.Gravity.END }
 
                         itemLayout.addView(checkBox)
+                        itemLayout.addView(tvItem)
                         itemLayout.addView(tvDate)
 
                         var checkBoxListener: CompoundButton.OnCheckedChangeListener? = null
