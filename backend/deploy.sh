@@ -14,6 +14,7 @@ mkdir -p uploads
 echo "🗄️ Running database migrations..."
 node migrate-users.js
 node migrate-checklist-columns.js
+node migrate-new-items-after-finish.js
 
 # Set production environment
 export NODE_ENV=production

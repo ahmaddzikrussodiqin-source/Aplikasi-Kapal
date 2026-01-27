@@ -20,7 +20,7 @@ data class Kapal(
     var checklistStates: MutableMap<String, Boolean> = mutableMapOf(),
     var checklistDates: MutableMap<String, String> = mutableMapOf(),
     var newItemsAddedAfterFinish: MutableList<String> = mutableListOf()
-)
+) {
     constructor(kapalEntity: KapalEntity) : this(
         nama = kapalEntity.nama,
         tanggalInput = kapalEntity.tanggalInput,
