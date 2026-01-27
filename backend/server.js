@@ -1769,8 +1769,9 @@ app.put('/api/kapal-masuk/:id', authenticateToken, async (req, res) => {
                 jenisAlatTangkap = $9, tanggalInput = $10, tanggalKeberangkatan = $11,
                 totalHariPersiapan = $12, tanggalBerangkat = $13, tanggalKembali = $14,
                 listPersiapan = $15, isFinished = $16, perkiraanKeberangkatan = $17,
-                durasiSelesaiPersiapan = $18, durasiBerlayar = $19, statusKerja = $20
-            WHERE id = $21
+                durasiSelesaiPersiapan = $18, durasiBerlayar = $19, statusKerja = $20,
+                checklistStates = $21, checklistDates = $22
+            WHERE id = $23
         `, [
             sanitizeTextField(kapalMasukData.nama), sanitizeTextField(kapalMasukData.namaPemilik), sanitizeTextField(kapalMasukData.tandaSelar), sanitizeTextField(kapalMasukData.tandaPengenal),
             sanitizeTextField(kapalMasukData.beratKotor), sanitizeTextField(kapalMasukData.beratBersih), sanitizeTextField(kapalMasukData.merekMesin), sanitizeTextField(kapalMasukData.nomorSeriMesin),
@@ -1778,7 +1779,8 @@ app.put('/api/kapal-masuk/:id', authenticateToken, async (req, res) => {
             kapalMasukData.totalHariPersiapan, sanitizeTextField(kapalMasukData.tanggalBerangkat), sanitizeTextField(kapalMasukData.tanggalKembali),
             JSON.stringify(kapalMasukData.listPersiapan || []), kapalMasukData.isFinished ? 1 : 0,
             sanitizeTextField(kapalMasukData.perkiraanKeberangkatan), sanitizeTextField(kapalMasukData.durasiSelesaiPersiapan),
-            sanitizeTextField(kapalMasukData.durasiBerlayar), sanitizeTextField(kapalMasukData.statusKerja), id
+            sanitizeTextField(kapalMasukData.durasiBerlayar), sanitizeTextField(kapalMasukData.statusKerja),
+            JSON.stringify(kapalMasukData.checklistStates || {}), JSON.stringify(kapalMasukData.checklistDates || {}), id
         ]);
 
         if (result.rowCount === 0) {

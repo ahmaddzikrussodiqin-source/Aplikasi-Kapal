@@ -277,7 +277,7 @@ class ProfileActivity : AppCompatActivity() {
                         val checkBox = CheckBox(this)
                         checkBox.text = item
                         checkBox.isChecked = kapal.checklistStates[item] ?: false
-                        checkBox.isEnabled = !kapal.isFinished
+                        checkBox.isEnabled = !kapal.isFinished || (kapal.checklistStates[item] == false)
                         if (checkBox.isChecked) {
                             checkBox.paintFlags = checkBox.paintFlags or android.graphics.Paint.STRIKE_THRU_TEXT_FLAG
                         }
@@ -297,32 +297,40 @@ class ProfileActivity : AppCompatActivity() {
 
                         var checkBoxListener: CompoundButton.OnCheckedChangeListener? = null
                         checkBoxListener = CompoundButton.OnCheckedChangeListener { _, isChecked ->
-                            if (!kapal.isFinished) {
+                            if (!kapal.isFinished || (kapal.isFinished && kapal.checklistStates[item] == false)) {
                                 if (isChecked) {
                                     // Show confirmation dialog for checking
                                     val alertDialog = AlertDialog.Builder(this@ProfileActivity)
                                     alertDialog.setMessage("Yakin ingin menyelesaikan ?")
                                     alertDialog.setPositiveButton("Yakin") { _, _ ->
-                                        kapal.checklistStates[item] = true
-                                        val dateFormat = SimpleDateFormat("dd/MM/yyyy")
-                                        val currentDate = dateFormat.format(Date())
-                                        kapal.checklistDates[item] = currentDate
-                                        tvDate.text = currentDate
-                                        checkBox.paintFlags = checkBox.paintFlags or android.graphics.Paint.STRIKE_THRU_TEXT_FLAG
+                                        // Show DatePickerDialog to select the date
+                                        val calendar = Calendar.getInstance()
+                                        val year = calendar.get(Calendar.YEAR)
+                                        val month = calendar.get(Calendar.MONTH)
+                                        val day = calendar.get(Calendar.DAY_OF_MONTH)
+                                        val datePickerDialog = DatePickerDialog(this@ProfileActivity, { _, selectedYear, selectedMonth, selectedDay ->
+                                            val selectedDate = String.format("%02d/%02d/%04d", selectedDay, selectedMonth + 1, selectedYear)
+                                            kapal.checklistStates[item] = true
+                                            kapal.checklistDates[item] = selectedDate
+                                            tvDate.text = selectedDate
+                                            checkBox.paintFlags = checkBox.paintFlags or android.graphics.Paint.STRIKE_THRU_TEXT_FLAG
 
-                                        // Emit to Socket.io
-                                        if (::socket.isInitialized && socket.connected()) {
-                                            val data = JSONObject().apply {
-                                                put("kapalId", kapal.id)
-                                                put("item", item)
-                                                put("checked", true)
-                                                put("date", currentDate)
+                                            // Emit to Socket.io
+                                            if (::socket.isInitialized && socket.connected()) {
+                                                val data = JSONObject().apply {
+                                                    put("kapalId", kapal.id)
+                                                    put("item", item)
+                                                    put("checked", true)
+                                                    put("date", selectedDate)
+                                                }
+                                                socket.emit("update-checklist", data)
                                             }
-                                            socket.emit("update-checklist", data)
-                                        }
 
-                                        val allCheckedNow = items.all { kapal.checklistStates[it] == true }
-                                        btnFinish.isEnabled = allCheckedNow && !kapal.isFinished
+                                            val allCheckedNow = items.all { kapal.checklistStates[it] == true }
+                                            btnFinish.isEnabled = allCheckedNow && !kapal.isFinished
+                                        }, year, month, day)
+                                        datePickerDialog.setTitle("Pilih Tanggal Checklist")
+                                        datePickerDialog.show()
                                     }
                                     alertDialog.setNegativeButton("Batal") { _, _ ->
                                         checkBox.setOnCheckedChangeListener(null)
@@ -379,17 +387,13 @@ class ProfileActivity : AppCompatActivity() {
                 llChecklist.addView(buttonLayout)
 
                 val btnEdit = Button(this)
-                btnEdit.text = "Edit"
+                btnEdit.text = if (kapal.isFinished) "Tambah Kebutuhan" else "Edit"
                 btnEdit.setBackgroundResource(R.drawable.button_rounded)
                 btnEdit.setTextColor(android.graphics.Color.WHITE)
                 btnEdit.layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
                 // Enable/disable berdasarkan status
-                btnEdit.isEnabled = !kapal.isFinished
-                if (kapal.isFinished) {
-                    btnEdit.alpha = 0.5f
-                } else {
-                    btnEdit.alpha = 1.0f
-                }
+                btnEdit.isEnabled = true
+                btnEdit.alpha = 1.0f
                 btnEdit.setOnClickListener {
                     if (!kapal.isFinished) {
                         val intent = Intent(this@ProfileActivity, InputActivity::class.java)
@@ -397,7 +401,55 @@ class ProfileActivity : AppCompatActivity() {
                         intent.putExtra("kapal_id", kapal.id)
                         startActivity(intent)
                     } else {
-                        Toast.makeText(this@ProfileActivity, "Kapal sudah selesai, tidak bisa diedit", Toast.LENGTH_SHORT).show()
+                        // Show dialog to add new persiapan item
+                        val alertDialog = AlertDialog.Builder(this@ProfileActivity)
+                        val input = EditText(this@ProfileActivity)
+                        input.hint = "Masukkan kebutuhan baru"
+                        alertDialog.setView(input)
+                        alertDialog.setTitle("Tambah Kebutuhan")
+                        alertDialog.setPositiveButton("Tambah") { _, _ ->
+                            val newItem = input.text.toString().trim()
+                            if (newItem.isNotEmpty()) {
+                                // Add new item to listPersiapan
+                                val updatedList = kapal.listPersiapan.toMutableList()
+                                updatedList.add(newItem)
+                                val updatedChecklistStates = kapal.checklistStates.toMutableMap()
+                                val updatedChecklistDates = kapal.checklistDates.toMutableMap()
+                                // Initialize checklistStates and checklistDates for new item
+                                updatedChecklistStates[newItem] = false
+                                updatedChecklistDates[newItem] = ""
+                                val updatedKapal = kapal.copy(
+                                    listPersiapan = updatedList,
+                                    checklistStates = updatedChecklistStates,
+                                    checklistDates = updatedChecklistDates
+                                )
+                                // Update via API
+                                lifecycleScope.launch {
+                                    try {
+                                        val sharedPref = getSharedPreferences("login_prefs", MODE_PRIVATE)
+                                        val token = sharedPref.getString("token", "") ?: ""
+                                        if (token.isEmpty()) {
+                                            Toast.makeText(this@ProfileActivity, "Token tidak ditemukan", Toast.LENGTH_SHORT).show()
+                                            return@launch
+                                        }
+
+                                        val response = ApiClient.apiService.updateKapalMasuk("Bearer $token", kapal.id, updatedKapal.toKapalMasukEntity())
+                                        if (response.isSuccessful) {
+                                            loadDataAndBuildUI()  // Reload UI
+                                            Toast.makeText(this@ProfileActivity, "Kebutuhan berhasil ditambahkan", Toast.LENGTH_SHORT).show()
+                                        } else {
+                                            Toast.makeText(this@ProfileActivity, "Gagal menambahkan kebutuhan: ${response.message()}", Toast.LENGTH_SHORT).show()
+                                        }
+                                    } catch (e: Exception) {
+                                        Log.e("ProfileActivity", "Error: ${e.message}")
+                                    }
+                                }
+                            } else {
+                                Toast.makeText(this@ProfileActivity, "Kebutuhan tidak boleh kosong", Toast.LENGTH_SHORT).show()
+                            }
+                        }
+                        alertDialog.setNegativeButton("Batal", null)
+                        alertDialog.show()
                     }
                 }
                 buttonLayout.addView(btnEdit)
@@ -564,7 +616,7 @@ class ProfileActivity : AppCompatActivity() {
 
                     val diffMillis = today.timeInMillis - keberangkatanCalendar.timeInMillis
                     val diffDays = (diffMillis / (1000 * 60 * 60 * 24)).toInt()
-                    return "$diffDays hari"
+                    return if (diffDays < 0) "Belum berlayar" else "${diffDays + 1} hari"
                 }
             }
 
@@ -621,7 +673,7 @@ class ProfileActivity : AppCompatActivity() {
 
                     val diffMillis = today.timeInMillis - kembaliCalendar.timeInMillis
                     val diffDays = (diffMillis / (1000 * 60 * 60 * 24)).toInt()
-                    return "$diffDays hari"
+                    return if (diffDays < 0) "Belum berlabuh" else "${diffDays + 1} hari"
                 }
             }
 
@@ -644,7 +696,7 @@ class ProfileActivity : AppCompatActivity() {
 
                 val diffMillis = today.timeInMillis - kembaliCalendar.timeInMillis
                 val diffDays = (diffMillis / (1000 * 60 * 60 * 24)).toInt()
-                return "$diffDays hari"
+                return if (diffDays < 0) "Belum berlabuh" else "${diffDays + 1} hari"
             }
 
             // Fallback for DD Month YYYY
@@ -669,7 +721,7 @@ class ProfileActivity : AppCompatActivity() {
 
                 val diffMillis = today.timeInMillis - kembaliCalendar.timeInMillis
                 val diffDays = (diffMillis / (1000 * 60 * 60 * 24)).toInt()
-                return "$diffDays hari"
+                return if (diffDays < 0) "Belum berlabuh" else "${diffDays + 1} hari"
             }
         } catch (e: Exception) {
             Log.e("ProfileActivity", "Error calculating berthing duration: ${e.message}")
