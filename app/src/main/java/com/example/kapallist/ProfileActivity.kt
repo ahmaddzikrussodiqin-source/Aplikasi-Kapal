@@ -254,16 +254,8 @@ class ProfileActivity : AppCompatActivity() {
                 btnFinish.setTextColor(android.graphics.Color.WHITE)
                 btnFinish.layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
                 val allCheckedInitial = items.all { kapal.checklistStates[it] == true }
-                btnFinish.isEnabled = allCheckedInitial && !kapal.isFinished  // Disable jika sudah finished
-
-                // Kontrol akses untuk Member: disable "Batal" jika role Member
-                if (userRole == "Member" && kapal.isFinished) {
-                    btnFinish.isEnabled = false
-                    btnFinish.alpha = 0.5f
-                } else if ((userRole == "Moderator" || userRole == "Supervisi") && kapal.isFinished) {
-                    btnFinish.isEnabled = true  // Enable "Batal" untuk Moderator/Supervisi
-                    btnFinish.alpha = 1.0f
-                }
+                btnFinish.isEnabled = if (kapal.isFinished) true else allCheckedInitial
+                btnFinish.alpha = 1.0f
 
                 for (item in items) {
                     if (item.isNotEmpty()) {
@@ -327,7 +319,7 @@ class ProfileActivity : AppCompatActivity() {
                                             }
 
                                             val allCheckedNow = items.all { kapal.checklistStates[it] == true }
-                                            btnFinish.isEnabled = allCheckedNow && !kapal.isFinished
+                                            btnFinish.isEnabled = if (kapal.isFinished) true else allCheckedNow
                                         }, year, month, day)
                                         datePickerDialog.setTitle("Pilih Tanggal Checklist")
                                         datePickerDialog.show()

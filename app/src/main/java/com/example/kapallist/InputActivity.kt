@@ -27,6 +27,7 @@ class InputActivity : AppCompatActivity() {
     private val listPersiapan = mutableListOf<String>()
     private val listDokumen = mutableListOf<DokumenKapal>()
     private lateinit var sharedPref: android.content.SharedPreferences
+    private lateinit var etPersiapan: EditText
     private var editMode: Boolean = false
     private var kapalIndex: Int = -1
     private var selectedKapalId: Int? = null
@@ -52,7 +53,7 @@ class InputActivity : AppCompatActivity() {
 
         val etNamaKapal = findViewById<EditText>(R.id.et_nama_kapal)
         val etTanggalKembali = findViewById<EditText>(R.id.et_tanggal_kembali)
-        val etPersiapan = findViewById<EditText>(R.id.et_persiapan)
+        etPersiapan = findViewById<EditText>(R.id.et_persiapan)
         val btnTambahPersiapan = findViewById<Button>(R.id.btn_tambah_persiapan)
         val llPersiapanList = findViewById<LinearLayout>(R.id.ll_persiapan_list)
         val btnSimpan = findViewById<Button>(R.id.btn_simpan)
@@ -284,6 +285,12 @@ class InputActivity : AppCompatActivity() {
             val ivDelete = itemView.findViewById<ImageView>(R.id.iv_delete)
 
             tvItem.text = "${index + 1}. $persiapan"
+            tvItem.setOnClickListener {
+                // Copy the persiapan text to etPersiapan and remove from list
+                etPersiapan.setText(persiapan)
+                listPersiapan.removeAt(index)
+                updatePersiapanListUI(llPersiapanList)
+            }
             ivDelete.setOnClickListener {
                 listPersiapan.removeAt(index)
                 updatePersiapanListUI(llPersiapanList)
