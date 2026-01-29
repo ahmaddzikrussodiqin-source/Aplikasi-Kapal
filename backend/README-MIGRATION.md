@@ -126,6 +126,36 @@ To web URLs:
 - Verify database credentials
 - Check network connectivity
 
+## 🚨 File URL Migration to Railway
+
+### Problem
+File URLs in database are using localhost instead of Railway production URL, causing images and PDFs to be inaccessible.
+
+### Solution
+Run the migration script on Railway to update all file URLs:
+
+```bash
+# In Railway deployment, run:
+cd backend && node migrate-file-urls-to-railway.js
+```
+
+### What the script does:
+- ✅ Finds all documents with file paths
+- ✅ Updates localhost URLs to Railway URLs
+- ✅ Preserves existing Railway URLs
+- ✅ Updates both images and PDFs
+
+### Expected output:
+```
+🚀 Starting file URL migration to Railway...
+📊 Found X documents with file paths
+🔄 Processing document ID X (jenis)
+   📸 Updated image URL: old_url → new_railway_url
+   📄 Updated PDF URL: old_url → new_railway_url
+✅ Updated document X with Y images and Z PDFs
+🎉 Migration completed! Updated X documents.
+```
+
 ## 📞 Support
 
 If you encounter issues:

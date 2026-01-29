@@ -3,6 +3,9 @@ const { Pool } = require('pg');
 const fs = require('fs');
 const path = require('path');
 
+// Railway URL for production
+const RAILWAY_URL = 'https://aplikasi-kapal-production.up.railway.app';
+
 // Database connections
 const dbPath = path.join(__dirname, 'kapallist.db');
 const kapalPool = new Pool({
@@ -83,7 +86,7 @@ async function migrateAndroidDokumen() {
                         if (imgPath && typeof imgPath === 'string') {
                             // Extract filename from Android path
                             const filename = path.basename(imgPath);
-                            const webUrl = `${process.env.API_BASE_URL || 'http://localhost:3000'}/uploads/${filename}`;
+                            const webUrl = `${RAILWAY_URL}/uploads/${filename}`;
 
                             webFileData.images.push(webUrl);
 
@@ -103,9 +106,9 @@ async function migrateAndroidDokumen() {
                         if (pdfPath && typeof pdfPath === 'string') {
                             // Extract filename from Android path
                             const filename = path.basename(pdfPath);
-                            const webUrl = `${process.env.API_BASE_URL || 'http://localhost:3000'}/uploads/${filename}`;
+                            const webUrl = `${RAILWAY_URL}/uploads/${filename}`;
 
-                            webFileData.pdfs.push(webUrl);
+                            webFileData.pdfs.push(pdfUrl);
 
                             // Add to copy commands
                             fileCopyCommands.push({
