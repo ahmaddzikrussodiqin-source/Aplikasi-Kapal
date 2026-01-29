@@ -1878,6 +1878,59 @@ app.post('/api/upload', authenticateToken, upload.single('file'), (req, res) => 
     });
 });
 
+// Migration endpoint (protected) - for updating file URLs to Railway
+app.post('/api/migrate-file-urls', authenticateToken, async (req, res) => {
+    try {
+        console.log('🚀 Starting file URL migration via API...');
+
+        // Import the migration function
+        const migrateFileUrlsToRailway = require('./migrate-file-urls-to-railway.js');
+
+        // Create a promise to handle the migration and capture logs
+        const migrationPromise = new Promise(async (resolve, reject) => {
+            try {
+                // Override console.log to capture output
+                const originalLog = console.log;
+                const logs = [];
+
+                console.log = (...args) => {
+                    logs.push(args.join(' '));
+                    originalLog(...args);
+                };
+
+                // Run the migration
+                await migrateFileUrlsToRailway();
+
+                // Restore console.log
+                console.log = originalLog;
+
+                resolve(logs);
+            } catch (error) {
+                reject(error);
+            }
+        });
+
+        const logs = await migrationPromise;
+
+        res.json({
+            success: true,
+            message: 'File URL migration completed',
+            data: {
+                logs: logs,
+                timestamp: new Date().toISOString()
+            }
+        });
+
+    } catch (error) {
+        console.error('Migration API error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Migration failed',
+            error: error.message
+        });
+    }
+});
+
 // Error handling middleware
 app.use((err, req, res, next) => {
     console.error(err.stack);
