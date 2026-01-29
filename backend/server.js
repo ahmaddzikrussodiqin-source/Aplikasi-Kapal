@@ -1899,24 +1899,25 @@ app.post('/api/migrate-file-urls', authenticateToken, async (req, res) => {
                 };
 
                 // Run the migration
-                await migrateFileUrlsToRailway();
+                const result = await migrateFileUrlsToRailway();
 
                 // Restore console.log
                 console.log = originalLog;
 
-                resolve(logs);
+                resolve({ result, logs });
             } catch (error) {
                 reject(error);
             }
         });
 
-        const logs = await migrationPromise;
+        const { result, logs } = await migrationPromise;
 
         res.json({
             success: true,
             message: 'File URL migration completed',
             data: {
                 logs: logs,
+                migrationResult: result,
                 timestamp: new Date().toISOString()
             }
         });

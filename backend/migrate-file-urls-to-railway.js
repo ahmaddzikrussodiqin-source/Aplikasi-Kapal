@@ -3,14 +3,14 @@ const { Pool } = require('pg');
 // Railway URL for production
 const RAILWAY_URL = 'https://aplikasi-kapal-production.up.railway.app';
 
-// Database connection
-const kapalPool = new Pool({
-    connectionString: process.env.DATABASE_URL_KAPAL,
-    ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
-});
-
 async function migrateFileUrlsToRailway() {
     console.log('🚀 Starting file URL migration to Railway...');
+
+    // Database connection
+    const kapalPool = new Pool({
+        connectionString: process.env.DATABASE_URL_KAPAL,
+        ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
+    });
 
     try {
         // Get all dokumen with filePath
@@ -120,12 +120,22 @@ async function migrateFileUrlsToRailway() {
             console.log(`- Railway URL used: ${RAILWAY_URL}`);
         }
 
+        return {
+            success: true,
+            message: 'Migration completed successfully',
+            data: {
+                totalProcessed: result.rows.length,
+                updatedCount: updatedCount,
+                railwayUrl: RAILWAY_URL
+            }
+        };
+
     } catch (error) {
         console.error('❌ Migration error:', error);
+        throw error;
     } finally {
         await kapalPool.end();
     }
 }
 
-// Run migration
-migrateFileUrlsToRailway().catch(console.error);
+module.exports = migrateFileUrlsToRailway;
