@@ -3,7 +3,7 @@
     "builder": "NIXPACKS"
   },
   "deploy": {
-    "startCommand": "npm run preview -- --host",
+    "startCommand": "npm run serve",
     "healthcheckPath": "/"
   }
 }
