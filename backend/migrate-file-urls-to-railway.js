@@ -1,6 +1,6 @@
 const { Pool } = require('pg');
 
-// Railway URL for production
+// Railway URL for production (backend service)
 const RAILWAY_URL = 'https://aplikasi-kapal-production.up.railway.app';
 
 async function migrateFileUrlsToRailway() {

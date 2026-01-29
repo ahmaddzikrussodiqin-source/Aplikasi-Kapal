@@ -241,9 +241,9 @@ const Dokumen = () => {
       try {
         const response = await uploadAPI.upload(token, file);
         if (response.success) {
-          // Use Railway URL for consistency with Android app
-          const railwayUrl = import.meta.env.VITE_RAILWAY_URL || 'https://aplikasi-kapal-production.up.railway.app';
-          uploadedFiles.push(response.data.url || `${railwayUrl}/uploads/${response.data.filename}`);
+          // Use backend URL for file access
+          const backendUrl = import.meta.env.VITE_BACKEND_URL || 'https://aplikasi-kapal-production.up.railway.app';
+          uploadedFiles.push(response.data.url || `${backendUrl}/uploads/${response.data.filename}`);
         }
       } catch (error) {
         console.error('Error uploading file:', error);
