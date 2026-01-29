@@ -19,12 +19,27 @@ app.use(express.static(path.join(__dirname, 'dist')));
 // Handle React Router - send all non-API requests to React app
 app.get('*', (req, res) => {
   console.log('Serving index.html');
-  res.sendFile(path.join(__dirname, 'dist', 'index.html'));
+  res.sendFile(path.join(__dirname, 'dist', 'index.html'), (err) => {
+    if (err) {
+      console.error('Error sending file:', err);
+      res.status(500).send('Internal Server Error');
+    }
+  });
 });
 
 const PORT = process.env.PORT || 3000;
 console.log(`PORT environment variable: ${process.env.PORT}`);
 console.log(`Using port: ${PORT}`);
-app.listen(PORT, '0.0.0.0', () => {
+app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
+});
+
+process.on('uncaughtException', (err) => {
+  console.error('Uncaught Exception:', err);
+  process.exit(1);
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('Unhandled Rejection at:', promise, 'reason:', reason);
+  process.exit(1);
 });
