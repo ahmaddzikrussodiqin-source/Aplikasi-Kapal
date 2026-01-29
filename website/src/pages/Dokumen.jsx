@@ -14,6 +14,9 @@ const Dokumen = () => {
   const [showEditModal, setShowEditModal] = useState(false);
   const [showFileModal, setShowFileModal] = useState(false);
   const [showImageViewer, setShowImageViewer] = useState(false);
+  const [showDateModal, setShowDateModal] = useState(false);
+  const [selectedDateDokumen, setSelectedDateDokumen] = useState(null);
+  const [tempDate, setTempDate] = useState('');
   const [selectedDokumen, setSelectedDokumen] = useState(null);
   const [selectedImages, setSelectedImages] = useState([]);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
@@ -497,10 +500,9 @@ const Dokumen = () => {
                           </button>
                           <button
                             onClick={() => {
-                              const newDate = prompt('Masukkan tanggal kadaluarsa baru (YYYY-MM-DD):', dokumen.tanggalkadaluarsa);
-                              if (newDate) {
-                                handleUpdateExpiry(dokumen.id, newDate);
-                              }
+                              setSelectedDateDokumen(dokumen);
+                              setTempDate(dokumen.tanggalKadaluarsa || '');
+                              setShowDateModal(true);
                             }}
                             className="bg-yellow-500 text-white px-3 py-1 rounded hover:bg-yellow-600 transition-colors text-sm flex items-center gap-1"
                           >
@@ -556,11 +558,10 @@ const Dokumen = () => {
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Tanggal Kadaluarsa</label>
-                <input
-                  type="date"
-                  value={formData.tanggalKadaluarsa}
-                  onChange={(e) => setFormData({ ...formData, tanggalKadaluarsa: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                <DatePicker
+                  selected={formData.tanggalKadaluarsa ? new Date(formData.tanggalKadaluarsa) : null}
+                  onChange={(date) => setFormData({ ...formData, tanggalKadaluarsa: date })}
+                  placeholderText="Pilih tanggal"
                 />
               </div>
 
@@ -608,11 +609,10 @@ const Dokumen = () => {
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Tanggal Kadaluarsa</label>
-                <input
-                  type="date"
-                  value={formData.tanggalKadaluarsa}
-                  onChange={(e) => setFormData({ ...formData, tanggalKadaluarsa: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                <DatePicker
+                  selected={formData.tanggalKadaluarsa ? new Date(formData.tanggalKadaluarsa) : null}
+                  onChange={(date) => setFormData({ ...formData, tanggalKadaluarsa: date })}
+                  placeholderText="Pilih tanggal"
                 />
               </div>
 
@@ -903,6 +903,58 @@ const Dokumen = () => {
           {/* Image Counter */}
           <div className="absolute bottom-4 left-1/2 -translate-x-1/2 text-white text-sm bg-black bg-opacity-50 px-3 py-1 rounded">
             {currentImageIndex + 1} / {selectedImages.length}
+          </div>
+        </div>
+      )}
+
+      {/* Date Picker Modal */}
+      {showDateModal && selectedDateDokumen && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-xl shadow-2xl w-full max-w-sm">
+            <div className="p-6 border-b flex justify-between items-center">
+              <h2 className="text-xl font-semibold">Ubah Tanggal Kadaluarsa</h2>
+              <button onClick={() => setShowDateModal(false)} className="text-gray-500 hover:text-gray-700">
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            <div className="p-6 space-y-4">
+              <div>
+                <p className="text-sm text-gray-600 mb-1">Dokumen:</p>
+                <p className="font-medium text-gray-800">{selectedDateDokumen.jenis || selectedDateDokumen.nama}</p>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Tanggal Kadaluarsa Baru</label>
+                <DatePicker
+                  selected={tempDate ? new Date(tempDate) : null}
+                  onChange={(date) => setTempDate(date)}
+                  placeholderText="Pilih tanggal"
+                />
+              </div>
+
+              <div className="flex justify-end gap-4 pt-4">
+                <button
+                  type="button"
+                  onClick={() => setShowDateModal(false)}
+                  className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+                >
+                  Batal
+                </button>
+                <button
+                  onClick={() => {
+                    handleUpdateExpiry(selectedDateDokumen.id, tempDate);
+                    setShowDateModal(false);
+                    setSelectedDateDokumen(null);
+                    setTempDate('');
+                  }}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                >
+                  Simpan
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}
