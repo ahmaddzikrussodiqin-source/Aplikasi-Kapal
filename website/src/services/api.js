@@ -1,18 +1,21 @@
 // API Configuration
-// Use Railway URL for production consistency with Android app
-// Android app uses: https://aplikasi-kapal-production.up.railway.app
+// Backend Railway URL (Aplikasi-Kapal service) - serves API and files
+// Frontend Railway URL (website service) - serves React app
 
 // Mode: 'production' (Railway) or 'development' (localhost)
 const APP_MODE = import.meta.env.VITE_APP_MODE || 'production';
 
-const RAILWAY_URL = import.meta.env.VITE_RAILWAY_URL || 'https://aplikasi-kapal-production.up.railway.app';
+// Backend service URL (for API calls and file access)
+const BACKEND_RAILWAY_URL = import.meta.env.VITE_BACKEND_URL || 'https://aplikasi-kapal-production.up.railway.app';
+// Frontend service URL (for reference)
+const FRONTEND_RAILWAY_URL = import.meta.env.VITE_FRONTEND_URL || 'https://website-production.up.railway.app';
 const LOCAL_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
 
-// Use LOCAL_URL for development mode, RAILWAY_URL for production
-const API_BASE_URL = APP_MODE === 'development' ? LOCAL_URL : RAILWAY_URL;
+// Use LOCAL_URL for development mode, BACKEND_RAILWAY_URL for production
+const API_BASE_URL = APP_MODE === 'development' ? LOCAL_URL : BACKEND_RAILWAY_URL;
 
 // Export variables for use across the app
-export { APP_MODE, LOCAL_URL, RAILWAY_URL };
+export { APP_MODE, LOCAL_URL, BACKEND_RAILWAY_URL, FRONTEND_RAILWAY_URL };
 export default API_BASE_URL;
 export const authAPI = {
   login: async (userId, password) => {
