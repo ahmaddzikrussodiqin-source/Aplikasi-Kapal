@@ -231,7 +231,8 @@ io.on('connection', (socket) => {
 });
 
 // Serve static files from uploads directory
-const uploadsDir = path.join(__dirname, 'uploads');
+// Railway volume is mounted at /app/uploads, but we're in /app/backend
+const uploadsDir = path.join(__dirname, '..', 'uploads');
 console.log('🔍 Checking uploads directory...');
 console.log('📁 __dirname:', __dirname);
 console.log('📁 uploadsDir:', uploadsDir);
@@ -243,6 +244,8 @@ if (fs.existsSync(uploadsDir)) {
         console.log('📄 Files in uploads directory:', files.length);
         if (files.length > 0) {
             console.log('📄 First 5 files:', files.slice(0, 5));
+        } else {
+            console.log('⚠️  uploadsDir exists but is empty!');
         }
     } catch (error) {
         console.log('❌ Error reading uploads directory:', error.message);
