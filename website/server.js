@@ -1,11 +1,23 @@
 import express from 'express';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import fs from 'fs';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const app = express();
+
+// Check if dist folder exists
+const distPath = path.join(__dirname, 'dist');
+console.log('Checking dist folder...');
+if (fs.existsSync(distPath)) {
+  console.log('dist folder exists');
+  const files = fs.readdirSync(distPath);
+  console.log('Files in dist:', files);
+} else {
+  console.error('dist folder does not exist!');
+}
 
 // Logging middleware
 app.use((req, res, next) => {
