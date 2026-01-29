@@ -1,6 +1,6 @@
-# KapalList Website
+# Status Kapal Website
 
-Website version of the KapalList mobile application for ship management.
+Website version of the Status Kapal mobile application for ship management.
 
 ## Features
 
@@ -106,7 +106,7 @@ Main menu with access to all features based on user role.
 - Edit existing ship information
 - Delete ships
 
-### Ship Status (Kapal Masuk)
+### Ship Status (Status Kerja Kapal)
 - Track ship preparation status
 - Real-time checklist system
 - Mark items as completed with dates

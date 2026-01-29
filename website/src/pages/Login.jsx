@@ -32,7 +32,7 @@ const Login = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-500 to-blue-700 flex items-center justify-center p-4">
       <div className="bg-white rounded-2xl shadow-2xl p-8 w-full max-w-md">
-        <h1 className="text-3xl font-bold text-center text-blue-600 mb-2">KapalList</h1>
+        <h1 className="text-3xl font-bold text-center text-blue-600 mb-2">Status Kapal</h1>
         <p className="text-center text-gray-500 mb-8">Sistem Manajemen Kapal</p>
 
         {error && (
@@ -74,13 +74,6 @@ const Login = () => {
             {loading ? 'Memuat...' : 'Login'}
           </button>
         </form>
-
-        <p className="mt-6 text-center text-gray-600">
-          Belum punya akun?{' '}
-          <Link to="/register" className="text-blue-600 hover:underline">
-            Daftar
-          </Link>
-        </p>
       </div>
     </div>
   );

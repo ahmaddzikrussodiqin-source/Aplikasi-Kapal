@@ -1,3 +1,4 @@
+import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import Login from './pages/Login';
@@ -9,84 +10,45 @@ import Dokumen from './pages/Dokumen';
 import Profile from './pages/Profile';
 import ManageUsers from './pages/ManageUsers';
 
-const ProtectedRoute = ({ children, requireModerator = false }) => {
+function ProtectedRoute({ children, requireModerator }) {
   const { user, token, loading } = useAuth();
 
   if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-      </div>
+    return React.createElement('div', { className: 'min-h-screen flex items-center justify-center' },
+      React.createElement('div', { className: 'animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600' })
     );
   }
 
   if (!token) {
-    return <Navigate to="/login" />;
+    return React.createElement(Navigate, { to: '/login' });
   }
 
   if (requireModerator && user?.role !== 'Moderator') {
-    return <Navigate to="/" />;
+    return React.createElement(Navigate, { to: '/' });
   }
 
   return children;
-};
+}
 
-const AppRoutes = () => {
+function AppRoutes() {
   const { token } = useAuth();
 
-  return (
-    <Routes>
-      <Route path="/login" element={token ? <Navigate to="/" /> : <Login />} />
-      <Route path="/register" element={token ? <Navigate to="/" /> : <Register />} />
-      
-      <Route path="/" element={
-        <ProtectedRoute>
-          <Dashboard />
-        </ProtectedRoute>
-      } />
-      
-      <Route path="/daftar-kapal" element={
-        <ProtectedRoute>
-          <DaftarKapal />
-        </ProtectedRoute>
-      } />
-      
-      <Route path="/kapal-masuk" element={
-        <ProtectedRoute>
-          <KapalMasuk />
-        </ProtectedRoute>
-      } />
-      
-      <Route path="/dokumen" element={
-        <ProtectedRoute>
-          <Dokumen />
-        </ProtectedRoute>
-      } />
-      
-      <Route path="/profile" element={
-        <ProtectedRoute>
-          <Profile />
-        </ProtectedRoute>
-      } />
-      
-      <Route path="/manage-users" element={
-        <ProtectedRoute requireModerator>
-          <ManageUsers />
-        </ProtectedRoute>
-      } />
-    </Routes>
+  return React.createElement(Routes, null,
+    React.createElement(Route, { path: '/login', element: token ? React.createElement(Navigate, { to: '/' }) : React.createElement(Login) }),
+    React.createElement(Route, { path: '/register', element: token ? React.createElement(Navigate, { to: '/' }) : React.createElement(Register) }),
+    React.createElement(Route, { path: '/', element: React.createElement(ProtectedRoute, null, React.createElement(Dashboard)) }),
+    React.createElement(Route, { path: '/daftar-kapal', element: React.createElement(ProtectedRoute, null, React.createElement(DaftarKapal)) }),
+    React.createElement(Route, { path: '/kapal-masuk', element: React.createElement(ProtectedRoute, null, React.createElement(KapalMasuk)) }),
+    React.createElement(Route, { path: '/dokumen', element: React.createElement(ProtectedRoute, null, React.createElement(Dokumen)) }),
+    React.createElement(Route, { path: '/profile', element: React.createElement(ProtectedRoute, null, React.createElement(Profile)) }),
+    React.createElement(Route, { path: '/manage-users', element: React.createElement(ProtectedRoute, { requireModerator: true }, React.createElement(ManageUsers)) })
   );
-};
+}
 
 function App() {
-  return (
-    <AuthProvider>
-      <Router>
-        <AppRoutes />
-      </Router>
-    </AuthProvider>
+  return React.createElement(AuthProvider, null,
+    React.createElement(Router, null, React.createElement(AppRoutes))
   );
 }
 
 export default App;
-

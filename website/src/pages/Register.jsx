@@ -35,7 +35,7 @@ const Register = () => {
     <div className="min-h-screen bg-gradient-to-br from-blue-500 to-blue-700 flex items-center justify-center p-4">
       <div className="bg-white rounded-2xl shadow-2xl p-8 w-full max-w-md">
         <h1 className="text-3xl font-bold text-center text-blue-600 mb-2">Daftar Akun</h1>
-        <p className="text-center text-gray-500 mb-8">KapalList</p>
+        <p className="text-center text-gray-500 mb-8">Status Kapal</p>
 
         {error && (
           <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">

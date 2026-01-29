@@ -117,7 +117,7 @@ const Profile = () => {
                 <h3 className="font-semibold text-blue-800 mb-2">Informasi Akun</h3>
                 <p className="text-sm text-blue-700">
                   Akun ini memiliki akses {user?.role === 'Moderator' ? 'penuh' :
-                    user?.role === 'Supervisi' ? 'terbatas' : 'dasar'} ke sistem KapalList.
+                    user?.role === 'Supervisi' ? 'terbatas' : 'dasar'} ke sistem Status Kapal.
                 </p>
               </div>
 

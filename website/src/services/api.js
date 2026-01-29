@@ -113,7 +113,7 @@ export const kapalAPI = {
   },
 };
 
-// Kapal Masuk (Ship Status) API
+// Status Kerja Kapal (Ship Status) API
 export const kapalMasukAPI = {
   getAll: async (token) => {
     const response = await fetch(`${API_BASE_URL}/api/kapal-masuk`, {
@@ -210,6 +210,17 @@ export const uploadAPI = {
     const formData = new FormData();
     formData.append('file', file);
     const response = await fetch(`${API_BASE_URL}/api/upload`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}` },
+      body: formData,
+    });
+    return response.json();
+  },
+
+  uploadMultiple: async (token, files) => {
+    const formData = new FormData();
+    files.forEach(file => formData.append('files', file));
+    const response = await fetch(`${API_BASE_URL}/api/upload-multiple`, {
       method: 'POST',
       headers: { Authorization: `Bearer ${token}` },
       body: formData,

@@ -2,7 +2,7 @@ import { useAuth } from '../context/AuthContext';
 import { Link, useNavigate } from 'react-router-dom';
 
 const Dashboard = () => {
-  const { user, isModerator, isSupervisi, logout } = useAuth();
+  const { user, isModerator, logout } = useAuth();
   const navigate = useNavigate();
 
   const handleLogout = () => {
@@ -11,15 +11,15 @@ const Dashboard = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-100">
+    <div className="min-h-screen bg-gray-100 flex flex-col">
       {/* Header */}
       <header className="bg-blue-600 text-white shadow-lg">
         <div className="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
-          <h1 className="text-2xl font-bold">KapalList</h1>
+          <h1 className="text-2xl font-bold">Status Kapal</h1>
           <div className="flex items-center gap-4">
-            <span className="text-sm">
+            <Link to="/profile" className="text-sm hover:underline cursor-pointer">
               {user?.nama || user?.userId} ({user?.role})
-            </span>
+            </Link>
             <button
               onClick={handleLogout}
               className="bg-red-500 hover:bg-red-600 px-4 py-2 rounded-lg transition-colors"
@@ -31,7 +31,7 @@ const Dashboard = () => {
       </header>
 
       {/* Main Content */}
-      <main className="max-w-7xl mx-auto px-4 py-8">
+      <main className="flex-1 max-w-7xl mx-auto px-4 py-8 w-full">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {/* Daftar Kapal */}
           <Link to="/daftar-kapal" className="card hover:shadow-xl transition-shadow cursor-pointer group">
@@ -53,17 +53,17 @@ const Dashboard = () => {
             <div className="flex items-center gap-4">
               <div className="bg-green-100 p-4 rounded-full group-hover:bg-green-200 transition-colors">
                 <svg className="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                 </svg>
               </div>
               <div>
-                <h2 className="text-xl font-semibold text-gray-800">Kapal Masuk</h2>
-                <p className="text-gray-500 text-sm">Status & Checklist Kapal</p>
+                <h2 className="text-xl font-semibold text-gray-800">Status Kerja Kapal</h2>
+                <p className="text-gray-500 text-sm">Input data kapal baru</p>
               </div>
             </div>
           </Link>
 
-          {/* Dokumen */}
+          {/* Dokumen Kapal */}
           <Link to="/dokumen" className="card hover:shadow-xl transition-shadow cursor-pointer group">
             <div className="flex items-center gap-4">
               <div className="bg-yellow-100 p-4 rounded-full group-hover:bg-yellow-200 transition-colors">
@@ -78,22 +78,9 @@ const Dashboard = () => {
             </div>
           </Link>
 
-          {/* Profile */}
-          <Link to="/profile" className="card hover:shadow-xl transition-shadow cursor-pointer group">
-            <div className="flex items-center gap-4">
-              <div className="bg-purple-100 p-4 rounded-full group-hover:bg-purple-200 transition-colors">
-                <svg className="w-8 h-8 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                </svg>
-              </div>
-              <div>
-                <h2 className="text-xl font-semibold text-gray-800">Profil</h2>
-                <p className="text-gray-500 text-sm">Pengaturan akun</p>
-              </div>
-            </div>
-          </Link>
 
-          {/* Manage Users - Only for Moderator */}
+
+          {/* Kelola User - Only for Moderator */}
           {isModerator && (
             <Link to="/manage-users" className="card hover:shadow-xl transition-shadow cursor-pointer group">
               <div className="flex items-center gap-4">
@@ -113,9 +100,9 @@ const Dashboard = () => {
       </main>
 
       {/* Footer */}
-      <footer className="bg-gray-800 text-white py-4 mt-8">
+      <footer className="bg-gray-800 text-white py-4 mt-auto">
         <div className="max-w-7xl mx-auto px-4 text-center">
-          <p className="text-sm">© 2024 KapalList. Ship Management System</p>
+          <p className="text-sm">© 2025 Status Kapal. Ship Management System</p>
         </div>
       </footer>
     </div>
@@ -123,4 +110,3 @@ const Dashboard = () => {
 };
 
 export default Dashboard;
-
