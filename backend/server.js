@@ -1896,7 +1896,7 @@ app.use('*', (req, res) => {
 });
 
 // Start server
-server.listen(PORT, () => {
+server.listen(PORT, '0.0.0.0', () => {
     console.log(`🚀 KapalList Backend server is running on port ${PORT}`);
     console.log(`📊 Health check: http://localhost:${PORT}/`);
 });
