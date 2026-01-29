@@ -231,13 +231,29 @@ io.on('connection', (socket) => {
 });
 
 // Serve static files from uploads directory
-app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
-
-// Create uploads directory if it doesn't exist
 const uploadsDir = path.join(__dirname, 'uploads');
-if (!fs.existsSync(uploadsDir)) {
+console.log('🔍 Checking uploads directory...');
+console.log('📁 __dirname:', __dirname);
+console.log('📁 uploadsDir:', uploadsDir);
+console.log('📁 uploadsDir exists:', fs.existsSync(uploadsDir));
+
+if (fs.existsSync(uploadsDir)) {
+    try {
+        const files = fs.readdirSync(uploadsDir);
+        console.log('📄 Files in uploads directory:', files.length);
+        if (files.length > 0) {
+            console.log('📄 First 5 files:', files.slice(0, 5));
+        }
+    } catch (error) {
+        console.log('❌ Error reading uploads directory:', error.message);
+    }
+} else {
+    console.log('❌ uploadsDir does not exist, creating it...');
     fs.mkdirSync(uploadsDir, { recursive: true });
 }
+
+app.use('/uploads', express.static(uploadsDir));
+console.log('📤 Static file serving configured for:', uploadsDir);
 
 // Configure multer for file uploads
 const storage = multer.diskStorage({
