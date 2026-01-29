@@ -39,7 +39,7 @@ app.get('*', (req, res) => {
   });
 });
 
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 4173;
 console.log(`PORT environment variable: ${process.env.PORT}`);
 console.log(`Using port: ${PORT}`);
 app.listen(PORT, '0.0.0.0', () => {
