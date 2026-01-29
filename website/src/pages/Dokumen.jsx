@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { kapalAPI, dokumenAPI, uploadAPI, migrationAPI } from '../services/api';
+import API_BASE_URL from '../services/api';
 import DatePicker from '../components/DatePicker';
 
 const Dokumen = () => {
