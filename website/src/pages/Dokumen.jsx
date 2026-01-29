@@ -420,22 +420,31 @@ const Dokumen = () => {
             </h1>
           </div>
           {selectedKapal && (
-            <button
-              onClick={() => {
-                setEditingDokumen(null);
-                setFormData({
-                  kapalId: selectedKapal.id.toString(),
-                  nama: '',
-                  jenis: '',
-                  tanggalKadaluarsa: '',
-                  filePath: '',
-                });
-                setShowModal(true);
-              }}
-              className="bg-white text-blue-600 px-4 py-2 rounded-lg hover:bg-blue-50 transition-colors font-medium"
-            >
-              + Tambah Dokumen
-            </button>
+            <div className="flex gap-2">
+              <button
+                onClick={() => {
+                  setEditingDokumen(null);
+                  setFormData({
+                    kapalId: selectedKapal.id.toString(),
+                    nama: '',
+                    jenis: '',
+                    tanggalKadaluarsa: '',
+                    filePath: '',
+                  });
+                  setShowModal(true);
+                }}
+                className="bg-white text-blue-600 px-4 py-2 rounded-lg hover:bg-blue-50 transition-colors font-medium"
+              >
+                + Tambah Dokumen
+              </button>
+              <button
+                onClick={handleMigrateFileUrls}
+                disabled={migrating}
+                className="bg-orange-500 text-white px-4 py-2 rounded-lg hover:bg-orange-600 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {migrating ? 'Memigrasi...' : 'Migrasi File'}
+              </button>
+            </div>
           )}
         </div>
       </header>
