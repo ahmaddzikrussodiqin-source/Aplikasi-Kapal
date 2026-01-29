@@ -138,22 +138,50 @@ const Dokumen = () => {
 
   const handleUpdateExpiry = async (id, newDate) => {
     try {
-      const dokumen = dokumenList.find(d => d.id === id);
-      if (!dokumen) return;
+      // Validate inputs
+      if (!newDate || newDate.trim() === '') {
+        alert('ERROR: Tanggal tidak boleh kosong');
+        return;
+      }
 
-      const response = await dokumenAPI.update(token, id, {
-        ...dokumen,
+      // Validate date format (YYYY-MM-DD)
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(newDate)) {
+        alert('ERROR: Format tanggal tidak valid');
+        return;
+      }
+
+      const dokumen = dokumenList.find(d => d.id === id);
+      if (!dokumen) {
+        alert('ERROR: Dokumen tidak ditemukan');
+        return;
+      }
+
+      const payload = {
+        kapalId: dokumen.kapalid || dokumen.kapalId,
+        nama: dokumen.nama,
+        jenis: dokumen.jenis,
+        nomor: dokumen.nomor || null,
+        tanggalTerbit: dokumen.tanggalterbit || null,
         tanggalKadaluarsa: newDate,
-      });
+        status: dokumen.status || 'aktif',
+        filePath: dokumen.filePath || null,
+      };
+
+      const response = await dokumenAPI.update(token, id, payload);
+
       if (response.success) {
         if (selectedKapal) {
           loadDokumenForKapal(selectedKapal.id);
         }
+      } else {
+        alert('Gagal memperbarui tanggal: ' + (response.message || 'Unknown error'));
       }
     } catch (error) {
+      alert('ERROR: ' + error.message);
       console.error('Error updating expiry:', error);
     }
   };
+
 
   const parseFilePath = (filePath) => {
     if (!filePath) return { images: [], pdfs: [] };
@@ -209,7 +237,9 @@ const Dokumen = () => {
       try {
         const response = await uploadAPI.upload(token, file);
         if (response.success) {
-          uploadedFiles.push(response.data.url || `${import.meta.env.VITE_API_URL || 'http://localhost:3000'}/uploads/${response.data.filename}`);
+          // Use Railway URL for consistency with Android app
+          const railwayUrl = import.meta.env.VITE_RAILWAY_URL || 'https://aplikasi-kapal-production.up.railway.app';
+          uploadedFiles.push(response.data.url || `${railwayUrl}/uploads/${response.data.filename}`);
         }
       } catch (error) {
         console.error('Error uploading file:', error);
@@ -246,11 +276,11 @@ const Dokumen = () => {
   const handleOpenFileModal = (dokumen) => {
     setEditingDokumen(dokumen);
     setFormData({
-      kapalId: dokumen.kapalId?.toString() || selectedKapal?.id?.toString() || '',
+      kapalId: dokumen.kapalid?.toString() || selectedKapal?.id?.toString() || '',
       nama: dokumen.nama || '',
       jenis: dokumen.jenis || '',
       tanggalKadaluarsa: dokumen.tanggalKadaluarsa || '',
-      filePath: dokumen.filepath || '',
+      filePath: dokumen.filePath || '',
     });
     setShowFileModal(true);
   };
@@ -269,10 +299,18 @@ const Dokumen = () => {
 
   const handleSaveFiles = async () => {
     try {
-      const response = await dokumenAPI.update(token, editingDokumen.id, {
-        ...editingDokumen,
-        filePath: formData.filePath,
-      });
+      const payload = {
+        kapalId: editingDokumen.kapalid || editingDokumen.kapalId,
+        nama: editingDokumen.nama,
+        jenis: editingDokumen.jenis,
+        nomor: editingDokumen.nomor || null,
+        tanggalTerbit: editingDokumen.tanggalterbit || null,
+        tanggalKadaluarsa: editingDokumen.tanggalKadaluarsa,
+        status: editingDokumen.status || 'aktif',
+        filePath: formData.filePath || editingDokumen.filePath,
+      };
+
+      const response = await dokumenAPI.update(token, editingDokumen.id, payload);
 
       if (response.success) {
         setShowFileModal(false);
@@ -295,7 +333,7 @@ const Dokumen = () => {
 
   const handleRemoveFile = (type, index) => {
     const files = parseFilePath(formData.filePath || editingDokumen?.filePath);
-    
+
     if (type === 'images') {
       files.images.splice(index, 1);
     } else {
@@ -427,15 +465,21 @@ const Dokumen = () => {
             ) : (
               <div className="grid gap-4">
                 {dokumenList.map((dokumen) => {
-                  const { images, pdfs } = parseFilePath(dokumen.filepath);
+                  // Use updated filePath if this document is being edited
+                  const currentFilePath = (editingDokumen && editingDokumen.id === dokumen.id) ? formData.filePath : dokumen.filePath;
+                  const { images, pdfs } = parseFilePath(currentFilePath);
                   const expired = isExpiringSoon(dokumen.tanggalKadaluarsa);
 
+                  // Debug logging
+                  console.log(`Dokumen ${dokumen.id} (${dokumen.jenis}): filePath =`, currentFilePath);
+                  console.log(`Parsed - Images: ${images.length}, PDFs: ${pdfs.length}`);
+
                   return (
-                    <div key={dokumen.id} className={`bg-white rounded-lg shadow p-6 ${expired ? 'border-l-4 border-red-500' : ''}`}>
+                    <div key={dokumen.id || Math.random()} className={`bg-white rounded-lg shadow p-6 ${expired ? 'border-l-4 border-red-500' : ''}`}>
                       <div className="flex justify-between items-start">
                         <div className="flex-1">
                           <div className="flex items-center gap-2">
-                            <h3 className="text-lg font-semibold text-gray-800">{dokumen.jenis || dokumen.nama}</h3>
+                            <h3 className="text-lg font-semibold text-gray-800">{dokumen.jenis || dokumen.nama || 'Dokumen'}</h3>
                             {expired && (
                               <span className="bg-red-100 text-red-700 text-xs px-2 py-1 rounded">
                                 Segera Expired
@@ -444,10 +488,29 @@ const Dokumen = () => {
                           </div>
                           <p className="text-gray-500 text-sm">Tanggal Kadaluarsa: {formatDate(dokumen.tanggalKadaluarsa)}</p>
 
-                          {/* Images */}
+                          {/* Count of Images */}
+                          <div className="mt-3">
+                            <button
+                              onClick={() => images.length > 0 ? openImageViewer(images, 0) : alert('Tidak ada gambar untuk ditampilkan')}
+                              className="text-sm text-blue-600 hover:text-blue-800 underline"
+                            >
+                              Lihat Gambar: {images.length}
+                            </button>
+                          </div>
+
+                          {/* Count of PDFs */}
+                          <div className="mt-1">
+                            <button
+                              onClick={() => pdfs.length > 0 ? openPdfSelection(pdfs) : alert('Tidak ada PDF untuk ditampilkan')}
+                              className="text-sm text-blue-600 hover:text-blue-800 underline"
+                            >
+                              Lihat PDF: {pdfs.length}
+                            </button>
+                          </div>
+
+                          {/* Images Thumbnails - only show if there are images */}
                           {images.length > 0 && (
                             <div className="mt-3">
-                              <p className="text-sm font-medium text-gray-700">Gambar ({images.length}):</p>
                               <div className="flex gap-2 mt-1 flex-wrap">
                                 {images.map((img, idx) => (
                                   <button
@@ -467,10 +530,9 @@ const Dokumen = () => {
                             </div>
                           )}
 
-                          {/* PDFs */}
+                          {/* PDFs - only show if there are PDFs */}
                           {pdfs.length > 0 && (
                             <div className="mt-3">
-                              <p className="text-sm font-medium text-gray-700">PDF ({pdfs.length}):</p>
                               <div className="flex gap-2 mt-1">
                                 {pdfs.map((pdf, idx) => (
                                   <button
@@ -501,7 +563,16 @@ const Dokumen = () => {
                           <button
                             onClick={() => {
                               setSelectedDateDokumen(dokumen);
-                              setTempDate(dokumen.tanggalKadaluarsa || '');
+                              // Convert DD/MM/YYYY to YYYY-MM-DD format for DatePicker
+                              const dateStr = dokumen.tanggalKadaluarsa || '';
+                              let formattedDate = '';
+                              if (dateStr && dateStr.includes('/')) {
+                                const [day, month, year] = dateStr.split('/');
+                                formattedDate = `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+                              } else {
+                                formattedDate = dateStr;
+                              }
+                              setTempDate(formattedDate);
                               setShowDateModal(true);
                             }}
                             className="bg-yellow-500 text-white px-3 py-1 rounded hover:bg-yellow-600 transition-colors text-sm flex items-center gap-1"
@@ -559,7 +630,7 @@ const Dokumen = () => {
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Tanggal Kadaluarsa</label>
                 <DatePicker
-                  selected={formData.tanggalKadaluarsa ? new Date(formData.tanggalKadaluarsa) : null}
+                  selected={formData.tanggalKadaluarsa || null}
                   onChange={(date) => setFormData({ ...formData, tanggalKadaluarsa: date })}
                   placeholderText="Pilih tanggal"
                 />
@@ -603,14 +674,14 @@ const Dokumen = () => {
                   onChange={(e) => setFormData({ ...formData, jenis: e.target.value })}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
                   placeholder="Masukkan jenis dokumen"
-                  required
+                  required={false}
                 />
               </div>
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Tanggal Kadaluarsa</label>
                 <DatePicker
-                  selected={formData.tanggalKadaluarsa ? new Date(formData.tanggalKadaluarsa) : null}
+                  selected={formData.tanggalKadaluarsa || null}
                   onChange={(date) => setFormData({ ...formData, tanggalKadaluarsa: date })}
                   placeholderText="Pilih tanggal"
                 />
@@ -928,8 +999,11 @@ const Dokumen = () => {
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Tanggal Kadaluarsa Baru</label>
                 <DatePicker
-                  selected={tempDate ? new Date(tempDate) : null}
-                  onChange={(date) => setTempDate(date)}
+                  selected={tempDate || null}
+                  onChange={(date) => {
+                    console.log('DatePicker onChange called with:', date);
+                    setTempDate(date);
+                  }}
                   placeholderText="Pilih tanggal"
                 />
               </div>
@@ -937,7 +1011,9 @@ const Dokumen = () => {
               <div className="flex justify-end gap-4 pt-4">
                 <button
                   type="button"
-                  onClick={() => setShowDateModal(false)}
+                  onClick={() => {
+                    setShowDateModal(false);
+                  }}
                   className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
                 >
                   Batal

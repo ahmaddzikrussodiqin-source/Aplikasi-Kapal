@@ -1,7 +1,19 @@
 // API Configuration
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+// Use Railway URL for production consistency with Android app
+// Android app uses: https://aplikasi-kapal-production.up.railway.app
 
-// Auth API
+// Mode: 'production' (Railway) or 'development' (localhost)
+const APP_MODE = import.meta.env.VITE_APP_MODE || 'production';
+
+const RAILWAY_URL = import.meta.env.VITE_RAILWAY_URL || 'https://aplikasi-kapal-production.up.railway.app';
+const LOCAL_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+
+// Use LOCAL_URL for development mode, RAILWAY_URL for production
+const API_BASE_URL = APP_MODE === 'development' ? LOCAL_URL : RAILWAY_URL;
+
+// Export variables for use across the app
+export { APP_MODE, LOCAL_URL, RAILWAY_URL };
+export default API_BASE_URL;
 export const authAPI = {
   login: async (userId, password) => {
     const response = await fetch(`${API_BASE_URL}/api/login`, {
@@ -228,6 +240,4 @@ export const uploadAPI = {
     return response.json();
   },
 };
-
-export default API_BASE_URL;
 

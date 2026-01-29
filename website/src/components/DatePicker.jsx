@@ -18,10 +18,19 @@ const DatePicker = ({ selected, onChange, placeholderText = "Pilih tanggal", cla
     }
   };
 
+  // Helper function to format date as YYYY-MM-DD without timezone issues
+  const formatDateAsString = (date) => {
+    if (!date) return '';
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+
   return (
     <ReactDatePicker
       selected={parseDateString(selected)}
-      onChange={(date) => onChange(date ? date.toISOString().split('T')[0] : '')}
+      onChange={(date) => onChange(formatDateAsString(date))}
       dateFormat="dd/MM/yyyy"
       placeholderText={placeholderText}
       className={`w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none ${className}`}
