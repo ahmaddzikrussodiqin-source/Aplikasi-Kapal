@@ -4,7 +4,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { backupAPI } from '../services/api';
 
 const Dashboard = () => {
-  const { user, isModerator, logout } = useAuth();
+  const { user, token, isModerator, logout } = useAuth();
   const navigate = useNavigate();
   const [backupLoading, setBackupLoading] = useState(false);
 
@@ -16,7 +16,7 @@ const Dashboard = () => {
   const handleBackup = async () => {
     try {
       setBackupLoading(true);
-      const response = await backupAPI.createBackup(user.token);
+      const response = await backupAPI.createBackup(token);
 
       // Create a blob from the response and download it
       const blob = await response.blob();
