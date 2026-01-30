@@ -244,7 +244,16 @@ export const uploadAPI = {
   },
 };
 
-
+// Migration API
+export const migrationAPI = {
+  migrateFileUrls: async (token) => {
+    const response = await fetch(`${API_BASE_URL}/api/migrate-file-urls`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    return response.json();
+  },
+};
 
 // Backup API
 export const backupAPI = {
