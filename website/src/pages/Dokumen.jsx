@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { kapalAPI, dokumenAPI, uploadAPI, migrationAPI } from '../services/api';
+import { kapalAPI, dokumenAPI, uploadAPI } from '../services/api';
 import API_BASE_URL from '../services/api';
 import DatePicker from '../components/DatePicker';
 
@@ -23,9 +23,6 @@ const Dokumen = () => {
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
-  const [migrating, setMigrating] = useState(false);
-  const [migrationLogs, setMigrationLogs] = useState([]);
-  const [showMigrationModal, setShowMigrationModal] = useState(false);
   const [formData, setFormData] = useState({
     kapalId: '',
     nama: '',
@@ -360,30 +357,6 @@ const Dokumen = () => {
     window.open(pdfUrl, '_blank');
   };
 
-  const handleMigrateFileUrls = async () => {
-    if (window.confirm('Apakah Anda yakin ingin menjalankan migrasi URL file? Ini akan mengubah semua URL file dari localhost ke Railway URL.')) {
-      setMigrating(true);
-      setMigrationLogs([]);
-      try {
-        const response = await migrationAPI.migrateFileUrls(token);
-        if (response.success) {
-          setMigrationLogs(response.data.logs || []);
-          setShowMigrationModal(true);
-          // Reload dokumen to reflect changes
-          if (selectedKapal) {
-            loadDokumenForKapal(selectedKapal.id);
-          }
-        } else {
-          alert('Migrasi gagal: ' + (response.message || 'Unknown error'));
-        }
-      } catch (error) {
-        alert('Error migrasi: ' + error.message);
-      } finally {
-        setMigrating(false);
-      }
-    }
-  };
-
   const openPdfSelection = (pdfs) => {
     if (pdfs.length === 1) {
       openPdf(pdfs[0]);
@@ -437,13 +410,6 @@ const Dokumen = () => {
                 className="bg-white text-blue-600 px-4 py-2 rounded-lg hover:bg-blue-50 transition-colors font-medium"
               >
                 + Tambah Dokumen
-              </button>
-              <button
-                onClick={handleMigrateFileUrls}
-                disabled={migrating}
-                className="bg-orange-500 text-white px-4 py-2 rounded-lg hover:bg-orange-600 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {migrating ? 'Memigrasi...' : 'Migrasi File'}
               </button>
             </div>
           )}
