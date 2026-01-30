@@ -1038,40 +1038,7 @@ const Dokumen = () => {
         </div>
       )}
 
-      {/* Migration Modal */}
-      {showMigrationModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl max-h-[80vh] overflow-hidden">
-            <div className="p-6 border-b flex justify-between items-center">
-              <h2 className="text-xl font-semibold">Migration Logs</h2>
-              <button onClick={() => setShowMigrationModal(false)} className="text-gray-500 hover:text-gray-700">
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
-            </div>
-            <div className="p-6">
-              <div className="bg-gray-100 rounded-lg p-4 max-h-96 overflow-y-auto">
-                {migrationLogs.length === 0 ? (
-                  <p className="text-gray-500">No logs available</p>
-                ) : (
-                  <pre className="text-sm text-gray-800 whitespace-pre-wrap">
-                    {migrationLogs.join('\n')}
-                  </pre>
-                )}
-              </div>
-              <div className="flex justify-end mt-4">
-                <button
-                  onClick={() => setShowMigrationModal(false)}
-                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-                >
-                  Close
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+
     </div>
   );
 };
