@@ -6,6 +6,7 @@ const jwt = require('jsonwebtoken');
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
+const archiver = require('archiver');
 const { createServer } = require('http');
 const { Server } = require('socket.io');
 
@@ -1946,6 +1947,174 @@ app.post('/api/migrate-file-urls', authenticateToken, async (req, res) => {
         res.status(500).json({
             success: false,
             message: 'Migration failed',
+            error: error.message
+        });
+    }
+});
+
+// Backup endpoint (protected) - creates full backup of data and files
+app.get('/api/backup', authenticateToken, async (req, res) => {
+    try {
+        console.log('🔄 Starting full backup process...');
+
+        // Create temporary directory for backup files
+        const tempDir = path.join(__dirname, 'temp_backup');
+        const dataDir = path.join(tempDir, 'data');
+        const filesDir = path.join(tempDir, 'files');
+
+        // Ensure directories exist
+        if (!fs.existsSync(tempDir)) fs.mkdirSync(tempDir, { recursive: true });
+        if (!fs.existsSync(dataDir)) fs.mkdirSync(dataDir, { recursive: true });
+        if (!fs.existsSync(filesDir)) fs.mkdirSync(filesDir, { recursive: true });
+
+        const backupData = {
+            timestamp: new Date().toISOString(),
+            version: '1.0.0',
+            databases: {}
+        };
+
+        // Export all database data
+        console.log('📊 Exporting database data...');
+
+        // Users database
+        try {
+            const usersResult = await usersPool.query('SELECT * FROM users ORDER BY created_at DESC');
+            backupData.databases.users = usersResult.rows;
+            fs.writeFileSync(path.join(dataDir, 'users.json'), JSON.stringify(usersResult.rows, null, 2));
+            console.log(`✅ Exported ${usersResult.rows.length} users`);
+        } catch (error) {
+            console.error('❌ Error exporting users:', error.message);
+            backupData.databases.users = { error: error.message };
+        }
+
+        // Kapal database
+        try {
+            const kapalInfoResult = await kapalPool.query('SELECT * FROM kapal_info ORDER BY id DESC');
+            const kapalStatusResult = await kapalPool.query('SELECT * FROM kapal_status ORDER BY kapalId DESC');
+
+            backupData.databases.kapal = {
+                kapal_info: kapalInfoResult.rows,
+                kapal_status: kapalStatusResult.rows
+            };
+
+            fs.writeFileSync(path.join(dataDir, 'kapal_info.json'), JSON.stringify(kapalInfoResult.rows, null, 2));
+            fs.writeFileSync(path.join(dataDir, 'kapal_status.json'), JSON.stringify(kapalStatusResult.rows, null, 2));
+            console.log(`✅ Exported ${kapalInfoResult.rows.length} kapal records`);
+        } catch (error) {
+            console.error('❌ Error exporting kapal:', error.message);
+            backupData.databases.kapal = { error: error.message };
+        }
+
+        // Dokumen database
+        try {
+            if (dokumenPool) {
+                const dokumenResult = await dokumenPool.query('SELECT * FROM dokumen ORDER BY id DESC');
+                backupData.databases.dokumen = dokumenResult.rows;
+                fs.writeFileSync(path.join(dataDir, 'dokumen.json'), JSON.stringify(dokumenResult.rows, null, 2));
+                console.log(`✅ Exported ${dokumenResult.rows.length} dokumen records`);
+            } else {
+                backupData.databases.dokumen = { message: 'Dokumen database not configured' };
+            }
+        } catch (error) {
+            console.error('❌ Error exporting dokumen:', error.message);
+            backupData.databases.dokumen = { error: error.message };
+        }
+
+        // Kapal Masuk database
+        try {
+            const kapalMasukResult = await kapalMasukPool.query('SELECT * FROM kapal_masuk_schema.kapal_masuk ORDER BY id DESC');
+            backupData.databases.kapal_masuk = kapalMasukResult.rows;
+            fs.writeFileSync(path.join(dataDir, 'kapal_masuk.json'), JSON.stringify(kapalMasukResult.rows, null, 2));
+            console.log(`✅ Exported ${kapalMasukResult.rows.length} kapal masuk records`);
+        } catch (error) {
+            console.error('❌ Error exporting kapal masuk:', error.message);
+            backupData.databases.kapal_masuk = { error: error.message };
+        }
+
+        // Copy all uploaded files
+        console.log('📁 Copying uploaded files...');
+        if (fs.existsSync(uploadsDir)) {
+            const files = fs.readdirSync(uploadsDir);
+            console.log(`📄 Found ${files.length} files in uploads directory`);
+
+            for (const file of files) {
+                const srcPath = path.join(uploadsDir, file);
+                const destPath = path.join(filesDir, file);
+
+                try {
+                    fs.copyFileSync(srcPath, destPath);
+                } catch (error) {
+                    console.error(`❌ Error copying file ${file}:`, error.message);
+                }
+            }
+            console.log('✅ Files copied successfully');
+        } else {
+            console.log('⚠️  Uploads directory not found');
+        }
+
+        // Save backup metadata
+        fs.writeFileSync(path.join(tempDir, 'backup_info.json'), JSON.stringify(backupData, null, 2));
+
+        // Create ZIP archive
+        console.log('📦 Creating ZIP archive...');
+        const archiveName = `kapallist_backup_${new Date().toISOString().slice(0, 19).replace(/:/g, '-')}.zip`;
+        const archivePath = path.join(__dirname, archiveName);
+
+        const output = fs.createWriteStream(archivePath);
+        const archive = archiver('zip', {
+            zlib: { level: 9 } // Maximum compression
+        });
+
+        // Handle archive errors
+        archive.on('error', (err) => {
+            throw err;
+        });
+
+        // Pipe archive data to the file
+        archive.pipe(output);
+
+        // Add files to archive
+        archive.directory(tempDir, 'backup');
+
+        // Finalize the archive
+        await new Promise((resolve, reject) => {
+            output.on('close', () => {
+                console.log(`📦 Archive created: ${archive.pointer()} bytes`);
+                resolve();
+            });
+
+            archive.on('error', reject);
+            archive.finalize();
+        });
+
+        // Clean up temporary directory
+        fs.rmSync(tempDir, { recursive: true, force: true });
+
+        // Send the ZIP file
+        console.log('📤 Sending backup file...');
+        res.setHeader('Content-Type', 'application/zip');
+        res.setHeader('Content-Disposition', `attachment; filename="${archiveName}"`);
+
+        const fileStream = fs.createReadStream(archivePath);
+        fileStream.pipe(res);
+
+        // Clean up archive file after sending
+        fileStream.on('end', () => {
+            try {
+                fs.unlinkSync(archivePath);
+                console.log('🧹 Cleanup completed');
+            } catch (error) {
+                console.error('❌ Error cleaning up archive:', error.message);
+            }
+        });
+
+        console.log('✅ Backup completed successfully');
+
+    } catch (error) {
+        console.error('❌ Backup error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Backup failed',
             error: error.message
         });
     }

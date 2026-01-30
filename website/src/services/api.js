@@ -255,3 +255,21 @@ export const migrationAPI = {
   },
 };
 
+// Backup API
+export const backupAPI = {
+  createBackup: async (token) => {
+    const response = await fetch(`${API_BASE_URL}/api/backup`, {
+      method: 'GET',
+      headers: { Authorization: `Bearer ${token}` },
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.message || 'Backup failed');
+    }
+
+    // Return the response directly for file download
+    return response;
+  },
+};
+
