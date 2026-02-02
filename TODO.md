@@ -1,22 +1,42 @@
-# Railway Crash Fix - TODO
+# Auto-Logout Feature Implementation
 
-## Issue Analysis
-- Railway healthcheck failing with "service unavailable" errors
-- Healthcheck configured on "/" path with 300s timeout
-- Server was listening on default host (localhost/127.0.0.1) instead of 0.0.0.0
+## Task: Implement auto-logout after 60 minutes of inactivity
 
-## Root Cause
-- In Docker containers, servers need to bind to 0.0.0.0 to be accessible from outside the container
-- Railway's healthcheck was unable to reach the server due to incorrect host binding
+### Steps:
 
-## Fix Applied
-- [x] Modified server.listen() call to include '0.0.0.0' as the host parameter
-- [x] Changed from `server.listen(PORT, callback)` to `server.listen(PORT, '0.0.0.0', callback)`
+1. **Modify AuthContext.jsx** - Add idle timeout functionality:
+   - [x] Add state for idle timer management
+   - [x] Store last active timestamp in localStorage
+   - [x] Add event listeners for user activity detection (mousemove, keydown, click, scroll, touch)
+   - [x] Implement check on app load to logout if session expired
+   - [x] Implement idle timer that auto-logouts after 60 minutes
+   - [x] Clear timers properly to prevent memory leaks
 
-## Verification Steps
-- [ ] Deploy to Railway and monitor healthcheck status
-- [ ] Check that healthcheck endpoint "/" returns 200 status
-- [ ] Verify server logs show successful binding to 0.0.0.0
+2. **Test the implementation:**
+   - Verify auto-logout after 60 minutes of inactivity
+   - Verify auto-logout when reopening browser after 60 minutes
+   - Verify timer resets on user activity
 
-## Files Modified
-- backend/server.js: Updated server.listen() call to bind to 0.0.0.0
+### Implementation Summary:
+
+The auto-logout feature has been successfully implemented in `website/src/context/AuthContext.jsx`. Here's how it works:
+
+1. **Idle Timeout**: Set to 60 minutes (60 * 60 * 1000 milliseconds)
+
+2. **Session Tracking**:
+   - `lastActive` timestamp stored in localStorage
+   - Checked on app load to auto-logout if session expired
+   - Updated on user activity (mousemove, keydown, click, scroll, touch)
+
+3. **Key Functions**:
+   - `updateLastActive()`: Updates the last active timestamp
+   - `checkSessionExpired()`: Checks if 60 minutes have passed since last activity
+   - `resetIdleTimer()`: Resets the idle timer on user activity
+   - `logout()`: Logs out user and clears all session data
+
+4. **Event Listeners**: Active on mousemove, keydown, click, scroll, and touchstart events
+
+5. **Auto-Logout Behavior**:
+   - When website is open but idle for 60 minutes: auto-logout and redirect to /login
+   - When website is closed and reopened after 60 minutes: auto-logout on page load
+
