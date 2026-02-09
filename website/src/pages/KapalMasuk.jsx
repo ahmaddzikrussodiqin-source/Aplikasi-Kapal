@@ -194,11 +194,15 @@ const KapalMasuk = () => {
     if (!window.confirm('Batalkan finish?')) return;
 
     try {
+      // Restore checklist states from finishedChecklistStates before clearing it
+      const restoredChecklistStates = kapal.finishedChecklistStates || kapal.checklistStates;
+      
       const response = await kapalMasukAPI.update(token, kapal.id, {
         ...kapal,
         isFinished: false,
         perkiraanKeberangkatan: null,
         tanggalBerangkat: null,
+        checklistStates: restoredChecklistStates,
         finishedChecklistStates: null,
         finishedAt: null,
       });
