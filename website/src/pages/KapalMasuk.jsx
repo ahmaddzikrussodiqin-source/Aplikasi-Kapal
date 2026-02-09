@@ -536,7 +536,6 @@ const KapalMasuk = () => {
                         <input
                           type="checkbox"
                           checked={kapal.checklistStates?.[item] || false}
-                          disabled={kapal.isFinished && !kapal.checklistStates?.[item]}
                           onChange={() => toggleChecklist(kapal, item)}
                           className="w-5 h-5 rounded border-gray-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
                         />
