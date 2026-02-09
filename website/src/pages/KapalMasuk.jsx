@@ -31,6 +31,9 @@ const KapalMasuk = () => {
   });
   const [newPersiapan, setNewPersiapan] = useState('');
   const [deleteConfirmId, setDeleteConfirmId] = useState(null);
+  const [showEditKebutuhanModal, setShowEditKebutuhanModal] = useState(false);
+  const [editingKebutuhan, setEditingKebutuhan] = useState(null);
+  const [editKebutuhanName, setEditKebutuhanName] = useState('');
 
   useEffect(() => {
     loadData();
@@ -236,6 +239,72 @@ const KapalMasuk = () => {
       }
     } catch (error) {
       console.error('Error adding kebutuhan:', error);
+    }
+  };
+
+  const handleEditKebutuhanClick = (kapal, item) => {
+    if (!isItemEditable(kapal, item)) return;
+    setEditingKebutuhan({ kapal, item });
+    setEditKebutuhanName(item);
+    setShowEditKebutuhanModal(true);
+  };
+
+  const handleEditKebutuhanConfirm = async () => {
+    if (!editKebutuhanName.trim() || !editingKebutuhan) return;
+
+    const { kapal, item: oldItem } = editingKebutuhan;
+    const newItemName = editKebutuhanName.trim();
+
+    try {
+      // Update listPersiapan
+      const updatedList = (kapal.listPersiapan || []).map(i => i === oldItem ? newItemName : i);
+
+      // Update checklistStates - keep the old state and move it to new key
+      const updatedChecklistStates = {};
+      Object.keys(kapal.checklistStates || {}).forEach(key => {
+        if (key === oldItem) {
+          updatedChecklistStates[newItemName] = kapal.checklistStates[key];
+        } else {
+          updatedChecklistStates[key] = kapal.checklistStates[key];
+        }
+      });
+
+      // Update checklistDates
+      const updatedChecklistDates = {};
+      Object.keys(kapal.checklistDates || {}).forEach(key => {
+        if (key === oldItem) {
+          updatedChecklistDates[newItemName] = kapal.checklistDates[key];
+        } else {
+          updatedChecklistDates[key] = kapal.checklistDates[key];
+        }
+      });
+
+      // Update finishedChecklistStates if the item was tracked there
+      const updatedFinishedChecklistStates = {};
+      Object.keys(kapal.finishedChecklistStates || {}).forEach(key => {
+        if (key === oldItem) {
+          updatedFinishedChecklistStates[newItemName] = kapal.finishedChecklistStates[key];
+        } else {
+          updatedFinishedChecklistStates[key] = kapal.finishedChecklistStates[key];
+        }
+      });
+
+      const response = await kapalMasukAPI.update(token, kapal.id, {
+        ...kapal,
+        listPersiapan: updatedList,
+        checklistStates: updatedChecklistStates,
+        checklistDates: updatedChecklistDates,
+        finishedChecklistStates: updatedFinishedChecklistStates,
+      });
+
+      if (response.success) {
+        loadData();
+        setShowEditKebutuhanModal(false);
+        setEditingKebutuhan(null);
+        setEditKebutuhanName('');
+      }
+    } catch (error) {
+      console.error('Error editing kebutuhan:', error);
     }
   };
 
@@ -566,8 +635,17 @@ const KapalMasuk = () => {
                           className={`w-5 h-5 rounded border-gray-300 text-blue-600 focus:ring-blue-500 ${!isItemEditable(kapal, item) ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'}`}
                           title={!isItemEditable(kapal, item) ? 'Item ini sudah dicentang sebelum keberangkatan' : ''}
                         />
-                        <span className={`flex-1 ${kapal.checklistStates?.[item] ? 'line-through text-gray-400' : ''}`}>
+                        <span 
+                          className={`flex-1 ${kapal.checklistStates?.[item] ? 'line-through text-gray-400' : ''} ${isItemEditable(kapal, item) ? 'cursor-pointer hover:text-blue-600' : ''}`}
+                          onClick={() => handleEditKebutuhanClick(kapal, item)}
+                          title={isItemEditable(kapal, item) ? 'Klik untuk edit nama' : 'Item ini sudah dicentang sebelum keberangkatan'}
+                        >
                           {item}
+                          {isItemEditable(kapal, item) && (
+                            <svg className="inline-block ml-2 w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                            </svg>
+                          )}
                           {kapal.isFinished && !isItemEditable(kapal, item) && (
                             <span className="ml-2 text-xs text-yellow-600 bg-yellow-100 px-2 py-0.5 rounded">
                               Sebelum Berangkat
@@ -864,6 +942,52 @@ const KapalMasuk = () => {
                   className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
                 >
                   Hapus
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Kebutuhan Modal */}
+      {showEditKebutuhanModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-xl shadow-2xl w-full max-w-md">
+            <div className="p-6 border-b">
+              <h2 className="text-xl font-semibold">Edit Kebutuhan</h2>
+            </div>
+            <div className="p-6">
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Nama Kebutuhan
+                </label>
+                <input
+                  type="text"
+                  value={editKebutuhanName}
+                  onChange={(e) => setEditKebutuhanName(e.target.value)}
+                  onKeyPress={(e) => e.key === 'Enter' && handleEditKebutuhanConfirm()}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                  placeholder="Masukkan nama kebutuhan..."
+                  autoFocus
+                />
+              </div>
+              <div className="flex justify-end gap-4">
+                <button
+                  onClick={() => {
+                    setShowEditKebutuhanModal(false);
+                    setEditingKebutuhan(null);
+                    setEditKebutuhanName('');
+                  }}
+                  className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+                >
+                  Batal
+                </button>
+                <button
+                  onClick={handleEditKebutuhanConfirm}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                  disabled={!editKebutuhanName.trim()}
+                >
+                  Simpan
                 </button>
               </div>
             </div>
