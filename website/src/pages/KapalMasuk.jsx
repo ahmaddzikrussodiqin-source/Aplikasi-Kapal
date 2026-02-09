@@ -155,11 +155,25 @@ const KapalMasuk = () => {
     if (!finishDate || !finishKapal) return;
 
     try {
+      // Save the current checklist states with timestamps before marking as finished
+      const currentChecklistStates = finishKapal.checklistStates || {};
+      const currentChecklistDates = finishKapal.checklistDates || {};
+      
+      // Track which items were already checked at the time of finish
+      const finishedChecklistStates = {};
+      Object.keys(currentChecklistStates).forEach(key => {
+        if (currentChecklistStates[key]) {
+          finishedChecklistStates[key] = true;
+        }
+      });
+
       const response = await kapalMasukAPI.update(token, finishKapal.id, {
         ...finishKapal,
         isFinished: true,
         perkiraanKeberangkatan: finishDate,
         tanggalBerangkat: finishDate,
+        finishedChecklistStates: finishedChecklistStates,
+        finishedAt: new Date().toISOString(),
       });
       if (response.success) {
         loadData();
@@ -182,6 +196,8 @@ const KapalMasuk = () => {
         isFinished: false,
         perkiraanKeberangkatan: null,
         tanggalBerangkat: null,
+        finishedChecklistStates: null,
+        finishedAt: null,
       });
       if (response.success) {
         loadData();
@@ -398,6 +414,15 @@ const KapalMasuk = () => {
     return kapal.listPersiapan.every(item => kapal.checklistStates?.[item] === true);
   };
 
+  // Check if an item was already checked BEFORE departure
+  // If kapal.isFinished, only items checked after finish can be modified
+  const isItemEditable = (kapal, item) => {
+    if (!kapal.isFinished) return true;
+    // If finished, check if this item was in the finishedChecklistStates
+    // Items not in finishedChecklistStates are new items added after finish
+    return !kapal.finishedChecklistStates?.[item];
+  };
+
   const filteredKapal = kapalMasukList.filter(kapal =>
     kapal.listPersiapan?.some(item => item.toLowerCase().includes(searchTerm.toLowerCase()))
   );
@@ -536,11 +561,23 @@ const KapalMasuk = () => {
                         <input
                           type="checkbox"
                           checked={kapal.checklistStates?.[item] || false}
+                          disabled={!isItemEditable(kapal, item)}
                           onChange={() => toggleChecklist(kapal, item)}
-                          className="w-5 h-5 rounded border-gray-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
+                          className={`w-5 h-5 rounded border-gray-300 text-blue-600 focus:ring-blue-500 ${!isItemEditable(kapal, item) ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'}`}
+                          title={!isItemEditable(kapal, item) ? 'Item ini sudah dicentang sebelum keberangkatan' : ''}
                         />
                         <span className={`flex-1 ${kapal.checklistStates?.[item] ? 'line-through text-gray-400' : ''}`}>
                           {item}
+                          {kapal.isFinished && !isItemEditable(kapal, item) && (
+                            <span className="ml-2 text-xs text-yellow-600 bg-yellow-100 px-2 py-0.5 rounded">
+                              Sebelum Berangkat
+                            </span>
+                          )}
+                          {kapal.isFinished && isItemEditable(kapal, item) && (
+                            <span className="ml-2 text-xs text-green-600 bg-green-100 px-2 py-0.5 rounded">
+                              Setelah Berangkat
+                            </span>
+                          )}
                         </span>
                         <span className="text-sm text-gray-500 min-w-[100px] text-right">
                           {kapal.checklistDates?.[item]}
