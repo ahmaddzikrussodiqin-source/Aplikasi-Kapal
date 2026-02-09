@@ -989,6 +989,37 @@ const KapalMasuk = () => {
                 >
                   Simpan
                 </button>
+                <button
+                  onClick={() => {
+                    if (editingKebutuhan && window.confirm('Apakah Anda yakin ingin menghapus kebutuhan ini?')) {
+                      const { kapal, item } = editingKebutuhan;
+                      const updatedList = (kapal.listPersiapan || []).filter(i => i !== item);
+                      const updatedChecklistStates = { ...kapal.checklistStates };
+                      const updatedChecklistDates = { ...kapal.checklistDates };
+                      delete updatedChecklistStates[item];
+                      delete updatedChecklistDates[item];
+                      
+                      const updatedFinishedChecklistStates = { ...kapal.finishedChecklistStates };
+                      delete updatedFinishedChecklistStates[item];
+
+                      kapalMasukAPI.update(token, kapal.id, {
+                        ...kapal,
+                        listPersiapan: updatedList,
+                        checklistStates: updatedChecklistStates,
+                        checklistDates: updatedChecklistDates,
+                        finishedChecklistStates: updatedFinishedChecklistStates,
+                      }).then(() => {
+                        loadData();
+                        setShowEditKebutuhanModal(false);
+                        setEditingKebutuhan(null);
+                        setEditKebutuhanName('');
+                      });
+                    }
+                  }}
+                  className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+                >
+                  Hapus
+                </button>
               </div>
             </div>
           </div>
