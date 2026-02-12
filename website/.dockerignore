@@ -1,0 +1,30 @@
+# Dependencies
+node_modules
+
+# Build outputs
+dist
+
+# Logs
+npm-debug.log*
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Backend folder (not needed for frontend)
+backend
+
+# App folder (not needed for frontend)
+app
+
+# Root files that shouldn't be copied
+*.md
+.gitignore
+.gradle
+gradle
+gradlew
+gradlew.bat
+
+# Export files
+exportToHTML
+
