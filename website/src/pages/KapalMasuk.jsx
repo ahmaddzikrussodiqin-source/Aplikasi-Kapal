@@ -500,6 +500,25 @@ const KapalMasuk = () => {
     kapal.listPersiapan?.some(item => item.toLowerCase().includes(searchTerm.toLowerCase()))
   );
 
+  // Get owner name for a kapal by matching with kapalList
+  const getOwnerName = (kapal) => {
+    // Try to find by kapalId first
+    if (kapal.kapalId && kapalList.length > 0) {
+      const matchedKapal = kapalList.find(k => k.id === kapal.kapalId);
+      if (matchedKapal?.namaPemilik) {
+        return matchedKapal.namaPemilik;
+      }
+    }
+    // Fallback: find by ship name
+    if (kapal.nama && kapalList.length > 0) {
+      const matchedKapal = kapalList.find(k => k.nama === kapal.nama);
+      if (matchedKapal?.namaPemilik) {
+        return matchedKapal.namaPemilik;
+      }
+    }
+    return null;
+  };
+
   return (
     <div className="min-h-screen bg-gray-100">
       <header className="bg-blue-600 text-white shadow-lg">
@@ -557,6 +576,9 @@ const KapalMasuk = () => {
                 <div className="flex justify-between items-start mb-4">
                   <div>
                     <h3 className="text-xl font-semibold text-gray-800">{kapal.nama}</h3>
+                    {getOwnerName(kapal) && (
+                      <p className="text-gray-500 text-sm">Pemilik: {getOwnerName(kapal)}</p>
+                    )}
                     <p className="text-gray-500 text-sm">Status: {kapal.status || '-'}</p>
                     <p className="text-gray-500 text-sm">Tanggal Kembali: {formatDate(kapal.tanggalKembali)}</p>
                     {kapal.perkiraanKeberangkatan && (
