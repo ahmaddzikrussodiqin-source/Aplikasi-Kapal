@@ -497,18 +497,6 @@ const KapalMasuk = () => {
     return !kapal.finishedChecklistStates?.[item];
   };
 
-  const filteredKapal = kapalMasukList.filter(kapal => {
-    // Filter by owner if selected
-    if (selectedOwner && getOwnerName(kapal) !== selectedOwner) {
-      return false;
-    }
-    // Filter by preparation search term
-    return kapal.listPersiapan?.some(item => item.toLowerCase().includes(searchTerm.toLowerCase()));
-  });
-
-  // Get unique owner list from kapalList
-  const uniqueOwners = [...new Set(kapalList.map(k => k.namaPemilik).filter(Boolean))].sort();
-
   // Get owner name for a kapal by matching with kapalList
   const getOwnerName = (kapal) => {
     // Try to find by kapalId first
@@ -527,6 +515,18 @@ const KapalMasuk = () => {
     }
     return null;
   };
+
+  // Get unique owner list from kapalList
+  const uniqueOwners = [...new Set(kapalList.map(k => k.namaPemilik).filter(Boolean))].sort();
+
+  const filteredKapal = kapalMasukList.filter(kapal => {
+    // Filter by owner if selected
+    if (selectedOwner && getOwnerName(kapal) !== selectedOwner) {
+      return false;
+    }
+    // Filter by preparation search term
+    return kapal.listPersiapan?.some(item => item.toLowerCase().includes(searchTerm.toLowerCase()));
+  });
 
   return (
     <div className="min-h-screen bg-gray-100">
