@@ -540,8 +540,8 @@ app.get('/', (req, res) => {
     res.json({
         success: true,
         message: 'KapalList Backend API is running!',
-        version: '1.03.03',
-        updateLink: 'https://drive.google.com/file/d/1aB7tJ-XSJdQdcT5nf01Du4szv2s6lpoA/view?usp=sharing',
+        version: '1.03.04',
+        updateLink: 'https://drive.google.com/file/d/1PS0PlC3ftQJBbPcM_xswsF8q05LfEDWz/view?usp=sharing',
         timestamp: new Date().toISOString()
     });
 });
