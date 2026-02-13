@@ -1,4 +1,4 @@
-adb connect 192.168.0.102:41353package com.example.kapallist
+package com.example.kapallist
 
 import android.app.AlertDialog
 import android.app.DatePickerDialog
@@ -275,6 +275,16 @@ class ProfileActivity : AppCompatActivity() {
                 tvKapal.textSize = 16f
                 tvKapal.layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT)
                 shipInfoLayout.addView(tvKapal)
+
+                // Add owner below ship name
+                if (!kapal.namaPemilik.isNullOrEmpty()) {
+                    val tvOwner = TextView(this)
+                    tvOwner.text = "Pemilik: ${kapal.namaPemilik}"
+                    tvOwner.textSize = 14f
+                    tvOwner.setTextColor(ContextCompat.getColor(this, R.color.text_secondary))
+                    tvOwner.layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT)
+                    shipInfoLayout.addView(tvOwner)
+                }
 
                 // Add status below ship name
                 val tvStatus = TextView(this)
