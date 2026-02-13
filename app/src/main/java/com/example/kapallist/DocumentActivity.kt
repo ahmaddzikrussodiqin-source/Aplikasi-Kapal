@@ -233,9 +233,9 @@ class DocumentActivity : AppCompatActivity() {
         val etTanggalExpired = dialogView.findViewById<android.widget.EditText>(R.id.et_tanggal_expired_dialog)
         val btnSimpanDokumen = dialogView.findViewById<Button>(R.id.btn_simpan_dokumen)
 
-        etTanggalExpired.setOnClickListener {
+etTanggalExpired.setOnClickListener {
             val c = java.util.Calendar.getInstance()
-            val dpd = android.app.DatePickerDialog(this, { _, y, m, d -> etTanggalExpired.setText("$d-${m + 1}-$y") }, c.get(java.util.Calendar.YEAR), c.get(java.util.Calendar.MONTH), c.get(java.util.Calendar.DAY_OF_MONTH))
+            val dpd = android.app.DatePickerDialog(this, { _, y, m, d -> etTanggalExpired.setText("$d/${m + 1}/$y") }, c.get(java.util.Calendar.YEAR), c.get(java.util.Calendar.MONTH), c.get(java.util.Calendar.DAY_OF_MONTH))
             dpd.show()
         }
         val dialog = AlertDialog.Builder(this)
@@ -547,6 +547,23 @@ class DocumentActivity : AppCompatActivity() {
     private fun isExpiringSoon(tanggalExpired: String?): Boolean {
         if (tanggalExpired.isNullOrEmpty()) return false
         return try {
+            // Check for DD/MM/YYYY format (new format)
+            if (tanggalExpired.contains("/")) {
+                val parts = tanggalExpired.split("/")
+                if (parts.size == 3) {
+                    val day = parts[0].toInt()
+                    val month = parts[1].toInt() - 1
+                    val year = parts[2].toInt()
+                    val calendar = java.util.Calendar.getInstance()
+                    calendar.set(year, month, day, 0, 0, 0)
+                    val today = java.util.Calendar.getInstance()
+                    val diffMillis = calendar.timeInMillis - today.timeInMillis
+                    val diffDays = java.util.concurrent.TimeUnit.MILLISECONDS.toDays(diffMillis).toInt()
+                    return diffDays <= 60
+                }
+            }
+            
+            // Check for DD-MM-YYYY or YYYY-MM-DD format
             val parts = tanggalExpired.split("-")
             if (parts.size != 3) return false
             
@@ -738,7 +755,7 @@ class DocumentActivity : AppCompatActivity() {
 
         etTanggalExpired.setOnClickListener {
             val c = java.util.Calendar.getInstance()
-            val dpd = android.app.DatePickerDialog(this, { _, y, m, d -> etTanggalExpired.setText("$d-${m + 1}-$y") }, c.get(java.util.Calendar.YEAR), c.get(java.util.Calendar.MONTH), c.get(java.util.Calendar.DAY_OF_MONTH))
+            val dpd = android.app.DatePickerDialog(this, { _, y, m, d -> etTanggalExpired.setText("$d/${m + 1}/$y") }, c.get(java.util.Calendar.YEAR), c.get(java.util.Calendar.MONTH), c.get(java.util.Calendar.DAY_OF_MONTH))
             dpd.show()
         }
 
@@ -917,7 +934,7 @@ class DocumentActivity : AppCompatActivity() {
 
         etTanggalExpired.setOnClickListener {
             val c = java.util.Calendar.getInstance()
-            val dpd = android.app.DatePickerDialog(this, { _, y, m, d -> etTanggalExpired.setText("$d-${m + 1}-$y") }, c.get(java.util.Calendar.YEAR), c.get(java.util.Calendar.MONTH), c.get(java.util.Calendar.DAY_OF_MONTH))
+            val dpd = android.app.DatePickerDialog(this, { _, y, m, d -> etTanggalExpired.setText("$d/${m + 1}/$y") }, c.get(java.util.Calendar.YEAR), c.get(java.util.Calendar.MONTH), c.get(java.util.Calendar.DAY_OF_MONTH))
             dpd.show()
         }
 

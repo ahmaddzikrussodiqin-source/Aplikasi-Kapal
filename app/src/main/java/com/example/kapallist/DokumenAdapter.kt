@@ -88,6 +88,23 @@ class DokumenAdapter(
     private fun isExpiringSoon(tanggalExpired: String?): Boolean {
         if (tanggalExpired.isNullOrEmpty()) return false
         return try {
+            // Check for DD/MM/YYYY format (new format)
+            if (tanggalExpired.contains("/")) {
+                val parts = tanggalExpired.split("/")
+                if (parts.size == 3) {
+                    val day = parts[0].toInt()
+                    val month = parts[1].toInt() - 1
+                    val year = parts[2].toInt()
+                    val calendar = java.util.Calendar.getInstance()
+                    calendar.set(year, month, day, 0, 0, 0)
+                    val today = java.util.Calendar.getInstance()
+                    val diffMillis = calendar.timeInMillis - today.timeInMillis
+                    val diffDays = java.util.concurrent.TimeUnit.MILLISECONDS.toDays(diffMillis).toInt()
+                    return diffDays <= 60
+                }
+            }
+            
+            // Check for DD-MM-YYYY or YYYY-MM-DD format
             val parts = tanggalExpired.split("-")
             if (parts.size != 3) return false
             

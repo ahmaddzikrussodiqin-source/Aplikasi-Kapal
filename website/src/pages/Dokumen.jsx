@@ -145,9 +145,9 @@ const Dokumen = () => {
         return;
       }
 
-      // Validate date format (DD-MM-YYYY)
-      if (!/^\d{2}-\d{2}-\d{4}$/.test(newDate)) {
-        alert('ERROR: Format tanggal tidak valid. Gunakan format DD-MM-YYYY');
+      // Validate date format (DD/MM/YYYY)
+      if (!/^\d{2}\/\d{2}\/\d{4}$/.test(newDate)) {
+        alert('ERROR: Format tanggal tidak valid. Gunakan format DD/MM/YYYY');
         return;
       }
 
@@ -200,13 +200,34 @@ const Dokumen = () => {
   const isExpiringSoon = (dateStr) => {
     if (!dateStr) return false;
     try {
-      // Format: DD-MM-YYYY
-      const [day, month, year] = dateStr.split('-');
-      const expiryDate = new Date(year, month - 1, day);
-      const today = new Date();
-      const diffTime = expiryDate - today;
-      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-      return diffDays <= 60;
+      // Format: DD/MM/YYYY (new format)
+      if (dateStr.match(/^\d{2}\/\d{2}\/\d{4}$/)) {
+        const [day, month, year] = dateStr.split('/').map(Number);
+        const expiryDate = new Date(year, month - 1, day);
+        const today = new Date();
+        const diffTime = expiryDate - today;
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+        return diffDays <= 60;
+      }
+      // Format: DD-MM-YYYY (old format for backward compatibility)
+      if (dateStr.match(/^\d{2}-\d{2}-\d{4}$/)) {
+        const [day, month, year] = dateStr.split('-').map(Number);
+        const expiryDate = new Date(year, month - 1, day);
+        const today = new Date();
+        const diffTime = expiryDate - today;
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+        return diffDays <= 60;
+      }
+      // Format: YYYY-MM-DD (legacy format for backward compatibility)
+      if (dateStr.match(/^\d{4}-\d{2}-\d{2}$/)) {
+        const [year, month, day] = dateStr.split('-').map(Number);
+        const expiryDate = new Date(year, month - 1, day);
+        const today = new Date();
+        const diffTime = expiryDate - today;
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+        return diffDays <= 60;
+      }
+      return false;
     } catch {
       return false;
     }
@@ -215,13 +236,19 @@ const Dokumen = () => {
   const formatDate = (dateStr) => {
     if (!dateStr) return '-';
     
-    // Check if it's YYYY-MM-DD format (old format) and convert to DD-MM-YYYY
+    // Check if it's YYYY-MM-DD format (old format) and convert to DD/MM/YYYY
     if (dateStr.match(/^\d{4}-\d{2}-\d{2}$/)) {
       const [year, month, day] = dateStr.split('-');
-      return `${day}-${month}-${year}`;
+      return `${day}/${month}/${year}`;
     }
     
-    // Already DD-MM-YYYY or other format, return as is
+    // Check if it's DD-MM-YYYY format (old new format) and convert to DD/MM/YYYY
+    if (dateStr.match(/^\d{2}-\d{2}-\d{4}$/)) {
+      const [day, month, year] = dateStr.split('-');
+      return `${day}/${month}/${year}`;
+    }
+    
+    // Already DD/MM/YYYY or other format, return as is
     return dateStr;
   };
 
