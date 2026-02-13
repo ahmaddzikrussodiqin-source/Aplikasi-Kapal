@@ -145,9 +145,9 @@ const Dokumen = () => {
         return;
       }
 
-      // Validate date format (YYYY-MM-DD)
-      if (!/^\d{4}-\d{2}-\d{2}$/.test(newDate)) {
-        alert('ERROR: Format tanggal tidak valid');
+      // Validate date format (DD-MM-YYYY)
+      if (!/^\d{2}-\d{2}-\d{4}$/.test(newDate)) {
+        alert('ERROR: Format tanggal tidak valid. Gunakan format DD-MM-YYYY');
         return;
       }
 
@@ -200,7 +200,8 @@ const Dokumen = () => {
   const isExpiringSoon = (dateStr) => {
     if (!dateStr) return false;
     try {
-      const [year, month, day] = dateStr.split('-');
+      // Format: DD-MM-YYYY
+      const [day, month, year] = dateStr.split('-');
       const expiryDate = new Date(year, month - 1, day);
       const today = new Date();
       const diffTime = expiryDate - today;
@@ -213,15 +214,8 @@ const Dokumen = () => {
 
   const formatDate = (dateStr) => {
     if (!dateStr) return '-';
-    try {
-      const parts = dateStr.split('-');
-      if (parts.length === 3) {
-        return `${parts[2]}/${parts[1]}/${parts[0]}`;
-      }
-      return dateStr;
-    } catch {
-      return dateStr;
-    }
+    // Format is already DD-MM-YYYY, return as is
+    return dateStr;
   };
 
   const handleFileUpload = async (e) => {
@@ -566,16 +560,9 @@ const Dokumen = () => {
                           <button
                             onClick={() => {
                               setSelectedDateDokumen(dokumen);
-                              // Convert DD/MM/YYYY to YYYY-MM-DD format for DatePicker
+                              // Date is already in DD-MM-YYYY format, use as is
                               const dateStr = dokumen.tanggalKadaluarsa || '';
-                              let formattedDate = '';
-                              if (dateStr && dateStr.includes('/')) {
-                                const [day, month, year] = dateStr.split('/');
-                                formattedDate = `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
-                              } else {
-                                formattedDate = dateStr;
-                              }
-                              setTempDate(formattedDate);
+                              setTempDate(dateStr);
                               setShowDateModal(true);
                             }}
                             className="bg-yellow-500 text-white px-3 py-1 rounded hover:bg-yellow-600 transition-colors text-sm flex items-center gap-1"
