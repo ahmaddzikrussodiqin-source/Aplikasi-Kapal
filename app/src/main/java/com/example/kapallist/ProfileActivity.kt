@@ -1,4 +1,4 @@
-package com.example.kapallist
+adb connect 192.168.0.102:41353package com.example.kapallist
 
 import android.app.AlertDialog
 import android.app.DatePickerDialog
@@ -9,18 +9,22 @@ import android.text.TextWatcher
 import com.google.android.material.floatingactionbutton.FloatingActionButton
 import android.util.Log
 import android.view.View
+import android.widget.AdapterView
 import android.widget.Button
 import android.widget.CheckBox
 import android.widget.CompoundButton
 import android.widget.EditText
 import android.widget.LinearLayout
+import android.widget.Spinner
 import android.widget.TextView
 import android.widget.Toast
+import android.widget.ArrayAdapter
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.lifecycleScope
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
+import com.example.kapallist.KapalEntity
 import io.socket.client.IO
 import io.socket.client.Socket
 import io.socket.emitter.Emitter
@@ -34,10 +38,12 @@ class ProfileActivity : AppCompatActivity() {
     private val checkBoxStates = mutableMapOf<String, Boolean>()
     private val checkBoxDates = mutableMapOf<String, String>()
     private val listKapal = mutableListOf<Kapal>()
+    private val listAllKapal = mutableListOf<Kapal>()  // Store all kapal for owner reference
     private lateinit var userRole: String
     private var isProgrammaticChange = false
     private lateinit var socket: Socket
     private var currentFilterText = ""
+    private var currentOwnerFilter = ""  // Filter for owner
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -54,6 +60,19 @@ class ProfileActivity : AppCompatActivity() {
             override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
             override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
         })
+
+        // Setup owner filter spinner
+        val spinnerOwner = findViewById<Spinner>(R.id.spinner_filter_owner)
+        spinnerOwner.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
+            override fun onItemSelected(parent: AdapterView<*>?, view: View?, position: Int, id: Long) {
+                currentOwnerFilter = if (position == 0) "" else parent?.getItemAtPosition(position).toString()
+                applyFilter()
+            }
+            override fun onNothingSelected(parent: AdapterView<*>?) {
+                currentOwnerFilter = ""
+                applyFilter()
+            }
+        }
 
         val btnBack = findViewById<FloatingActionButton>(R.id.btn_back)
         btnBack.setOnClickListener {
@@ -114,9 +133,29 @@ class ProfileActivity : AppCompatActivity() {
                     return@launch
                 }
 
-                val response = ApiClient.apiService.getAllKapalMasuk("Bearer $token")
-                if (response.isSuccessful) {
-                    val apiResponse = try { response.body() } catch (e: Exception) { null }
+                // Fetch both kapalMasuk and kapal data
+                val kapalMasukResponse = ApiClient.apiService.getAllKapalMasuk("Bearer $token")
+                val kapalResponse = ApiClient.apiService.getAllKapal("Bearer $token")
+                
+                // Get owner mapping from kapal list
+                val kapalList = mutableListOf<KapalEntity>()
+                if (kapalResponse.isSuccessful) {
+                    val apiResponse = kapalResponse.body()
+                    if (apiResponse != null) {
+                        kapalList.addAll(apiResponse.data ?: emptyList())
+                    }
+                }
+                
+                // Create owner map: kapal name -> owner name
+                val ownerMap = mutableMapOf<String, String>()
+                kapalList.forEach { kapal ->
+                    kapal.nama?.let { nama ->
+                        ownerMap[nama] = kapal.namaPemilik
+                    }
+                }
+
+                if (kapalMasukResponse.isSuccessful) {
+                    val apiResponse = kapalMasukResponse.body()
                     if (apiResponse != null) {
                         val kapalMasukList = apiResponse.data ?: emptyList()
                         Log.d("ProfileActivity", "Received kapal masuk data: ${kapalMasukList.size} items")
@@ -124,12 +163,25 @@ class ProfileActivity : AppCompatActivity() {
                             Log.d("ProfileActivity", "Kapal: ${kapalMasuk.nama}, tanggalKeberangkatan: ${kapalMasuk.tanggalKeberangkatan}, perkiraanKeberangkatan: ${kapalMasuk.perkiraanKeberangkatan}")
                         }
                         listKapal.clear()
-                        // Convert KapalMasukEntity to Kapal
+                        listAllKapal.clear()
+                        // Convert KapalMasukEntity to Kapal and add owner info
                         listKapal.addAll(kapalMasukList.map { kapalMasukEntity ->
-                            Kapal(kapalMasukEntity)
+                            val kapal = Kapal(kapalMasukEntity)
+                            // Set owner from ownerMap based on ship name
+                            kapal.nama?.let { nama ->
+                                kapal.namaPemilik = ownerMap[nama] ?: ""
+                            }
+                            kapal
                         })
+                        listAllKapal.addAll(listKapal)
+                        
+                        // Update owner spinner
+                        runOnUiThread {
+                            setupOwnerSpinner(listAllKapal)
+                        }
+                        
                         listKapal.forEach { kapal ->
-                            Log.d("ProfileActivity", "Converted Kapal: ${kapal.nama}, perkiraanKeberangkatan: ${kapal.perkiraanKeberangkatan}")
+                            Log.d("ProfileActivity", "Converted Kapal: ${kapal.nama}, perkiraanKeberangkatan: ${kapal.perkiraanKeberangkatan}, owner: ${kapal.namaPemilik}")
                         }
                         runOnUiThread {
                             applyFilter()
@@ -144,12 +196,24 @@ class ProfileActivity : AppCompatActivity() {
                         Toast.makeText(this@ProfileActivity, "Gagal memuat data kapal masuk", Toast.LENGTH_SHORT).show()
                     }
                 } else {
-                    Toast.makeText(this@ProfileActivity, "Gagal memuat data kapal masuk: ${response.message()}", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(this@ProfileActivity, "Gagal memuat data kapal masuk: ${kapalMasukResponse.message()}", Toast.LENGTH_SHORT).show()
                 }
             } catch (e: Exception) {
                 Log.e("ProfileActivity", "Error: ${e.message}")
             }
         }
+    }
+    
+    private fun setupOwnerSpinner(kapalList: List<Kapal>) {
+        val spinnerOwner = findViewById<Spinner>(R.id.spinner_filter_owner)
+        // Get unique owners from kapal list
+        val owners = kapalList.mapNotNull { it.namaPemilik }.filter { it.isNotEmpty() }.distinct().sorted()
+        val ownerList = mutableListOf("Semua Pemilik")
+        ownerList.addAll(owners)
+        
+        val adapter = ArrayAdapter(this, android.R.layout.simple_spinner_item, ownerList)
+        adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
+        spinnerOwner.adapter = adapter
     }
 
     private fun buildUI(llChecklist: LinearLayout, kapalList: MutableList<Kapal>) {
@@ -881,16 +945,27 @@ class ProfileActivity : AppCompatActivity() {
 
     private fun applyFilter() {
         val llChecklist = findViewById<LinearLayout>(R.id.ll_checklist)
-        if (currentFilterText.isEmpty()) {
-            buildUI(llChecklist, listKapal)
-        } else {
-            val filteredList = listKapal.filter { kapal ->
+        
+        // Start with all kapal
+        var filteredList = listKapal.toMutableList()
+        
+        // Apply owner filter if selected
+        if (currentOwnerFilter.isNotEmpty()) {
+            filteredList = filteredList.filter { kapal ->
+                kapal.namaPemilik == currentOwnerFilter
+            }.toMutableList()
+        }
+        
+        // Apply text filter if there's search text
+        if (currentFilterText.isNotEmpty()) {
+            filteredList = filteredList.filter { kapal ->
                 kapal.listPersiapan.any { prep ->
                     prep.trim().contains(currentFilterText.trim(), ignoreCase = true)
                 }
             }.toMutableList()
-            buildUI(llChecklist, filteredList)
         }
+        
+        buildUI(llChecklist, filteredList)
     }
 
     private fun updateChecklistForKapal(kapalId: Int, newStates: Map<String, Boolean>, newDates: Map<String, String>) {

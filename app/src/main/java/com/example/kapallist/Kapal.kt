@@ -5,6 +5,7 @@ import java.time.format.DateTimeFormatter
 
 data class Kapal(
     var nama: String? = null,
+    var namaPemilik: String = "",  // Add owner field
     var tanggalInput: String? = null,
     var tanggalKeberangkatan: String? = null,
     var totalHariPersiapan: Int? = null,

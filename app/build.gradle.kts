@@ -24,12 +24,12 @@ android {
     }
 
     compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_1_8
-        targetCompatibility = JavaVersion.VERSION_1_8
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
     }
 
     kotlinOptions {
-        jvmTarget = "1.8"
+        jvmTarget = "17"
         // PERBAIKAN: Tambahkan ini untuk menghindari warning metadata version
         freeCompilerArgs += "-Xskip-metadata-version-check"
     }
@@ -59,7 +59,7 @@ dependencies {
 
     // Moshi (alternatif untuk TypeConverters jika Gson bermasalah)
     implementation("com.squareup.moshi:moshi-kotlin:1.14.0")
-    implementation("org.jetbrains.kotlin:kotlin-reflect:1.9.10")
+    implementation("org.jetbrains.kotlin:kotlin-reflect:1.9.22")
 
     // Lifecycle
     implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.10.0")
