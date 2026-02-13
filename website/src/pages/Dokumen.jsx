@@ -214,7 +214,14 @@ const Dokumen = () => {
 
   const formatDate = (dateStr) => {
     if (!dateStr) return '-';
-    // Format is already DD-MM-YYYY, return as is
+    
+    // Check if it's YYYY-MM-DD format (old format) and convert to DD-MM-YYYY
+    if (dateStr.match(/^\d{4}-\d{2}-\d{2}$/)) {
+      const [year, month, day] = dateStr.split('-');
+      return `${day}-${month}-${year}`;
+    }
+    
+    // Already DD-MM-YYYY or other format, return as is
     return dateStr;
   };
 

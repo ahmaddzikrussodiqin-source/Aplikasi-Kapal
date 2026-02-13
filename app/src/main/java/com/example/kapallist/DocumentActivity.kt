@@ -547,12 +547,26 @@ class DocumentActivity : AppCompatActivity() {
     private fun isExpiringSoon(tanggalExpired: String?): Boolean {
         if (tanggalExpired.isNullOrEmpty()) return false
         return try {
-            // Format: DD-MM-YYYY
             val parts = tanggalExpired.split("-")
             if (parts.size != 3) return false
-            val day = parts[0].toInt()
-            val month = parts[1].toInt() - 1
-            val year = parts[2].toInt()
+            
+            val day: Int
+            val month: Int
+            val year: Int
+            
+            // Check if it's YYYY-MM-DD format (old format) or DD-MM-YYYY (new format)
+            if (parts[0].length == 4) {
+                // YYYY-MM-DD format
+                year = parts[0].toInt()
+                month = parts[1].toInt() - 1
+                day = parts[2].toInt()
+            } else {
+                // DD-MM-YYYY format
+                day = parts[0].toInt()
+                month = parts[1].toInt() - 1
+                year = parts[2].toInt()
+            }
+            
             val calendar = java.util.Calendar.getInstance()
             calendar.set(year, month, day, 0, 0, 0)
             val today = java.util.Calendar.getInstance()
