@@ -145,8 +145,15 @@ const Dokumen = () => {
         return;
       }
 
+      // Convert YYYY-MM-DD (from DatePicker) to DD/MM/YYYY (for API)
+      let formattedDate = newDate;
+      if (/^\d{4}-\d{2}-\d{2}$/.test(newDate)) {
+        const [year, month, day] = newDate.split('-');
+        formattedDate = `${day}/${month}/${year}`;
+      }
+
       // Validate date format (DD/MM/YYYY)
-      if (!/^\d{2}\/\d{2}\/\d{4}$/.test(newDate)) {
+      if (!/^\d{2}\/\d{2}\/\d{4}$/.test(formattedDate)) {
         alert('ERROR: Format tanggal tidak valid. Gunakan format DD/MM/YYYY');
         return;
       }
@@ -163,7 +170,7 @@ const Dokumen = () => {
         jenis: dokumen.jenis,
         nomor: dokumen.nomor || null,
         tanggalTerbit: dokumen.tanggalterbit || null,
-        tanggalKadaluarsa: newDate,
+        tanggalKadaluarsa: formattedDate,
         status: dokumen.status || 'aktif',
         filePath: dokumen.filePath || null,
       };
@@ -594,8 +601,17 @@ const Dokumen = () => {
                           <button
                             onClick={() => {
                               setSelectedDateDokumen(dokumen);
-                              // Date is already in DD-MM-YYYY format, use as is
-                              const dateStr = dokumen.tanggalKadaluarsa || '';
+                              // Convert date string to proper format for DatePicker
+                              // API returns DD/MM/YYYY format, need to parse it properly
+                              let dateStr = dokumen.tanggalKadaluarsa || '';
+                              
+                              // If date is in DD/MM/YYYY or DD-MM-YYYY format, convert to YYYY-MM-DD for DatePicker
+                              if (dateStr.match(/^\d{2}[\/\-]\d{2}[\/\-]\d{4}$/)) {
+                                const separator = dateStr.includes('/') ? '/' : '-';
+                                const [day, month, year] = dateStr.split(separator);
+                                dateStr = `${year}-${month}-${day}`;
+                              }
+                              
                               setTempDate(dateStr);
                               setShowDateModal(true);
                             }}
