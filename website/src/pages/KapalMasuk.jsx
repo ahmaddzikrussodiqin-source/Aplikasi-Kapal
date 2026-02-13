@@ -19,6 +19,7 @@ const KapalMasuk = () => {
   const [finishKapal, setFinishKapal] = useState(null);
   const [finishDate, setFinishDate] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
+  const [selectedOwner, setSelectedOwner] = useState('');
   const [newKebutuhan, setNewKebutuhan] = useState('');
   const [showKebutuhanModal, setShowKebutuhanModal] = useState(false);
   const [selectedKapalForKebutuhan, setSelectedKapalForKebutuhan] = useState(null);
@@ -496,9 +497,17 @@ const KapalMasuk = () => {
     return !kapal.finishedChecklistStates?.[item];
   };
 
-  const filteredKapal = kapalMasukList.filter(kapal =>
-    kapal.listPersiapan?.some(item => item.toLowerCase().includes(searchTerm.toLowerCase()))
-  );
+  const filteredKapal = kapalMasukList.filter(kapal => {
+    // Filter by owner if selected
+    if (selectedOwner && getOwnerName(kapal) !== selectedOwner) {
+      return false;
+    }
+    // Filter by preparation search term
+    return kapal.listPersiapan?.some(item => item.toLowerCase().includes(searchTerm.toLowerCase()));
+  });
+
+  // Get unique owner list from kapalList
+  const uniqueOwners = [...new Set(kapalList.map(k => k.namaPemilik).filter(Boolean))].sort();
 
   // Get owner name for a kapal by matching with kapalList
   const getOwnerName = (kapal) => {
@@ -551,14 +560,24 @@ const KapalMasuk = () => {
       </header>
 
       <main className="max-w-7xl mx-auto px-4 py-8">
-        <div className="mb-6">
+        <div className="mb-6 flex gap-4 flex-wrap">
           <input
             type="text"
             placeholder="Cari kebutuhan atau persiapan..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full max-w-md px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+            className="flex-1 min-w-[200px] px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
           />
+          <select
+            value={selectedOwner}
+            onChange={(e) => setSelectedOwner(e.target.value)}
+            className="min-w-[200px] px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none bg-white"
+          >
+            <option value="">Semua Pemilik</option>
+            {uniqueOwners.map(owner => (
+              <option key={owner} value={owner}>{owner}</option>
+            ))}
+          </select>
         </div>
 
         {loading ? (
