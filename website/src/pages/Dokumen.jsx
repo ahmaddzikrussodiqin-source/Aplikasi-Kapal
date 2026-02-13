@@ -1039,12 +1039,13 @@ const Dokumen = () => {
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Tanggal Kadaluarsa Baru</label>
                 <DatePicker
-                  selected={tempDate || null}
+                  selected={tempDate || undefined}
                   onChange={(date) => {
                     console.log('DatePicker onChange called with:', date);
-                    setTempDate(date);
+                    setTempDate(date || '');
                   }}
                   placeholderText="Pilih tanggal"
+                  isClearable
                 />
               </div>
 

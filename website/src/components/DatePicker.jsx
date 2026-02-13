@@ -5,24 +5,27 @@ import 'react-datepicker/dist/react-datepicker.css';
 const DatePicker = ({ selected, onChange, placeholderText = "Pilih tanggal", className = "", ...props }) => {
   // Helper function to safely parse date string to Date object without timezone issues
   const parseDateString = (dateStr) => {
-    if (!dateStr) return null;
+    if (!dateStr || dateStr === '') return null;
     try {
-      // Handle DD/MM/YYYY format (new format)
-      if (typeof dateStr === 'string' && dateStr.match(/^\d{2}\/\d{2}\/\d{4}$/)) {
-        const [day, month, year] = dateStr.split('/').map(Number);
-        return new Date(year, month - 1, day, 12, 0, 0); // Set to noon to avoid midnight timezone shifts
-      }
-      // Handle DD-MM-YYYY format (old new format for backward compatibility)
-      if (typeof dateStr === 'string' && dateStr.match(/^\d{2}-\d{2}-\d{4}$/)) {
-        const [day, month, year] = dateStr.split('-').map(Number);
-        return new Date(year, month - 1, day, 12, 0, 0);
-      }
-      // Handle YYYY-MM-DD format (legacy format for backward compatibility)
+      // Handle YYYY-MM-DD format (standard HTML date input format)
       if (typeof dateStr === 'string' && dateStr.match(/^\d{4}-\d{2}-\d{2}$/)) {
         const [year, month, day] = dateStr.split('-').map(Number);
         return new Date(year, month - 1, day, 12, 0, 0);
       }
-      return new Date(dateStr);
+      // Handle DD/MM/YYYY format
+      if (typeof dateStr === 'string' && dateStr.match(/^\d{2}\/\d{2}\/\d{4}$/)) {
+        const [day, month, year] = dateStr.split('/').map(Number);
+        return new Date(year, month - 1, day, 12, 0, 0);
+      }
+      // Handle DD-MM-YYYY format
+      if (typeof dateStr === 'string' && dateStr.match(/^\d{2}-\d{2}-\d{4}$/)) {
+        const [day, month, year] = dateStr.split('-').map(Number);
+        return new Date(year, month - 1, day, 12, 0, 0);
+      }
+      // Fallback: try to parse as-is
+      const parsed = new Date(dateStr);
+      if (isNaN(parsed.getTime())) return null;
+      return parsed;
     } catch {
       return null;
     }
