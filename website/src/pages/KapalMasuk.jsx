@@ -410,11 +410,12 @@ const KapalMasuk = () => {
     }
   };
 
-  const calculateDuration = (startDate, endDate) => {
+const calculateDuration = (startDate, endDate) => {
     if (!startDate || !endDate) return '-';
     try {
-      const start = new Date(startDate);
-      const end = new Date(endDate);
+      const start = parseIndonesianDate(startDate);
+      const end = parseIndonesianDate(endDate);
+      if (!start || !end) return '-';
       const diffTime = Math.abs(end - start);
       const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
       return `${diffDays} hari`;
@@ -423,39 +424,63 @@ const KapalMasuk = () => {
     }
   };
 
+  // Helper function to parse Indonesian date format (DD/MM/YYYY)
+  const parseIndonesianDate = (dateStr) => {
+    if (!dateStr) return null;
+    try {
+      // Try to handle DD/MM/YYYY format
+      const parts = dateStr.split('/');
+      if (parts.length === 3) {
+        const day = parseInt(parts[0], 10);
+        const month = parseInt(parts[1], 10);
+        const year = parseInt(parts[2], 10);
+        // Create date in local timezone (DD/MM/YYYY)
+        return new Date(year, month - 1, day);
+      }
+      // Fallback to default parsing
+      return new Date(dateStr);
+    } catch {
+      return null;
+    }
+  };
+
   const calculateDurasiBerlabuh = (tanggalKembali, perkiraanKeberangkatan) => {
     if (!tanggalKembali) return '-';
     try {
-      const kembali = new Date(tanggalKembali);
+      const kembali = parseIndonesianDate(tanggalKembali);
+      if (!kembali) return '-';
+      
       const today = new Date();
       today.setHours(0, 0, 0, 0);
       
-      if (perkiraanKeberangkatan) {
-        const keberangkatan = new Date(perkiraanKeberangkatan);
-        const diffTime = keberangkatan - kembali;
-        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-        return `${diffDays} hari`;
-      }
-      
+      // Calculate days since return (how long has been at port)
       const diffTime = today - kembali;
       const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+      
+      // If the return date is in the future, ship hasn't returned yet
+      if (diffDays < 0) {
+        return 'Belum kembali';
+      }
+      
       return `${diffDays} hari`;
     } catch {
       return '-';
     }
   };
 
-  const calculateDurasiBerlayar = (kapal) => {
+const calculateDurasiBerlayar = (kapal) => {
     // Jika kapal belum berlayar (tidak ada tanggal keberangkatan)
     if (!kapal.perkiraanKeberangkatan) return '-';
-    
+
     try {
-      const keberangkatan = new Date(kapal.perkiraanKeberangkatan);
-      
+      const keberangkatan = parseIndonesianDate(kapal.perkiraanKeberangkatan);
+      if (!keberangkatan) return '-';
+
       // Cek apakah kapal sudah kembali (ada tanggalKembali yang lebih baru dari keberangkatan)
       if (kapal.tanggalKembali) {
-        const kembali = new Date(kapal.tanggalKembali);
-        
+        const kembali = parseIndonesianDate(kapal.tanggalKembali);
+        if (!kembali) return '-';
+
         // Jika kapal sudah kembali (tanggalKembali > keberangkatan)
         if (kembali > keberangkatan) {
           const diffTime = kembali - keberangkatan;
@@ -463,19 +488,19 @@ const KapalMasuk = () => {
           return `${diffDays} hari`;
         }
       }
-      
+
       // Jika kapal belum kembali, hitung hingga hari ini
       const today = new Date();
       today.setHours(0, 0, 0, 0);
-      
+
       const diffTime = today - keberangkatan;
       const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-      
+
       // Jika tanggal keberangkatan masih di masa depan
       if (diffDays < 0) {
         return 'Belum berlayar';
       }
-      
+
       return `${diffDays} hari`;
     } catch (error) {
       console.error('Error calculating sailing duration:', error);
