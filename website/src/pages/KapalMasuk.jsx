@@ -654,17 +654,14 @@ const calculateDurasiBerlayar = (kapal) => {
                     </button>
                     <button
                       onClick={() => kapal.isFinished ? handleUnfinish(kapal) : handleFinish(kapal)}
-                      disabled={!kapal.isFinished && !isAllChecklistCompleted(kapal)}
                       className={`px-3 py-1 rounded transition-colors ${
                         kapal.isFinished
                           ? 'bg-yellow-500 text-white hover:bg-yellow-600'
-                          : isAllChecklistCompleted(kapal)
-                            ? 'bg-green-500 text-white hover:bg-green-600 cursor-pointer'
-                            : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                          : 'bg-green-500 text-white hover:bg-green-600 cursor-pointer'
                       }`}
-                      title={!kapal.isFinished && !isAllChecklistCompleted(kapal) ? 'Selesaikan semua persiapan terlebih dahulu' : ''}
+                      title="Kapal dapat diberangkatkan kapan saja"
                     >
-                      {kapal.isFinished ? 'Batal Finish' : 'Finish'}
+                      {kapal.isFinished ? 'Batal Finish' : 'Berangkatkan'}
                     </button>
                     <button
                       onClick={() => handleDelete(kapal.id)}
@@ -683,11 +680,9 @@ const calculateDurasiBerlayar = (kapal) => {
                   <span className={`inline-flex px-3 py-1 text-sm font-semibold rounded-full ${
                     kapal.isFinished
                       ? 'bg-green-100 text-green-800'
-                      : isAllChecklistCompleted(kapal)
-                        ? 'bg-blue-100 text-blue-800'
-                        : 'bg-yellow-100 text-yellow-800'
+                      : 'bg-yellow-100 text-yellow-800'
                   }`}>
-                    {kapal.isFinished ? '✅ Selesai' : isAllChecklistCompleted(kapal) ? '📋 Siap Finish' : '⏳ Dalam Persiapan'}
+                    {kapal.isFinished ? '✅ Telah Berangkat' : '⏳ Persiapan'}
                   </span>
                 </div>
 
