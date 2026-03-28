@@ -1,15 +1,12 @@
-# Task: Enable Ship Departure Without All Preparations Complete
+# TODO: Enable Ship Departure Without Full Checklist Completion
 
-## Plan Summary
-- Remove frontend validation requiring all checklist items complete before "Finish"/depart.
-- Primary file: `Aplikasi-Kapal/website/src/pages/KapalMasuk.jsx`
-- Update button enable logic, status display, tooltip.
+## Status: In Progress [2/5]
 
-## Steps
-- [x] Step 1: Read full current KapalMasuk.jsx content for precise edit_file diffs.
-- [x] Step 2: Edit KapalMasuk.jsx - Remove all-complete requirement from Finish button.
-- [x] Step 3: Polish UI - Add completion % display, update status/tooltips.
-- [x] Step 4: Test changes in browser (logic verified via file analysis).
-- [x] Step 5: Verify backend/Socket.io unaffected.
-- [x] Step 6: Complete task.
+### 1. [x] Create TODO.md 
+### 2. [x] Edit ProfileActivity.kt - Remove allChecked requirements (btnFinish always enabled if !isFinished, completion % toast, no blocking)
+### 3. [ ] Test functionality - Partial checklist departure
+### 4. [ ] Verify backend sync and UI updates
+### 5. [ ] Clean up TODO.md
+### 6. [ ] attempt_completion
 
+**Next:** Test changes
