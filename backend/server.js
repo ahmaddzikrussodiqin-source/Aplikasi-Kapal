@@ -415,7 +415,7 @@ async function initializeDatabase() {
             CREATE SCHEMA IF NOT EXISTS kapal_masuk_schema
         `);
         await kapalMasukPool.query(`
-            CREATE TABLE IF NOT EXISTS kapal_masuk_schema.kapal_masuk (
+(
                 id SERIAL PRIMARY KEY,
                 nama TEXT,
                 namaPemilik TEXT NOT NULL DEFAULT '',
@@ -437,6 +437,7 @@ async function initializeDatabase() {
                 durasiSelesaiPersiapan TEXT,
                 durasiBerlayar TEXT,
                 statusKerja TEXT NOT NULL DEFAULT 'persiapan',
+                "isManualInput" BOOLEAN NOT NULL DEFAULT false,
                 checklistStates TEXT NOT NULL DEFAULT '{}',
                 checklistDates TEXT NOT NULL DEFAULT '{}'
             )
@@ -1702,7 +1703,7 @@ app.get('/api/kapal-masuk', authenticateToken, async (req, res) => {
             throw new Error('kapalMasukPool not initialized');
         }
         
-        const result = await kapalMasukPool.query('SELECT * FROM kapal_masuk_schema.kapal_masuk ORDER BY id DESC');
+const result = await kapalMasukPool.query('SELECT * FROM kapal_masuk_schema.kapal_masuk WHERE "isManualInput" = true ORDER BY id DESC');
         const kapalMasuk = result.rows;
         console.log(`📊 Found ${kapalMasuk.length} kapal-masuk records`);
 
@@ -1875,7 +1876,7 @@ app.post('/api/kapal-masuk', authenticateToken, async (req, res) => {
                 listPersiapan, isFinished, perkiraanKeberangkatan, durasiSelesaiPersiapan,
                 durasiBerlayar, status, statusKerja, "checklistStates", "checklistDates",
                 "newItemsAddedAfterFinish", "finishedChecklistStates", "finishedAt"
-            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26)
+            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, true, $22, $23, $24, $25, $26)
             RETURNING *
         `, [
             sanitizeTextField(kapalMasukData.nama), sanitizeTextField(kapalMasukData.namaPemilik), sanitizeTextField(kapalMasukData.tandaSelar), sanitizeTextField(kapalMasukData.tandaPengenal),
@@ -1936,7 +1937,8 @@ app.put('/api/kapal-masuk/:id', authenticateToken, async (req, res) => {
                 jenisAlatTangkap = $9, tanggalInput = $10, tanggalKeberangkatan = $11,
                 totalHariPersiapan = $12, tanggalBerangkat = $13, tanggalKembali = $14,
                 listPersiapan = $15, isFinished = $16, perkiraanKeberangkatan = $17,
-                durasiSelesaiPersiapan = $18, durasiBerlayar = $19, status = $20, statusKerja = $21,
+                statusKerja = $21,
+                "isManualInput" = true,
                 "checklistStates" = $22, "checklistDates" = $23, "newItemsAddedAfterFinish" = $24,
                 "finishedChecklistStates" = $25, "finishedAt" = $26
             WHERE id = $27

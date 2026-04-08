@@ -1,0 +1,45 @@
+🔧 Setting up separate database pools...
+⚠️  DATABASE_URL_DOKUMEN not set - Dokumen functionality will be disabled
+✅ All database pools created
+🔍 Checking uploads directory...
+📁 __dirname: /Users/diki/KapalList/Aplikasi-Kapal/backend
+📁 uploadsDir: /Users/diki/KapalList/Aplikasi-Kapal/uploads
+📁 uploadsDir exists: true
+📄 Files in uploads directory: 0
+⚠️  uploadsDir exists but is empty!
+📤 Static file serving configured for: /Users/diki/KapalList/Aplikasi-Kapal/uploads
+🚀 KapalList Backend server is running on port 3000
+📊 Health check: http://localhost:3000/
+❌ Failed to create dokumen table: AggregateError [ECONNREFUSED]: 
+    at /Users/diki/KapalList/Aplikasi-Kapal/backend/node_modules/pg-pool/index.js:45:11
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+    at async ensureDokumenTable (/Users/diki/KapalList/Aplikasi-Kapal/backend/server.js:72:9) {
+  code: 'ECONNREFUSED',
+  [errors]: [
+    Error: connect ECONNREFUSED ::1:5432
+        at createConnectionError (node:net:1678:14)
+        at afterConnectMultiple (node:net:1708:16) {
+      errno: -61,
+      code: 'ECONNREFUSED',
+      syscall: 'connect',
+      address: '::1',
+      port: 5432
+    },
+    Error: connect ECONNREFUSED 127.0.0.1:5432
+        at createConnectionError (node:net:1678:14)
+        at afterConnectMultiple (node:net:1708:16) {
+      errno: -61,
+      code: 'ECONNREFUSED',
+      syscall: 'connect',
+      address: '127.0.0.1',
+      port: 5432
+    }
+  ]
+}
+Error connecting to required databases:
+Users DB: 
+Kapal DB: 
+Kapal Masuk DB: 
+Error connecting to databases: Error: Required database connection failed
+    at /Users/diki/KapalList/Aplikasi-Kapal/backend/server.js:510:15
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
