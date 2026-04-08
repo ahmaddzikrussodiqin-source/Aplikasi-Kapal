@@ -241,23 +241,20 @@ const handleTambahKebutuhanConfirm = async () => {
       console.log('Before - existing checklistStates:', selectedKapalForKebutuhan.checklistStates);
       console.log('New kebutuhan:', newKebutuhan.trim());
 
-      // FIXED: Single updatedList declaration + deep state copy
-      const stringChecklistStates = JSON.stringify(selectedKapalForKebutuhan.checklistStates || {});
-      const stringChecklistDates = JSON.stringify(selectedKapalForKebutuhan.checklistDates || {});
+      // IMMUTABLE COPY: Create new kapal object with current states
+      const currentKapalData = {
+        ...selectedKapalForKebutuhan,
+        checklistStates: { ...selectedKapalForKebutuhan.checklistStates },
+        checklistDates: { ...selectedKapalForKebutuhan.checklistDates }
+      };
       
-      const newStatesObj = JSON.parse(stringChecklistStates);
-      newStatesObj[newKebutuhan.trim()] = false;
-      
-      const newDatesObj = JSON.parse(stringChecklistDates);
-      newDatesObj[newKebutuhan.trim()] = '';
-
-      const updatedList = [...(selectedKapalForKebutuhan.listPersiapan || []), newKebutuhan.trim()]; 
+      const updatedList = [...currentKapalData.listPersiapan, newKebutuhan.trim()];
+      currentKapalData.checklistStates[newKebutuhan.trim()] = false;
+      currentKapalData.checklistDates[newKebutuhan.trim()] = '';
 
       const response = await kapalMasukAPI.update(token, selectedKapalForKebutuhan.id, {
-        ...selectedKapalForKebutuhan,
-        listPersiapan: updatedList,
-        checklistStates: newStatesObj,
-        checklistDates: newDatesObj,
+        ...currentKapalData,
+        listPersiapan: updatedList
       });
 
       console.log('After update - response:', response);
