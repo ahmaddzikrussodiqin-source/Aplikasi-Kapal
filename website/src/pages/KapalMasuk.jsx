@@ -295,11 +295,11 @@ const KapalMasuk = () => {
         setSelectedKapalForKebutuhan(null);
         setNewKebutuhan('');
       }
-      console.log('=== END ADD DEBUG ===');
-    } catch (error) {
-      console.error('Error adding kebutuhan:', error);
-    }
-  };
+    console.log('=== END ADD DEBUG ===');
+  } catch (error) {
+    console.error('Error adding kebutuhan:', error);
+  }
+}; 
 
   const handleEditKebutuhanClick = (kapal, item) => {
     if (!isItemEditable(kapal, item)) return;
@@ -370,11 +370,11 @@ const KapalMasuk = () => {
         setEditingKebutuhan(null);
         setEditKebutuhanName('');
       }
-      console.log('=== END EDIT DEBUG ===');
-    } catch (error) {
-      console.error('Error editing kebutuhan:', error);
-    }
-  };
+    console.log('=== END EDIT DEBUG ===');
+  } catch (error) {
+    console.error('Error editing kebutuhan:', error);
+  }
+}; 
 
   const toggleChecklist = async (kapal, item) => {
     const isChecked = kapal.checklistStates?.[item];
