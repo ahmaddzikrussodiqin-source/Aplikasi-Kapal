@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { kapalMasukAPI, kapalAPI } from '../services/api';
@@ -237,7 +237,7 @@ const KapalMasuk = () => {
     }
   };
 
-  const handleTambahKebutuhanConfirm = async () => {
+  const handleTambahKebutuhanConfirm = useCallback(async () => {
     if (!newKebutuhan.trim() || !selectedKapalForKebutuhan) return;
 
     try {
