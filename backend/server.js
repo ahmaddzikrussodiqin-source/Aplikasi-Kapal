@@ -1665,7 +1665,12 @@ app.get('/api/kapal-masuk', authenticateToken, async (req, res) => {
         console.log(`📊 Found ${kapalMasuk.length} kapal-masuk records`);
 
         // Parse JSON strings back to arrays and convert isFinished to boolean, and map to camelCase
-        const parsedKapalMasuk = kapalMasuk.map(k => ({
+        console.log('Backend GET /api/kapal-masuk parsing checklistStates for first record:', k.checklistStates);
+        const parsedKapalMasuk = kapalMasuk.map(k => {
+            const states = JSON.parse(k.checklistStates || '{}');
+            const dates = JSON.parse(k.checklistDates || '{}');
+            console.log('Parsed states for kapal', k.id, ':', Object.keys(states));
+            return {
             id: k.id,
             nama: k.nama,
             namaPemilik: k.namapemilik,
@@ -1688,12 +1693,13 @@ app.get('/api/kapal-masuk', authenticateToken, async (req, res) => {
             durasiBerlayar: k.durasiberlayar,
             status: k.status,
             statusKerja: k.statuskerja,
-            checklistStates: JSON.parse(k.checklistStates || '{}'),
-            checklistDates: JSON.parse(k.checklistDates || '{}'),
+            checklistStates: states,
+            checklistDates: dates,
             newItemsAddedAfterFinish: JSON.parse(k.newItemsAddedAfterFinish || '[]'),
             finishedChecklistStates: JSON.parse(k.finishedChecklistStates || '{}'),
             finishedAt: k.finishedat
-        }));
+          };
+        });
 
         res.json({
             success: true,
