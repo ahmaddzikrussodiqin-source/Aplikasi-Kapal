@@ -241,11 +241,7 @@ const handleTambahKebutuhanConfirm = async () => {
       console.log('Before - existing checklistStates:', selectedKapalForKebutuhan.checklistStates);
       console.log('New kebutuhan:', newKebutuhan.trim());
 
-      const updatedList = [...(selectedKapalForKebutuhan.listPersiapan || []), newKebutuhan.trim()];
-      
-      // Preserve ALL existing states, add new item as false
-      // CRITICAL FIX: Ensure states are strings for backend JSON storage
-      // FIXED: Duplicate updatedList declaration removed
+      // FIXED: Single updatedList declaration + deep state copy
       const stringChecklistStates = JSON.stringify(selectedKapalForKebutuhan.checklistStates || {});
       const stringChecklistDates = JSON.stringify(selectedKapalForKebutuhan.checklistDates || {});
       
@@ -255,7 +251,7 @@ const handleTambahKebutuhanConfirm = async () => {
       const newDatesObj = JSON.parse(stringChecklistDates);
       newDatesObj[newKebutuhan.trim()] = '';
 
-      const updatedList = [...(selectedKapalForKebutuhan.listPersiapan || []), newKebutuhan.trim()]; // Moved after
+      const updatedList = [...(selectedKapalForKebutuhan.listPersiapan || []), newKebutuhan.trim()]; 
 
       const response = await kapalMasukAPI.update(token, selectedKapalForKebutuhan.id, {
         ...selectedKapalForKebutuhan,
