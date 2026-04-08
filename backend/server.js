@@ -2031,7 +2031,7 @@ app.post('/api/admin/backfill-pemilik', authenticateToken, async (req, res) => {
   try {
     console.log('🔧 Running pemilik backfill for all kapal_masuk...');
     
-    const result = await kapalMasukPool.query('SELECT id, nama FROM kapal_masuk_schema.kapal_masuk WHERE namaPemilik = \\'\\' OR namaPemilik IS NULL');
+    const result = await kapalMasukPool.query('SELECT id, nama FROM kapal_masuk_schema.kapal_masuk WHERE (namaPemilik = $1 OR namaPemilik IS NULL OR namaPemilik = \'\')', ['']);
     const nullRecords = result.rows;
     
     let fixes = 0;

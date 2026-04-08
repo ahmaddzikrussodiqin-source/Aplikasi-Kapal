@@ -37,7 +37,20 @@ Next: set TEST_TOKEN env var and run `cd Aplikasi-Kapal/backend && node fix-pemi
 ✅ /api/admin/backfill-pemilik endpoint for existing records (Moderator only)
 ```
 
-## 🎉 TASK COMPLETE ✅
+### 🚨 DEPLOY FIX REQUIRED
+```
+Railway crash: backfill query syntax \\'\\' → fixed to parameterized $1 = ''
+```
+
+**After fix & redeploy:**
+```
+✅ All logic ready
+1. git push → Railway
+2. POST /api/admin/backfill-pemilik (Moderator token)
+3. GET /api/kapal-masuk → verify namaPemilik populated
+4. Android test ProfileActivity
+```
+
 
 **Backend fixes deployed:**
 ```
