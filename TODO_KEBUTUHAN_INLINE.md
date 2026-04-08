@@ -1,0 +1,1 @@
+- [x] 2. Edit KapalMasuk.jsx: insert getKebutuhanSection in each main card after compact grid
