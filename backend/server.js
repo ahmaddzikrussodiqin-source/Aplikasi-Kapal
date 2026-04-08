@@ -1665,41 +1665,50 @@ app.get('/api/kapal-masuk', authenticateToken, async (req, res) => {
         console.log(`📊 Found ${kapalMasuk.length} kapal-masuk records`);
 
         // Parse JSON strings back to arrays and convert isFinished to boolean, and map to camelCase
-        console.log('Backend GET /api/kapal-masuk parsing checklistStates for first record:', k.checklistStates);
         const parsedKapalMasuk = kapalMasuk.map(k => {
-            const states = JSON.parse(k.checklistStates || '{}');
-            const dates = JSON.parse(k.checklistDates || '{}');
-            console.log('Parsed states for kapal', k.id, ':', Object.keys(states));
-            return {
-            id: k.id,
-            nama: k.nama,
-            namaPemilik: k.namapemilik,
-            tandaSelar: k.tandaselar,
-            tandaPengenal: k.tandapengenal,
-            beratKotor: k.beratkotor,
-            beratBersih: k.beratbersih,
-            merekMesin: k.merekmesin,
-            nomorSeriMesin: k.nomorserimesin,
-            jenisAlatTangkap: k.jenisalattangkap,
-            tanggalInput: k.tanggalinput,
-            tanggalKeberangkatan: k.tanggalkeberangkatan,
-            totalHariPersiapan: k.totalharipersiapan,
-            tanggalBerangkat: k.tanggalberangkat,
-            tanggalKembali: k.tanggalkembali,
-            listPersiapan: parseListPersiapan(k.listpersiapan),
-            isFinished: Boolean(k.isfinished),
-            perkiraanKeberangkatan: k.perkiraankeberangkatan,
-            durasiSelesaiPersiapan: k.durasiselesaiPersiapan,
-            durasiBerlayar: k.durasiberlayar,
-            status: k.status,
-            statusKerja: k.statuskerja,
-            checklistStates: states,
-            checklistDates: dates,
-            newItemsAddedAfterFinish: JSON.parse(k.newItemsAddedAfterFinish || '[]'),
-            finishedChecklistStates: JSON.parse(k.finishedChecklistStates || '{}'),
-            finishedAt: k.finishedat
-          };
-        });
+            try {
+              const states = JSON.parse(k.checklistStates || '{}');
+              const dates = JSON.parse(k.checklistDates || '{}');
+              return {
+                id: k.id,
+                nama: k.nama,
+                namaPemilik: k.namapemilik,
+                tandaSelar: k.tandaselar,
+                tandaPengenal: k.tandapengenal,
+                beratKotor: k.beratkotor,
+                beratBersih: k.beratbersih,
+                merekMesin: k.merekmesin,
+                nomorSeriMesin: k.nomorserimesin,
+                jenisAlatTangkap: k.jenisalattangkap,
+                tanggalInput: k.tanggalinput,
+                tanggalKeberangkatan: k.tanggalkeberangkatan,
+                totalHariPersiapan: k.totalharipersiapan,
+                tanggalBerangkat: k.tanggalberangkat,
+                tanggalKembali: k.tanggalkembali,
+                listPersiapan: parseListPersiapan(k.listpersiapan),
+                isFinished: Boolean(k.isfinished),
+                perkiraanKeberangkatan: k.perkiraankeberangkatan,
+                durasiSelesaiPersiapan: k.durasiselesaiPersiapan,
+                durasiBerlayar: k.durasiberlayar,
+                status: k.status,
+                statusKerja: k.statuskerja,
+                checklistStates: states,
+                checklistDates: dates,
+                newItemsAddedAfterFinish: JSON.parse(k.newItemsAddedAfterFinish || '[]'),
+                finishedChecklistStates: JSON.parse(k.finishedChecklistStates || '{}'),
+                finishedAt: k.finishedat
+              };
+            } catch (parseError) {
+              console.error('JSON parse error for kapal', k.id, ':', parseError);
+              return {
+                ...k,
+                checklistStates: {},
+                checklistDates: {},
+                newItemsAddedAfterFinish: [],
+                finishedChecklistStates: {}
+              };
+            }
+          });
 
         res.json({
             success: true,
