@@ -1656,6 +1656,42 @@ app.delete('/api/kapal-status/:id', authenticateToken, async (req, res) => {
     }
 });
 
+// Auto-fill helper for kapal_masuk from kapal_info
+async function autoFillKapalInfo(namaKapal, kapalMasukData) {
+  if (!kapalPool) {
+    console.log('⚠️ kapalPool not available for auto-fill');
+    return kapalMasukData;
+  }
+  
+  try {
+    const result = await kapalPool.query(
+      'SELECT namaPemilik, tandaSelar, tandaPengenal, beratKotor, beratBersih, merekMesin, nomorSeriMesin, jenisAlatTangkap FROM kapal_info WHERE LOWER(nama) = LOWER($1) LIMIT 1',
+      [namaKapal]
+    );
+    
+    if (result.rows.length > 0) {
+      const info = result.rows[0];
+      console.log(`🔍 Auto-filling ${namaKapal} from kapal_info`);
+      
+      kapalMasukData.namaPemilik = kapalMasukData.namaPemilik || info.namapemilik || '';
+      kapalMasukData.tandaSelar = kapalMasukData.tandaSelar || info.tandaselar || '';
+      kapalMasukData.tandaPengenal = kapalMasukData.tandaPengenal || info.tandapengenal || '';
+      kapalMasukData.beratKotor = kapalMasukData.beratKotor || info.beratkotor || '';
+      kapalMasukData.beratBersih = kapalMasukData.beratBersih || info.beratbersih || '';
+      kapalMasukData.merekMesin = kapalMasukData.merekMesin || info.merekmesin || '';
+      kapalMasukData.nomorSeriMesin = kapalMasukData.nomorSeriMesin || info.nomorserimesin || '';
+      kapalMasukData.jenisAlatTangkap = kapalMasukData.jenisAlatTangkap || info.jenisalattangkap || '';
+      
+      console.log(`✅ Filled pemilik: ${kapalMasukData.namaPemilik}`);
+      return kapalMasukData;
+    }
+  } catch (error) {
+    console.error('❌ Auto-fill error:', error.message);
+  }
+  
+  return kapalMasukData;
+}
+
 // Kapal Masuk routes (protected)
 app.get('/api/kapal-masuk', authenticateToken, async (req, res) => {
     try {
@@ -1824,7 +1860,13 @@ finishedChecklistStates: safeParse(kapalMasuk.finishedcheckliststates || kapalMa
 
 app.post('/api/kapal-masuk', authenticateToken, async (req, res) => {
     try {
-        const kapalMasukData = req.body;
+        let kapalMasukData = req.body;
+        
+        // Auto-fill from kapal_info if nama provided and pemilik missing
+        if (kapalMasukData.nama) {
+          kapalMasukData = await autoFillKapalInfo(kapalMasukData.nama, kapalMasukData);
+        }
+        
         const result = await kapalMasukPool.query(`
             INSERT INTO kapal_masuk_schema.kapal_masuk (
                 nama, namaPemilik, tandaSelar, tandaPengenal, beratKotor, beratBersih,
@@ -1875,7 +1917,12 @@ app.post('/api/kapal-masuk', authenticateToken, async (req, res) => {
 app.put('/api/kapal-masuk/:id', authenticateToken, async (req, res) => {
     try {
         const { id } = req.params;
-        const kapalMasukData = req.body;
+        let kapalMasukData = req.body;
+
+        // Auto-fill from kapal_info if nama provided and pemilik missing
+        if (kapalMasukData.nama) {
+          kapalMasukData = await autoFillKapalInfo(kapalMasukData.nama, kapalMasukData);
+        }
 
         console.log(`🔄 Updating kapal-masuk ${id}:`);
         console.log('- listPersiapan length:', (kapalMasukData.listPersiapan || []).length);
@@ -1974,6 +2021,51 @@ app.post('/api/upload', authenticateToken, upload.single('file'), (req, res) => 
 });
 
 
+
+// Admin backfill endpoint - only for Moderator+
+app.post('/api/admin/backfill-pemilik', authenticateToken, async (req, res) => {
+  if (req.user.role !== 'Moderator') {
+    return res.status(403).json({ success: false, message: 'Admin only' });
+  }
+
+  try {
+    console.log('🔧 Running pemilik backfill for all kapal_masuk...');
+    
+    const result = await kapalMasukPool.query('SELECT id, nama FROM kapal_masuk_schema.kapal_masuk WHERE namaPemilik = \\'\\' OR namaPemilik IS NULL');
+    const nullRecords = result.rows;
+    
+    let fixes = 0;
+    
+    for (const record of nullRecords) {
+      const tempData = { nama: record.nama };
+      const filledData = await autoFillKapalInfo(record.nama, tempData);
+      
+      if (filledData.namaPemilik !== '') {
+        await kapalMasukPool.query(`
+          UPDATE kapal_masuk_schema.kapal_masuk 
+          SET namaPemilik = $1, tandaSelar = $2, tandaPengenal = $3, beratKotor = $4, beratBersih = $5,
+              merekMesin = $6, nomorSeriMesin = $7, jenisAlatTangkap = $8
+          WHERE id = $9
+        `, [
+          filledData.namaPemilik, filledData.tandaSelar, filledData.tandaPengenal,
+          filledData.beratKotor, filledData.beratBersih, filledData.merekMesin,
+          filledData.nomorSeriMesin, filledData.jenisAlatTangkap, record.id
+        ]);
+        fixes++;
+        console.log(`✅ Fixed ${record.nama}`);
+      }
+    }
+    
+    res.json({ 
+      success: true, 
+      message: `Backfill complete: ${fixes}/${nullRecords.length} fixed`,
+      fixed: fixes 
+    });
+  } catch (error) {
+    console.error('Backfill error:', error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
 
 // Backup endpoint (protected) - creates full backup of data and files
 app.get('/api/backup', authenticateToken, async (req, res) => {
