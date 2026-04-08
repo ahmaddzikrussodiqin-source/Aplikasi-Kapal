@@ -245,16 +245,17 @@ const handleTambahKebutuhanConfirm = async () => {
       
       // Preserve ALL existing states, add new item as false
       // CRITICAL FIX: Ensure states are strings for backend JSON storage
+      // FIXED: Duplicate updatedList declaration removed
       const stringChecklistStates = JSON.stringify(selectedKapalForKebutuhan.checklistStates || {});
       const stringChecklistDates = JSON.stringify(selectedKapalForKebutuhan.checklistDates || {});
-      
-      const updatedList = [...(selectedKapalForKebutuhan.listPersiapan || []), newKebutuhan.trim()];
       
       const newStatesObj = JSON.parse(stringChecklistStates);
       newStatesObj[newKebutuhan.trim()] = false;
       
       const newDatesObj = JSON.parse(stringChecklistDates);
       newDatesObj[newKebutuhan.trim()] = '';
+
+      const updatedList = [...(selectedKapalForKebutuhan.listPersiapan || []), newKebutuhan.trim()]; // Moved after
 
       const response = await kapalMasukAPI.update(token, selectedKapalForKebutuhan.id, {
         ...selectedKapalForKebutuhan,
