@@ -53,6 +53,32 @@ const KapalMasuk = () => {
     };
   }, [socket]);
 
+  const safeDateParse = (dateStr) => {
+    if (!dateStr || dateStr === '' || dateStr === null) return null;
+    try {
+      // Handle common Indonesian formats safely
+      if (/^\\d{2}\/\\d{2}\/\\d{4}$/.test(dateStr)) {
+        const [day, month, year] = dateStr.split('/').map(Number);
+        return new Date(year, month - 1, day);
+      }
+      const date = new Date(dateStr);
+      return isNaN(date.getTime()) ? null : date;
+    } catch {
+      return null;
+    }
+  };
+
+  const safeProcessKapal = (kapal) => ({
+    ...kapal,
+    checklistStates: kapal.checklistStates || {},
+    checklistDates: kapal.checklistDates || {},
+    finishedChecklistStates: kapal.finishedChecklistStates || {},
+    // Safe date parsing for UI display
+    safeTanggalKembali: safeDateParse(kapal.tanggalKembali),
+    safeTanggalBerangkat: safeDateParse(kapal.tanggalBerangkat),
+    safeTanggalKeberangkatan: safeDateParse(kapal.tanggalKeberangkatan)
+  });
+
   const loadData = async () => {
     if (!token) {
       setLoading(false);
@@ -61,26 +87,38 @@ const KapalMasuk = () => {
     try {
       setLoading(true);
       setError(null);
+      
+      console.log('🔄 Loading kapal masuk data...');
       const [kapalMasukRes, kapalRes] = await Promise.all([
         kapalMasukAPI.getAll(token),
         kapalAPI.getAll(token),
       ]);
 
-      if (kapalMasukRes.success) {
-        const processedKapalMasuk = (kapalMasukRes.data || []).map(kapal => ({
-          ...kapal,
-          checklistStates: kapal.checklistStates || {},
-          checklistDates: kapal.checklistDates || {},
-          finishedChecklistStates: kapal.finishedChecklistStates || {},
-        }));
+      console.log('📥 KapalMasuk response:', kapalMasukRes);
+      console.log('📥 Kapal response:', kapalRes);
+
+      if (kapalMasukRes.success && Array.isArray(kapalMasukRes.data)) {
+        const processedKapalMasuk = kapalMasukRes.data
+          .filter(k => k && !k.error)  // Filter out backend parse errors
+          .map(safeProcessKapal);
         setKapalMasukList(processedKapalMasuk);
+        console.log(`✅ Processed ${processedKapalMasuk.length} kapal masuk records`);
+      } else {
+        console.warn('KapalMasuk API failed:', kapalMasukRes);
+        setKapalMasukList([]);
       }
-      if (kapalRes.success) {
-        setKapalList(kapalRes.data || []);
+
+      if (kapalRes.success && Array.isArray(kapalRes.data)) {
+        setKapalList(kapalRes.data);
+      } else {
+        console.warn('Kapal API failed:', kapalRes);
+        setKapalList([]);
       }
     } catch (error) {
-      console.error('Error loading data:', error);
-      setError('Gagal memuat data: ' + error.message);
+      console.error('💥 loadData error:', error);
+      setError(`Gagal memuat data: ${error.message || 'Unknown error'}`);
+      setKapalMasukList([]);
+      setKapalList([]);
     } finally {
       setLoading(false);
     }
