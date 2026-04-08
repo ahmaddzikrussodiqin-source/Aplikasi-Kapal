@@ -11,7 +11,9 @@ const KapalMasuk = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [showModal, setShowModal] = useState(false);
+  const [showDetailModal, setShowDetailModal] = useState(false);
   const [editingKapal, setEditingKapal] = useState(null);
+  const [selectedKapalMasuk, setSelectedKapalMasuk] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [deleteConfirmId, setDeleteConfirmId] = useState(null);
   const [newKebutuhan, setNewKebutuhan] = useState('');
@@ -56,8 +58,7 @@ const KapalMasuk = () => {
   const safeDateParse = (dateStr) => {
     if (!dateStr || dateStr === '' || dateStr === null) return null;
     try {
-      // Handle common Indonesian formats safely
-      if (/^\\d{2}\/\\d{2}\/\\d{4}$/.test(dateStr)) {
+      if (/^\d{2}\/\d{2}\/\d{4}$/.test(dateStr)) {
         const [day, month, year] = dateStr.split('/').map(Number);
         return new Date(year, month - 1, day);
       }
@@ -73,7 +74,6 @@ const KapalMasuk = () => {
     checklistStates: kapal.checklistStates || {},
     checklistDates: kapal.checklistDates || {},
     finishedChecklistStates: kapal.finishedChecklistStates || {},
-    // Safe date parsing for UI display
     safeTanggalKembali: safeDateParse(kapal.tanggalKembali),
     safeTanggalBerangkat: safeDateParse(kapal.tanggalBerangkat),
     safeTanggalKeberangkatan: safeDateParse(kapal.tanggalKeberangkatan)
@@ -99,7 +99,7 @@ const KapalMasuk = () => {
 
       if (kapalMasukRes.success && Array.isArray(kapalMasukRes.data)) {
         const processedKapalMasuk = kapalMasukRes.data
-          .filter(k => k && !k.error)  // Filter out backend parse errors
+          .filter(k => k && !k.error)
           .map(safeProcessKapal);
         setKapalMasukList(processedKapalMasuk);
         console.log(`✅ Processed ${processedKapalMasuk.length} kapal masuk records`);
@@ -171,7 +171,8 @@ const KapalMasuk = () => {
 
   const filteredKapalMasuk = kapalMasukList.filter(kapal =>
     kapal.nama?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    kapal.status?.toLowerCase().includes(searchTerm.toLowerCase())
+    kapal.status?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    kapal.namaPemilik?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   const handleSubmit = async (e) => {
@@ -214,6 +215,11 @@ const KapalMasuk = () => {
       listPersiapan: kapal.listPersiapan || [],
     });
     setShowModal(true);
+  };
+
+  const handleViewDetail = (kapal) => {
+    setSelectedKapalMasuk(kapal);
+    setShowDetailModal(true);
   };
 
   const handleDelete = (id) => {
@@ -270,7 +276,7 @@ const KapalMasuk = () => {
       </header>
 
       {/* Error Banner */}
-      {error && (
+      {error &amp;&amp; (
         <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mx-4 mt-4 max-w-7xl">
           <div className="flex justify-between items-center">
             <span>{error}</span>
@@ -288,7 +294,7 @@ const KapalMasuk = () => {
           <div className="relative">
             <input
               type="text"
-              placeholder="Cari nama kapal atau status..."
+              placeholder="Cari nama kapal, pemilik, atau status..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="w-full max-w-md px-4 py-3 pl-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 outline-none"
@@ -313,7 +319,7 @@ const KapalMasuk = () => {
             {filteredKapalMasuk.map((kapal) => (
               <div key={kapal.id} className="bg-white rounded-lg shadow hover:shadow-lg transition-all">
                 <div className="p-6">
-                  <div className="flex items-start justify-between">
+                  <div className="flex items-start justify-between mb-4">
                     <div className="flex-1">
                       <div className="flex items-center gap-3 mb-2">
                         <div className="bg-green-100 p-2 rounded-full">
@@ -323,21 +329,53 @@ const KapalMasuk = () => {
                         </div>
                         <div>
                           <h3 className="text-xl font-semibold text-gray-800">{kapal.nama}</h3>
-                          <p className="text-green-600 font-medium">{kapal.status || 'Belum ditentukan'}</p>
+                          <p className="text-green-600 font-medium">{kapal.status || kapal.statusKerja || 'Belum ditentukan'}</p>
                           <p className="text-gray-500">Kembali: {kapal.tanggalKembali || 'Belum ditentukan'}</p>
+                          <p className="text-gray-500 text-sm">Pemilik: {kapal.namaPemilik || '-' }</p>
                         </div>
                       </div>
                     </div>
-                    <div className="flex gap-2">
-                      <button onClick={() => handleTambahKebutuhan(kapal.id)} className="bg-yellow-500 text-white px-3 py-1 rounded hover:bg-yellow-600 text-sm">
+                    <div className="flex gap-2 flex-wrap">
+                      <button onClick={() => handleViewDetail(kapal)} className="bg-gray-100 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-200 transition-colors flex items-center gap-1 text-sm" title="Lihat Detail">
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                        </svg>
+                        Detail
+                      </button>
+                      <button onClick={() => handleTambahKebutuhan(kapal.id)} className="bg-yellow-500 text-white px-3 py-2 rounded-lg hover:bg-yellow-600 text-sm">
                         + Kebutuhan
                       </button>
-                      <button onClick={() => handleEdit(kapal)} className="bg-blue-500 text-white px-3 py-1 rounded hover:bg-blue-600 text-sm">
+                      <button onClick={() => handleEdit(kapal)} className="bg-blue-500 text-white px-3 py-2 rounded-lg hover:bg-blue-600 text-sm">
                         Edit
                       </button>
-                      <button onClick={() => handleDelete(kapal.id)} className="bg-red-500 text-white px-3 py-1 rounded hover:bg-red-600 text-sm">
+                      <button onClick={() => handleDelete(kapal.id)} className="bg-red-500 text-white px-3 py-2 rounded-lg hover:bg-red-600 text-sm">
                         Hapus
                       </button>
+                    </div>
+                  </div>
+
+                  {/* Detail Grid - Compact view */}
+                  <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3 mb-4 p-4 bg-gray-50 rounded-lg">
+                    <div>
+                      <span className="text-xs text-gray-500 uppercase tracking-wide block">Tanda Selar</span>
+                      <p className="font-medium text-gray-800 text-sm">{kapal.tandaSelar || '-' }</p>
+                    </div>
+                    <div>
+                      <span className="text-xs text-gray-500 uppercase tracking-wide block">T. Pengenal</span>
+                      <p className="font-medium text-gray-800 text-sm">{kapal.tandaPengenal || '-' }</p>
+                    </div>
+                    <div>
+                      <span className="text-xs text-gray-500 uppercase tracking-wide block">Berat Kotor</span>
+                      <p className="font-medium text-gray-800 text-sm">{kapal.beratKotor || '-' } GT</p>
+                    </div>
+                    <div>
+                      <span className="text-xs text-gray-500 uppercase tracking-wide block">Berat Bersih</span>
+                      <p className="font-medium text-gray-800 text-sm">{kapal.beratBersih || '-' } NT</p>
+                    </div>
+                    <div className="lg:col-span-2">
+                      <span className="text-xs text-gray-500 uppercase tracking-wide block">Alat Tangkap</span>
+                      <p className="font-medium text-gray-800 text-sm">{kapal.jenisAlatTangkap || '-' }</p>
                     </div>
                   </div>
                 </div>
@@ -346,8 +384,8 @@ const KapalMasuk = () => {
           </div>
         )}
 
-        {/* Tambah/Edit Modal (minimal) */}
-        {showModal && (
+        {/* Tambah/Edit Modal */}
+        {showModal &amp;&amp; (
           <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
             <div className="bg-white rounded-lg shadow-2xl w-full max-w-md p-6">
               <h2 className="text-xl font-bold mb-4">{editingKapal ? 'Edit' : 'Tambah'} Kapal Masuk</h2>
@@ -392,8 +430,135 @@ const KapalMasuk = () => {
           </div>
         )}
 
+        {/* Detail Modal */}
+        {showDetailModal &amp;&amp; selectedKapalMasuk &amp;&amp; (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50 overflow-y-auto">
+            <div className="bg-white rounded-xl shadow-2xl w-full max-w-4xl max-h-[90vh]">
+              <div className="p-6 border-b flex justify-between items-center sticky top-0 bg-white z-10">
+                <h2 className="text-2xl font-semibold text-gray-800">Detail Kapal Masuk: {selectedKapalMasuk.nama}</h2>
+                <button onClick={() => setShowDetailModal(false)} className="text-gray-500 hover:text-gray-700 p-1 -m-1 rounded-lg">
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+              <div className="p-6 space-y-6">
+                {/* Informasi Kapal */}
+                <div className="bg-gray-50 p-6 rounded-xl">
+                  <h3 className="text-lg font-semibold text-gray-800 mb-4 border-b pb-3">Informasi Kapal</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    <div>
+                      <span className="text-sm font-medium text-gray-500 block mb-1">Pemilik Kapal</span>
+                      <p className="text-xl font-semibold text-gray-900">{selectedKapalMasuk.namaPemilik || '-' }</p>
+                    </div>
+                    <div>
+                      <span className="text-sm font-medium text-gray-500 block mb-1">Tanda Selar</span>
+                      <p className="font-semibold text-gray-900">{selectedKapalMasuk.tandaSelar || '-' }</p>
+                    </div>
+                    <div>
+                      <span className="text-sm font-medium text-gray-500 block mb-1">Tanda Pengenal</span>
+                      <p className="font-semibold text-gray-900">{selectedKapalMasuk.tandaPengenal || '-' }</p>
+                    </div>
+                    <div>
+                      <span className="text-sm font-medium text-gray-500 block mb-1">Berat Kotor</span>
+                      <p className="font-semibold text-gray-900">{selectedKapalMasuk.beratKotor || '-' } GT</p>
+                    </div>
+                    <div>
+                      <span className="text-sm font-medium text-gray-500 block mb-1">Berat Bersih</span>
+                      <p className="font-semibold text-gray-900">{selectedKapalMasuk.beratBersih || '-' } NT</p>
+                    </div>
+                    <div className="md:col-span-2 lg:col-span-1">
+                      <span className="text-sm font-medium text-gray-500 block mb-1">Merek Mesin</span>
+                      <p className="font-semibold text-gray-900">{selectedKapalMasuk.merekMesin || '-' }</p>
+                    </div>
+                    <div className="lg:col-span-3">
+                      <span className="text-sm font-medium text-gray-500 block mb-1">Jenis Alat Tangkap</span>
+                      <p className="font-semibold text-gray-900">{selectedKapalMasuk.jenisAlatTangkap || '-' }</p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Status Kerja */}
+                <div className="bg-emerald-50 p-6 rounded-xl border-l-4 border-emerald-400">
+                  <h3 className="text-lg font-semibold text-gray-800 mb-4">Status Kerja</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div>
+                      <span className="text-sm text-gray-500 block">Status</span>
+                      <p className="text-2xl font-bold text-emerald-700">{selectedKapalMasuk.status || selectedKapalMasuk.statusKerja || 'Persiapan'}</p>
+                    </div>
+                    <div>
+                      <span className="text-sm text-gray-500 block">Kembali</span>
+                      <p className="text-xl font-semibold">{selectedKapalMasuk.tanggalKembali || 'Belum ditentukan'}</p>
+                    </div>
+                    <div>
+                      <span className="text-sm text-gray-500 block">Persiapan</span>
+                      <p className="text-lg font-semibold">{selectedKapalMasuk.listPersiapan?.length || 0} items</p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Kebutuhan / Persiapan Preview */}
+                {(selectedKapalMasuk.listPersiapan?.length || 0) > 0 &amp;&amp; (
+                  <div className="bg-yellow-50 p-6 rounded-xl">
+                    <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
+                      Kebutuhan / Persiapan
+                      <span className="bg-yellow-200 text-yellow-800 px-2 py-1 rounded-full text-xs font-medium">
+                        {selectedKapalMasuk.listPersiapan?.length || 0} items
+                      </span>
+                    </h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3 max-h-48 overflow-y-auto">
+                      {selectedKapalMasuk.listPersiapan?.slice(0, 10).map((item, idx) => (
+                        <div key={idx} className="flex items-center gap-3 p-3 bg-white rounded-lg border-l-4 border-yellow-400">
+                          <div className={`w-2 h-2 rounded-full flex-shrink-0 ${
+                            selectedKapalMasuk.checklistStates?.[item] 
+                              ? 'bg-emerald-500' 
+                              : selectedKapalMasuk.finishedChecklistStates?.[item]
+                              ? 'bg-gray-400' 
+                              : 'bg-yellow-400'
+                          }`} />
+                          <div>
+                            <p className="font-medium text-gray-900">{item}</p>
+                            {selectedKapalMasuk.checklistDates?.[item] &amp;&amp; (
+                              <p className="text-xs text-gray-500">Selesai: {selectedKapalMasuk.checklistDates[item]}</p>
+                            )}
+                          </div>
+                        </div>
+                      )) || []}
+                    </div>
+                    {selectedKapalMasuk.listPersiapan?.length > 10 &amp;&amp; (
+                      <p className="text-sm text-gray-500 mt-2">+{selectedKapalMasuk.listPersiapan.length - 10} more...</p>
+                    )}
+                  </div>
+                )}
+
+                {/* Action Buttons */}
+                <div className="flex flex-col sm:flex-row gap-3 pt-4 border-t">
+                  <button
+                    onClick={() => {
+                      setShowDetailModal(false);
+                      handleEdit(selectedKapalMasuk);
+                    }}
+                    className="flex-1 bg-blue-600 text-white py-3 px-6 rounded-lg hover:bg-blue-700 transition-all font-medium flex items-center justify-center gap-2"
+                  >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                    </svg>
+                    Edit Kapal Masuk
+                  </button>
+                  <button
+                    onClick={() => handleTambahKebutuhan(selectedKapalMasuk.id)}
+                    className="flex-1 bg-yellow-500 text-white py-3 px-6 rounded-lg hover:bg-yellow-600 transition-all font-medium flex items-center justify-center gap-2"
+                  >
+                    + Tambah Kebutuhan
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Kebutuhan Modal */}
-        {showKebutuhanModal && (
+        {showKebutuhanModal &amp;&amp; (
           <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
             <div className="bg-white rounded-lg shadow-2xl w-full max-w-sm p-6">
               <h2 className="text-xl font-bold mb-4">Tambah Kebutuhan</h2>
@@ -413,7 +578,7 @@ const KapalMasuk = () => {
         )}
 
         {/* Delete Confirm */}
-        {deleteConfirmId && (
+        {deleteConfirmId &amp;&amp; (
           <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
             <div className="bg-white rounded-lg shadow-2xl w-full max-w-sm p-6">
               <h2 className="text-xl font-bold text-red-600 mb-2">Hapus?</h2>
