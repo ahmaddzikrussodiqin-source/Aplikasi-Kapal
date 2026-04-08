@@ -237,69 +237,37 @@ const KapalMasuk = () => {
     }
   };
 
-  const handleTambahKebutuhanConfirm = useCallback(async () => {
-    if (!newKebutuhan.trim() || !selectedKapalForKebutuhan) return;
+const handleTambahKebutuhanConfirm = async () => {
+  if (!newKebutuhan.trim() || !selectedKapalForKebutuhan) return;
+  
+  try {
+    const freshKapal = kapalMasukList.find(k => k.id === selectedKapalForKebutuhan.id) || selectedKapalForKebutuhan;
+    
+    const updatedChecklistStates = { ...(freshKapal.checklistStates || {}) };
+    updatedChecklistStates[newKebutuhan.trim()] = false;
 
-    try {
-      // CRITICAL: Get FRESH data from kapalMasukList - avoid stale state
-      const freshKapal = kapalMasukList.find(k => k.id === selectedKapalForKebutuhan.id);
-      
-      console.log('=== ADD KEBUTUHAN DEBUG ===');
-      console.log('Selected ID:', selectedKapalForKebutuhan.id);
-      console.log('Fresh from list states:', freshKapal?.checklistStates);
-      console.log('Selected stored states:', selectedKapalForKebutuhan.checklistStates);
-      console.log('Using fresh states:', JSON.stringify(freshKapal?.checklistStates || selectedKapalForKebutuhan.checklistStates));
-      console.log('New kebutuhan:', newKebutuhan.trim());
+    const updatedChecklistDates = { ...(freshKapal.checklistDates || {}) };
+    updatedChecklistDates[newKebutuhan.trim()] = '';
 
-      const currentStates = freshKapal?.checklistStates || selectedKapalForKebutuhan.checklistStates || {};
-      const updatedChecklistStates = { ...currentStates };
-      updatedChecklistStates[newKebutuhan.trim()] = false;
+    const updatedList = [...(freshKapal.listPersiapan || []), newKebutuhan.trim()];
 
-      const currentDates = freshKapal?.checklistDates || selectedKapalForKebutuhan.checklistDates || {};
-      const updatedChecklistDates = { ...currentDates };
-      updatedChecklistDates[newKebutuhan.trim()] = '';
+    const response = await kapalMasukAPI.update(token, freshKapal.id, {
+      ...freshKapal,
+      listPersiapan: updatedList,
+      checklistStates: updatedChecklistStates,
+      checklistDates: updatedChecklistDates
+    });
 
-      const updatedList = [...(freshKapal?.listPersiapan || selectedKapalForKebutuhan.listPersiapan || []), newKebutuhan.trim()];
-
-      const updatePayload = {
-        ...freshKapal,
-        ...selectedKapalForKebutuhan,
-        listPersiapan: updatedList,
-        checklistStates: updatedChecklistStates,
-        checklistDates: updatedChecklistDates
-      };
-
-      console.log('Final payload checklistStates:', updatePayload.checklistStates);
-
-      const response = await kapalMasukAPI.update(token, selectedKapalForKebutuhan.id, updatePayload);
-
-      console.log('After update - response:', response);
-
-      if (response.success) {
-        console.log('Add successful - reloading data');
-        loadData();
-        setShowKebutuhanModal(false);
-        setSelectedKapalForKebutuhan(null);
-        setNewKebutuhan('');
-        console.log('=== END ADD DEBUG ===');
-      }
-    } catch (error) {
-      console.error('Error adding kebutuhan:', error);
+    if (response.success) {
+      loadData();
+      setShowKebutuhanModal(false);
+      setSelectedKapalForKebutuhan(null);
+      setNewKebutuhan('');
     }
-  };
-
-      if (response.success) {
-        console.log('Add successful - reloading data');
-        loadData();
-        setShowKebutuhanModal(false);
-        setSelectedKapalForKebutuhan(null);
-        setNewKebutuhan('');
-      }
-    console.log('=== END ADD DEBUG ===');
   } catch (error) {
     console.error('Error adding kebutuhan:', error);
   }
-}; 
+};
 
   const handleEditKebutuhanClick = (kapal, item) => {
     if (!isItemEditable(kapal, item)) return;
@@ -370,11 +338,10 @@ const KapalMasuk = () => {
         setEditingKebutuhan(null);
         setEditKebutuhanName('');
       }
-    console.log('=== END EDIT DEBUG ===');
-  } catch (error) {
-    console.error('Error editing kebutuhan:', error);
-  }
-}; 
+    } catch (error) {
+      console.error('Error editing kebutuhan:', error);
+    }
+  };
 
   const toggleChecklist = async (kapal, item) => {
     const isChecked = kapal.checklistStates?.[item];

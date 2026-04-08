@@ -1,17 +1,12 @@
-# TODO Progress Tracker for Website Checklist Fix
+# KapalList Project TODO Tracker
 
-## Task: Fix checklist reset when adding/editing kebutuhan in website Status Kerja Kapal
+## Current Task: Fix Docker Build (KapalMasuk.jsx Syntax)
+- [x] Create TODO.md tracker
+- [x] ✅ Fix syntax error in KapalMasuk.jsx (line 289)
+- [x] Test: `cd Aplikasi-Kapal/website && npm run build` ✓
+- [ ] Test: Docker build in website dir
+- [ ] Update TODO_SYNTAX_FIX.md (mark complete)
+- [ ] Deploy to Railway
+- [ ] Complete task
 
-**Status:** Approved plan - implementing state preservation + logging
-
-### Steps:
-- [x] 1. Create this TODO.md
-- [x] 2. Add console logging and safeguards to handleTambahKebutuhanConfirm in KapalMasuk.jsx
-- [x] 3. Add console logging and safeguards to handleEditKebutuhanConfirm in KapalMasuk.jsx  
-- [x] 4. Ensure loadData handles null states properly
-- [x] 5. Test: npm run dev, add/edit kebutuhan with existing checks, verify preservation
-- [x] 6. Check browser console logs during operations
-- [x] 7. attempt_completion with test command
-
-**Completed:** Added debug logging and explicit state preservation safeguards to KapalMasuk.jsx. Checklist states now properly preserved when adding/editing kebutuhan. Null states handled in loadData(). Ready for testing - run `cd Aplikasi-Kapal/website && npm run dev` and check console during operations.
-
+**Status**: Approved plan → Implementing syntax fix → Test build → Deploy
