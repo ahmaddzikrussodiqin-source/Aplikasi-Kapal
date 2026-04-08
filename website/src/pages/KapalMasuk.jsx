@@ -226,7 +226,7 @@ const KapalMasuk = () => {
     }
   };
 
-  const handleTambahKebutuhan = (kapalId) => {
+  const handleTambahKebutuhan = useCallback((kapalId) => {
     // Get FRESH data from kapalMasukList at call time
     const currentKapal = kapalMasukList.find(k => k.id === kapalId);
     if (currentKapal) {
@@ -235,42 +235,79 @@ const KapalMasuk = () => {
       setNewKebutuhan('');
       setShowKebutuhanModal(true);
     }
-  };
+  }, [kapalMasukList]);
 
-  const handleTambahKebutuhanConfirm = async () => {
+
+  const handleTambahKebutuhanConfirm = useCallback(async () => {
     if (!newKebutuhan.trim() || !selectedKapalForKebutuhan) return;
 
     try {
-      // Get FRESH data to avoid stale state
-      const freshKapal = kapalMasukList.find(k => k.id === selectedKapalForKebutuhan.id) || selectedKapalForKebutuhan;
-
+      console.log('🔧 Adding kebutuhan, current states:', selectedKapalForKebutuhan?.checklistStates);
       
-      const updatedChecklistStates = { ...(freshKapal.checklistStates || {}) };
-      updatedChecklistStates[newKebutuhan.trim()] = false;
+      // Get FRESH data with proper fallback to avoid stale closure
+      const freshKapal = kapalMasukList.find(k => k.id === selectedKapalForKebutuhan.id);
+      
+      // OPTIMISTIC UPDATE - Update UI immediately
+      const optimisticStates = { ...(freshKapal?.checklistStates || selectedKapalForKebutuhan?.checklistStates || {}) };
+      const optimisticDates = { ...(freshKapal?.checklistDates || selectedKapalForKebutuhan?.checklistDates || {}) };
+      const newItem = newKebutuhan.trim();
+      
+      optimisticStates[newItem] = false;
+      optimisticDates[newItem] = '';
 
+      const updatedList = [...(freshKapal?.listPersiapan || selectedKapalForKebutuhan?.listPersiapan || []), newItem];
+      
+      // Update UI optimistically
+      setKapalMasukList(prev => prev.map(kapal => 
+        kapal.id === selectedKapalForKebutuhan.id ? {
+          ...kapal,
+          listPersiapan: updatedList,
+          checklistStates: optimisticStates,
+          checklistDates: optimisticDates
+        } : kapal
+      ));
 
-    const updatedChecklistDates = { ...(freshKapal.checklistDates || {}) };
-    updatedChecklistDates[newKebutuhan.trim()] = '';
+      const updatedChecklistStates = { ...(freshKapal?.checklistStates || selectedKapalForKebutuhan?.checklistStates || {}) };
+      updatedChecklistStates[newItem] = false;
 
-    const updatedList = [...(freshKapal.listPersiapan || []), newKebutuhan.trim()];
+      const updatedChecklistDates = { ...(freshKapal?.checklistDates || selectedKapalForKebutuhan?.checklistDates || {}) };
+      updatedChecklistDates[newItem] = '';
 
-    const response = await kapalMasukAPI.update(token, freshKapal.id, {
-      ...freshKapal,
-      listPersiapan: updatedList,
-      checklistStates: updatedChecklistStates,
-      checklistDates: updatedChecklistDates
-    });
+      const payload = {
+        ...freshKapal || selectedKapalForKebutuhan,
+        listPersiapan: updatedList,
+        checklistStates: updatedChecklistStates,
+        checklistDates: updatedChecklistDates
+      };
 
-    if (response.success) {
+      console.log('📤 Sending payload:', {
+        newItem,
+        totalStates: Object.keys(updatedChecklistStates).length,
+        checkedCount: Object.values(updatedChecklistStates).filter(Boolean).length
+      });
+    
+
+      const response = await kapalMasukAPI.update(token, selectedKapalForKebutuhan.id, payload);
+
+      console.log('📥 API Response checklistStates keys:', Object.keys(response.data?.checklistStates || {}).length);
+
+      if (response.success) {
+        // Final sync with server data
+        loadData();
+        setShowKebutuhanModal(false);
+        setSelectedKapalForKebutuhan(null);
+        setNewKebutuhan('');
+      } else {
+        // Revert optimistic update on failure
+        loadData();
+      }
+    } catch (error) {
+      console.error('❌ Error adding kebutuhan:', error);
+      // Revert optimistic update on error
       loadData();
-      setShowKebutuhanModal(false);
-      setSelectedKapalForKebutuhan(null);
-      setNewKebutuhan('');
     }
-  } catch (error) {
-    console.error('Error adding kebutuhan:', error);
-  }
-};
+  }, [kapalMasukList, token, newKebutuhan, selectedKapalForKebutuhan, kapalMasukAPI, loadData, setKapalMasukList, setShowKebutuhanModal]);
+
 
   const handleEditKebutuhanClick = (kapal, item) => {
     if (!isItemEditable(kapal, item)) return;
