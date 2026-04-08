@@ -276,7 +276,7 @@ const KapalMasuk = () => {
       </header>
 
       {/* Error Banner */}
-      {error &amp;&amp; (
+{error && (
         <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mx-4 mt-4 max-w-7xl">
           <div className="flex justify-between items-center">
             <span>{error}</span>
@@ -385,7 +385,7 @@ const KapalMasuk = () => {
         )}
 
         {/* Tambah/Edit Modal */}
-        {showModal &amp;&amp; (
+{showModal && (
           <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
             <div className="bg-white rounded-lg shadow-2xl w-full max-w-md p-6">
               <h2 className="text-xl font-bold mb-4">{editingKapal ? 'Edit' : 'Tambah'} Kapal Masuk</h2>
@@ -431,7 +431,7 @@ const KapalMasuk = () => {
         )}
 
         {/* Detail Modal */}
-        {showDetailModal &amp;&amp; selectedKapalMasuk &amp;&amp; (
+{showDetailModal && selectedKapalMasuk && (
           <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50 overflow-y-auto">
             <div className="bg-white rounded-xl shadow-2xl w-full max-w-4xl max-h-[90vh]">
               <div className="p-6 border-b flex justify-between items-center sticky top-0 bg-white z-10">
@@ -497,8 +497,7 @@ const KapalMasuk = () => {
                   </div>
                 </div>
 
-                {/* Kebutuhan / Persiapan Preview */}
-                {(selectedKapalMasuk.listPersiapan?.length || 0) > 0 &amp;&amp; (
+                {/* Kebutuhan / Persiapan Preview */}\n                {(selectedKapalMasuk.listPersiapan?.length || 0) > 0 && (
                   <div className="bg-yellow-50 p-6 rounded-xl">
                     <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
                       Kebutuhan / Persiapan
@@ -517,15 +516,13 @@ const KapalMasuk = () => {
                               : 'bg-yellow-400'
                           }`} />
                           <div>
-                            <p className="font-medium text-gray-900">{item}</p>
-                            {selectedKapalMasuk.checklistDates?.[item] &amp;&amp; (
+                            <p className="font-medium text-gray-900">{item}</p>\n                            {selectedKapalMasuk.checklistDates?.[item] && (
                               <p className="text-xs text-gray-500">Selesai: {selectedKapalMasuk.checklistDates[item]}</p>
                             )}
                           </div>
                         </div>
                       )) || []}
-                    </div>
-                    {selectedKapalMasuk.listPersiapan?.length > 10 &amp;&amp; (
+                    </div>\n                    {selectedKapalMasuk.listPersiapan?.length > 10 && (
                       <p className="text-sm text-gray-500 mt-2">+{selectedKapalMasuk.listPersiapan.length - 10} more...</p>
                     )}
                   </div>
@@ -558,7 +555,7 @@ const KapalMasuk = () => {
         )}
 
         {/* Kebutuhan Modal */}
-        {showKebutuhanModal &amp;&amp; (
+{showKebutuhanModal && (
           <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
             <div className="bg-white rounded-lg shadow-2xl w-full max-w-sm p-6">
               <h2 className="text-xl font-bold mb-4">Tambah Kebutuhan</h2>
@@ -578,7 +575,7 @@ const KapalMasuk = () => {
         )}
 
         {/* Delete Confirm */}
-        {deleteConfirmId &amp;&amp; (
+{deleteConfirmId && (
           <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
             <div className="bg-white rounded-lg shadow-2xl w-full max-w-sm p-6">
               <h2 className="text-xl font-bold text-red-600 mb-2">Hapus?</h2>
