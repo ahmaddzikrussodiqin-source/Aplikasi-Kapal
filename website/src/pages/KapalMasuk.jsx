@@ -226,10 +226,13 @@ const KapalMasuk = () => {
     }
   };
 
-  const handleTambahKebutuhan = (kapal) => {
-    setSelectedKapalForKebutuhan(kapal);
-    setNewKebutuhan('');
-    setShowKebutuhanModal(true);
+  const handleTambahKebutuhan = (kapalId) => {
+    const currentKapal = kapalMasukList.find(k => k.id === kapalId);
+    if (currentKapal) {
+      setSelectedKapalForKebutuhan(currentKapal);
+      setNewKebutuhan('');
+      setShowKebutuhanModal(true);
+    }
   };
 
 const handleTambahKebutuhanConfirm = async () => {
@@ -678,7 +681,7 @@ const calculateDurasiBerlayar = (kapal) => {
                   </div>
                   <div className="flex gap-2 flex-wrap">
                     <button
-                      onClick={() => kapal.isFinished ? handleTambahKebutuhan(kapal) : handleEdit(kapal)}
+                      onClick={() => kapal.isFinished ? handleTambahKebutuhan(kapal.id) : handleEdit(kapal)}
                       className={`px-3 py-1 rounded transition-colors ${
                         kapal.isFinished
                           ? 'bg-green-500 text-white hover:bg-green-600'
