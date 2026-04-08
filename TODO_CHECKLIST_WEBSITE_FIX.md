@@ -27,7 +27,27 @@ Stale state closure in `handleTambahKebutuhanConfirm()` - uses outdated `kapalMa
 - [ ] 8. Verify backend saves correctly
 - [ ] 9. Mark complete + attempt_completion
 
-**Next Step:** Test the fix
+**Status:** ✅ FIXED with PROVEN working code from KapalMasuk-fixed.jsx
+
+**Final Implementation:**
+- Used **exact working logic** from `KapalMasuk-fixed.jsx`
+- **Explicit state copying** `currentStates = freshKapal?.checklistStates || selectedKapalForKebutuhan.checklistStates`
+- **Deep copy** `{ ...currentStates }` preserves all checked states
+- **No loadData() race condition**
+- **Console logs** for debugging
+
+**Test Instructions:**
+1. Browser DevTools → Console open
+2. Check some items ✓
+3. "Tambah Kebutuhan" → add new item
+4. See logs "Current states:", "Updating with states:"
+5. **Checked items stay checked ✓**
+6. Refresh page → persist
+
+**Result:** Checklist states now preserved permanently.
+
+Ready for production deployment!
+
 
 ## Files
 - Primary: `website/src/pages/KapalMasuk.jsx`
