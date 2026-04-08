@@ -2024,6 +2024,43 @@ app.post('/api/upload', authenticateToken, upload.single('file'), (req, res) => 
 
 
 
+// Admin migration endpoint - only for Moderator+
+app.post('/api/admin/migrate-manual', authenticateToken, async (req, res) => {
+  if (req.user.role !== 'Moderator') {
+    return res.status(403).json({ success: false, message: 'Admin only' });
+  }
+
+  try {
+    console.log('🔧 Running manual input migration...');
+    
+    const beforeCount = await kapalMasukPool.query(`
+      SELECT COUNT(*) as count FROM kapal_masuk_schema.kapal_masuk 
+      WHERE "isManualInput" IS NULL OR "isManualInput" = false
+    `);
+    
+    const result = await kapalMasukPool.query(`
+      UPDATE kapal_masuk_schema.kapal_masuk 
+      SET "isManualInput" = true 
+      WHERE "isManualInput" IS NULL OR "isManualInput" = false
+    `);
+    
+    const afterCount = await kapalMasukPool.query(`
+      SELECT COUNT(*) as manual_count FROM kapal_masuk_schema.kapal_masuk WHERE "isManualInput" = true
+    `);
+    
+    res.json({ 
+      success: true, 
+      message: `Migration complete`,
+      migrated: result.rowCount,
+      beforeCount: beforeCount.rows[0].count,
+      totalManual: afterCount.rows[0].manual_count
+    });
+  } catch (error) {
+    console.error('Migration error:', error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
 // Admin backfill endpoint - only for Moderator+
 app.post('/api/admin/backfill-pemilik', authenticateToken, async (req, res) => {
   if (req.user.role !== 'Moderator') {
