@@ -58,6 +58,7 @@ class DaftarKapalActivity : AppCompatActivity() {
 
         rvKapalList.layoutManager = LinearLayoutManager(this)
         rvKapalList.adapter = kapalAdapter
+        rvKapalList.addItemDecoration(DividerItemDecoration(this, LinearLayoutManager.VERTICAL))
 
         btnTambah.setOnClickListener {
             val namaBaru = etNamaKapal.text.toString().trim()
@@ -145,18 +146,18 @@ class DaftarKapalActivity : AppCompatActivity() {
         val tvNomorSeriMesin = dialogView.findViewById<TextView>(R.id.tv_nomor_seri_mesin)
         val tvJenisAlatTangkap = dialogView.findViewById<TextView>(R.id.tv_jenis_alat_tangkap)
 
-        tvNamaPemilik.text = "Nama Pemilik: ${kapal.namaPemilik ?: "Belum diisi"}"
-        tvTandaSelar.text = "Tanda Selar: ${kapal.tandaSelar ?: "Belum diisi"}"
-        tvTandaPengenal.text = "Tanda Pengenal: ${kapal.tandaPengenal ?: "Belum diisi"}"
-        tvBeratKotor.text = "Berat Kotor: ${kapal.beratKotor ?: "Belum diisi"}"
-        tvBeratBersih.text = "Berat Bersih: ${kapal.beratBersih ?: "Belum diisi"}"
-        tvMerekMesin.text = "Merek Mesin: ${kapal.merekMesin ?: "Belum diisi"}"
-        tvNomorSeriMesin.text = "Nomor Seri Mesin: ${kapal.nomorSeriMesin ?: "Belum diisi"}"
-        tvJenisAlatTangkap.text = "Jenis Alat Tangkap: ${kapal.jenisAlatTangkap ?: "Belum diisi"}"
+        tvNamaPemilik.text = "${kapal.namaPemilik ?: "Belum diisi"}"
+        tvTandaSelar.text = "${kapal.tandaSelar ?: "Belum diisi"}"
+        tvTandaPengenal.text = "${kapal.tandaPengenal ?: "Belum diisi"}"
+        tvBeratKotor.text = "${kapal.beratKotor ?: "Belum diisi"}"
+        tvBeratBersih.text = "${kapal.beratBersih ?: "Belum diisi"}"
+        tvMerekMesin.text = "${kapal.merekMesin ?: "Belum diisi"}"
+        tvNomorSeriMesin.text = "${kapal.nomorSeriMesin ?: "Belum diisi"}"
+        tvJenisAlatTangkap.text = "${kapal.jenisAlatTangkap ?: "Belum diisi"}"
 
         val dialog = AlertDialog.Builder(this)
             .setView(dialogView)
-            .setTitle("Informasi Kapal: ${kapal.nama ?: "Tanpa Nama"}")  // Handle null
+            .setTitle("Informasi Kapal: ${kapal.nama ?: "Tanpa Nama"}")
             .setNegativeButton("Tutup", null)
             .create()
 

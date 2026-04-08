@@ -58,6 +58,13 @@
                 android:inputType="none" />
 
             <EditText
+                android:id="@+id/et_nama_pemilik"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:hint="Nama Pemilik"
+                android:inputType="textPersonName" />
+
+            <EditText
                 android:id="@+id/et_tanggal_kembali"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"

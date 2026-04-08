@@ -1,46 +1,40 @@
 package com.example.kapallist
 
 import android.app.AlertDialog
-import android.app.DatePickerDialog
 import android.content.Intent
 import android.os.Bundle
 import android.text.Editable
 import android.text.TextWatcher
-import com.google.android.material.floatingactionbutton.FloatingActionButton
 import android.util.Log
 import android.view.View
 import android.widget.AdapterView
-import android.widget.Button
-import android.widget.CheckBox
-import android.widget.CompoundButton
+import android.widget.ArrayAdapter
 import android.widget.EditText
-import android.widget.LinearLayout
 import android.widget.Spinner
 import android.widget.TextView
 import android.widget.Toast
-import android.widget.ArrayAdapter
 import androidx.appcompat.app.AppCompatActivity
-import androidx.core.content.ContextCompat
 import androidx.lifecycle.lifecycleScope
+import androidx.recyclerview.widget.DividerItemDecoration
+import androidx.recyclerview.widget.LinearLayoutManager
+import androidx.recyclerview.widget.RecyclerView
+import com.google.android.material.floatingactionbutton.FloatingActionButton
 import com.google.gson.Gson
-import com.google.gson.reflect.TypeToken
-import com.example.kapallist.KapalEntity
 import io.socket.client.IO
 import io.socket.client.Socket
-import io.socket.emitter.Emitter
 import kotlinx.coroutines.launch
 import org.json.JSONObject
-import java.text.SimpleDateFormat
-import java.util.Calendar
-import java.util.Date
+import java.util.Locale
 
 class ProfileActivity : AppCompatActivity() {
-    private val checkBoxStates = mutableMapOf<String, Boolean>()
-    private val checkBoxDates = mutableMapOf<String, String>()
-    private val listKapal = mutableListOf<Kapal>()
-    private val listAllKapal = mutableListOf<Kapal>()
-    private lateinit var userRole: String
-    private var isProgrammaticChange = false
+    private lateinit var rvKapalMasuk: RecyclerView
+    private lateinit var etFilter: EditText
+    private lateinit var spinnerOwner: Spinner
+private lateinit var btnBack: FloatingActionButton
+    private lateinit var fabTambahStatus: FloatingActionButton
+    private lateinit var kapalMasukAdapter: KapalMasukAdapter
+    private val listKapalMasuk = mutableListOf<KapalMasukEntity>()
+    private val listAllKapalMasuk = mutableListOf<KapalMasukEntity>()
     private lateinit var socket: Socket
     private var currentFilterText = ""
     private var currentOwnerFilter = ""
@@ -50,7 +44,33 @@ class ProfileActivity : AppCompatActivity() {
         supportActionBar?.hide()
         setContentView(R.layout.activity_profile)
 
-        val etFilter = findViewById<EditText>(R.id.et_filter_persiapan)
+        initViews()
+        setupFilters()
+        setupSocket()
+        loadDataAndBuildUI()
+    }
+
+    private fun initViews() {
+        rvKapalMasuk = findViewById(R.id.rv_kapal_masuk)
+        etFilter = findViewById(R.id.et_filter_persiapan)
+        spinnerOwner = findViewById(R.id.spinner_filter_owner)
+        btnBack = findViewById(R.id.btn_back)
+        fabTambahStatus = findViewById(R.id.fab_tambah_status)
+
+        btnBack.setOnClickListener { finish() }
+        fabTambahStatus.setOnClickListener {
+            val intent = Intent(this, InputActivity::class.java)
+            startActivity(intent)
+        }
+
+        rvKapalMasuk.layoutManager = LinearLayoutManager(this)
+        rvKapalMasuk.addItemDecoration(DividerItemDecoration(this, LinearLayoutManager.VERTICAL))
+
+kapalMasukAdapter = KapalMasukAdapter(listKapalMasuk, this, ::showKapalInfoDialog, ::editKapal, ::tambahKebutuhan, ::finishKapal, ::unfinishKapal)
+        rvKapalMasuk.adapter = kapalMasukAdapter
+    }
+
+    private fun setupFilters() {
         etFilter.addTextChangedListener(object : TextWatcher {
             override fun afterTextChanged(s: Editable?) {
                 currentFilterText = s.toString().trim()
@@ -60,7 +80,6 @@ class ProfileActivity : AppCompatActivity() {
             override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
         })
 
-        val spinnerOwner = findViewById<Spinner>(R.id.spinner_filter_owner)
         spinnerOwner.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
             override fun onItemSelected(parent: AdapterView<*>?, view: View?, position: Int, id: Long) {
                 currentOwnerFilter = if (position == 0) "" else parent?.getItemAtPosition(position).toString()
@@ -71,14 +90,10 @@ class ProfileActivity : AppCompatActivity() {
                 applyFilter()
             }
         }
+    }
 
-        val btnBack = findViewById<FloatingActionButton>(R.id.btn_back)
-        btnBack.setOnClickListener {
-            finish()
-        }
+    private fun setupSocket() {
         val sharedPref = getSharedPreferences("login_prefs", MODE_PRIVATE)
-        userRole = sharedPref.getString("role", "Member") ?: "Member"
-
         val token = sharedPref.getString("token", "") ?: ""
         if (token.isNotEmpty()) {
             try {
@@ -86,23 +101,20 @@ class ProfileActivity : AppCompatActivity() {
                 opts.auth = mapOf("token" to token)
                 socket = IO.socket(Config.BASE_URL, opts)
                 socket.connect()
-                socket.on(Socket.EVENT_CONNECT) { Log.d("Socket", "Connected") }
-                socket.on(Socket.EVENT_DISCONNECT) { Log.d("Socket", "Disconnected") }
                 socket.on("checklist-updated") { args ->
                     runOnUiThread {
                         val data = args[0] as JSONObject
                         val kapalId = data.getInt("kapalId")
-                        val checklistStates = Gson().fromJson(data.getJSONObject("checklistStates").toString(), Map::class.java) as Map<String, Boolean>
-                        val checklistDates = Gson().fromJson(data.getJSONObject("checklistDates").toString(), Map::class.java) as Map<String, String>
-                        updateChecklistForKapal(kapalId, checklistStates, checklistDates)
+                        val position = listKapalMasuk.indexOfFirst { it.id == kapalId }
+                        if (position != -1) {
+                            kapalMasukAdapter.notifyItemChanged(position)
+                        }
                     }
                 }
             } catch (e: Exception) {
                 Log.e("Socket", "Error initializing socket: ${e.message}")
             }
         }
-
-        loadDataAndBuildUI()
     }
 
     override fun onResume() {
@@ -110,9 +122,14 @@ class ProfileActivity : AppCompatActivity() {
         loadDataAndBuildUI()
     }
 
-    private fun loadDataAndBuildUI() {
-        val llChecklist = findViewById<LinearLayout>(R.id.ll_checklist)
+    override fun onDestroy() {
+        super.onDestroy()
+        try {
+            socket.disconnect()
+        } catch (e: Exception) {}
+    }
 
+    private fun loadDataAndBuildUI() {
         lifecycleScope.launch {
             try {
                 val sharedPref = getSharedPreferences("login_prefs", MODE_PRIVATE)
@@ -122,72 +139,143 @@ class ProfileActivity : AppCompatActivity() {
                     return@launch
                 }
 
-                val kapalMasukResponse = ApiClient.apiService.getAllKapalMasuk("Bearer $token")
-                if (kapalMasukResponse.isSuccessful) {
-                    val apiResponse = kapalMasukResponse.body()
-                    if (apiResponse != null) {
+                val response = ApiClient.apiService.getAllKapalMasuk("Bearer $token")
+                if (response.isSuccessful) {
+                    val apiResponse = response.body()
+                    if (apiResponse != null && apiResponse.success) {
                         val kapalMasukList = apiResponse.data ?: emptyList()
-                        listKapal.clear()
-                        listAllKapal.clear()
-                        listKapal.addAll(kapalMasukList.map { Kapal(it) })
-                        listAllKapal.addAll(listKapal)
-                        runOnUiThread {
-                            setupOwnerSpinner(listAllKapal)
-                            applyFilter()
-                        }
+                        listAllKapalMasuk.clear()
+                        listAllKapalMasuk.addAll(kapalMasukList)
+                        applyFilter()
+                        setupOwnerSpinner()
                     }
                 }
             } catch (e: Exception) {
-                Log.e("ProfileActivity", "Error: ${e.message}")
+                Log.e("ProfileActivity", "Error loading data: ${e.message}")
+                Toast.makeText(this@ProfileActivity, "Gagal memuat data", Toast.LENGTH_SHORT).show()
             }
         }
     }
 
-    private fun setupOwnerSpinner(kapalList: List<Kapal>) {
-        val spinnerOwner = findViewById<Spinner>(R.id.spinner_filter_owner)
-        val ownerList = mutableListOf("Semua")
-        val owners = kapalList.mapNotNull { it.namaPemilik }.distinct()
-        ownerList.addAll(owners)
-        val adapter = ArrayAdapter(this, android.R.layout.simple_spinner_item, ownerList)
+    private fun setupOwnerSpinner() {
+        val owners = listAllKapalMasuk.mapNotNull { it.namaPemilik }.distinct().toMutableList()
+        owners.add(0, "Semua")
+        val adapter = ArrayAdapter(this, android.R.layout.simple_spinner_item, owners)
         adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
         spinnerOwner.adapter = adapter
     }
 
-    private fun buildUI(llChecklist: LinearLayout, kapalList: List<Kapal>) {
-        llChecklist.removeAllViews()
-        for (kapal in kapalList) {
-            val tvKapal = TextView(this)
-            tvKapal.text = kapal.nama ?: "Unknown"
-            tvKapal.textSize = 18f
-            llChecklist.addView(tvKapal)
+    private fun applyFilter() {
+        val filtered = listAllKapalMasuk.filter { kapal ->
+            (kapal.nama ?: "").contains(currentFilterText, ignoreCase = true) &&
+            (currentOwnerFilter.isEmpty() || kapal.namaPemilik == currentOwnerFilter)
+        }
+        kapalMasukAdapter.updateList(filtered)
+    }
 
-            val items = kapal.listPersiapan
-            for (item in items) {
-                val checkBox = CheckBox(this)
-                checkBox.text = item
-                llChecklist.addView(checkBox)
+private fun showKapalInfoDialog(kapal: KapalMasukEntity) {
+        val dialogView = layoutInflater.inflate(R.layout.dialog_view_kapal, null)
+        
+        dialogView.findViewById<TextView>(R.id.tv_nama_kapal_view).text = "Nama Kapal: ${kapal.nama ?: "-"}"
+        dialogView.findViewById<TextView>(R.id.tv_nama_pemilik_view).text = "Nama Pemilik: ${kapal.namaPemilik ?: "-"}"
+        dialogView.findViewById<TextView>(R.id.tv_tanda_selar_view).text = "Tanda Selar: ${kapal.tandaSelar ?: "-"}"
+        dialogView.findViewById<TextView>(R.id.tv_tanda_pengenal_view).text = "Tanda Pengenal: ${kapal.tandaPengenal ?: "-"}"
+        dialogView.findViewById<TextView>(R.id.tv_berat_kotor_view).text = "Berat Kotor: ${kapal.beratKotor ?: "-"}"
+        dialogView.findViewById<TextView>(R.id.tv_berat_bersih_view).text = "Berat Bersih: ${kapal.beratBersih ?: "-"}"
+        dialogView.findViewById<TextView>(R.id.tv_merek_mesin_view).text = "Merek Mesin: ${kapal.merekMesin ?: "-"}"
+        dialogView.findViewById<TextView>(R.id.tv_nomor_seri_mesin_view).text = "Nomor Seri Mesin: ${kapal.nomorSeriMesin ?: "-"}"
+        dialogView.findViewById<TextView>(R.id.tv_jenis_alat_tangkap_view).text = "Jenis Alat Tangkap: ${kapal.jenisAlatTangkap ?: "-"}"
+        dialogView.findViewById<TextView>(R.id.tv_tanggal_input_view).text = "Tanggal Input: ${kapal.tanggalInput ?: "-"}"
+        dialogView.findViewById<TextView>(R.id.tv_tanggal_keberangkatan_view).text = "Tanggal Keberangkatan: ${kapal.tanggalKeberangkatan ?: "-"}"
+        dialogView.findViewById<TextView>(R.id.tv_durasi_berlayar_view).text = "Durasi Berlayar: ${kapal.durasiBerlayar ?: "-"}"
+        dialogView.findViewById<TextView>(R.id.tv_status_kerja_view).text = "Status Kerja: ${kapal.statusKerja ?: "-"}"
+        dialogView.findViewById<TextView>(R.id.tv_status_view).text = "Status: ${kapal.status ?: "-"}"
+        dialogView.findViewById<TextView>(R.id.tv_is_finished_view).text = "Selesai: ${if (kapal.isFinished) "Ya" else "Tidak"}"
+
+        AlertDialog.Builder(this)
+            .setView(dialogView)
+            .setPositiveButton("Tutup", null)
+            .show()
+    }
+
+    private fun deleteKapal(kapal: KapalMasukEntity) {
+        AlertDialog.Builder(this)
+            .setTitle("Konfirmasi Hapus")
+            .setMessage("Hapus status kapal ${kapal.nama}?")
+            .setPositiveButton("Hapus") { _, _ ->
+                lifecycleScope.launch {
+                    try {
+                        val sharedPref = getSharedPreferences("login_prefs", MODE_PRIVATE)
+                        val token = sharedPref.getString("token", "") ?: ""
+                        val response = ApiClient.apiService.deleteKapalMasuk("Bearer $token", kapal.id)
+                        if (response.isSuccessful && response.body()?.success == true) {
+                            loadDataAndBuildUI()
+                        }
+                    } catch (e: Exception) {
+                        Toast.makeText(this@ProfileActivity, "Gagal hapus", Toast.LENGTH_SHORT).show()
+                    }
+                }
             }
+            .setNegativeButton("Batal", null)
+            .show()
+    }
 
-            val separator = View(this)
-            separator.layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, 1)
-            separator.setBackgroundColor(ContextCompat.getColor(this, android.R.color.darker_gray))
-            llChecklist.addView(separator)
+    private fun editKapal(kapal: KapalMasukEntity) {
+        val intent = Intent(this, InputActivity::class.java).apply {
+            putExtra("edit_mode", true)
+            putExtra("kapal_id", kapal.id)
+        }
+        startActivity(intent)
+    }
+
+    private fun tambahKebutuhan(kapal: KapalMasukEntity) {
+        Toast.makeText(this, "Tambah kebutuhan untuk ${kapal.nama}", Toast.LENGTH_SHORT).show()
+    }
+
+    private fun unfinishKapal(kapal: KapalMasukEntity) {
+        val updatedKapal = kapal.copy(isFinished = false)
+        lifecycleScope.launch {
+            try {
+                val sharedPref = getSharedPreferences("login_prefs", MODE_PRIVATE)
+                val token = sharedPref.getString("token", "") ?: ""
+                val response = ApiClient.apiService.updateKapalMasuk("Bearer $token", kapal.id, updatedKapal)
+                if (response.isSuccessful && response.body()?.success == true) {
+                    val position = listKapalMasuk.indexOf(kapal)
+                    if (position != -1) {
+                        listKapalMasuk[position] = updatedKapal
+                        kapalMasukAdapter.notifyItemChanged(position)
+                    }
+                }
+            } catch (e: Exception) {
+                Log.e("ProfileActivity", "Error unfinishing kapal: ${e.message}")
+            }
         }
     }
 
-    private fun applyFilter() {
-        val llChecklist = findViewById<LinearLayout>(R.id.ll_checklist)
-        buildUI(llChecklist, listKapal)
-    }
+    private fun finishKapal(kapal: KapalMasukEntity) {
+        val checkedCount = (kapal.checklistStates?.values?.count { it == true } ?: 0)
+        val total = kapal.listPersiapan.size
+        val completion = if (total > 0) (checkedCount * 100 / total) else 0
+        
+        Toast.makeText(this, "Kapal selesai $completion% checklist", Toast.LENGTH_SHORT).show()
 
-    private fun updateChecklistForKapal(kapalId: Int, states: Map<String, Boolean>, dates: Map<String, String>) {
-        // Simplified
-    }
-
-    override fun onDestroy() {
-        super.onDestroy()
-        if (::socket.isInitialized) {
-            socket.disconnect()
+        val updatedKapal = kapal.copy(isFinished = true)
+        lifecycleScope.launch {
+            try {
+                val sharedPref = getSharedPreferences("login_prefs", MODE_PRIVATE)
+                val token = sharedPref.getString("token", "") ?: ""
+                val response = ApiClient.apiService.updateKapalMasuk("Bearer $token", kapal.id, updatedKapal)
+                if (response.isSuccessful && response.body()?.success == true) {
+                    val position = listKapalMasuk.indexOf(kapal)
+                    if (position != -1) {
+                        listKapalMasuk[position] = updatedKapal
+                        kapalMasukAdapter.notifyItemChanged(position)
+                    }
+                }
+            } catch (e: Exception) {
+                Log.e("ProfileActivity", "Error finishing kapal: ${e.message}")
+            }
         }
     }
 }
+

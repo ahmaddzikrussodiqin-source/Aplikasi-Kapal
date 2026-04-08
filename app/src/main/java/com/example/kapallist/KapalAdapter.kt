@@ -18,7 +18,7 @@ class KapalAdapter(
     inner class KapalViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
         val tvNamaKapal: TextView = itemView.findViewById(R.id.tv_nama_kapal)
         val btnEdit: Button = itemView.findViewById(R.id.btn_edit)
-        val btnDelete: Button = itemView.findViewById(R.id.btn_delete)
+        val btnDelete: Button = itemView.findViewById(R.id.btn_finish)
     }
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): KapalViewHolder {

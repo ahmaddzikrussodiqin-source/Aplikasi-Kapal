@@ -44,7 +44,7 @@ class DocumentKapalAdapter(
         val tvNamaKapal: TextView = itemView.findViewById(R.id.tv_nama_kapal)
         val tvTanggalKembali: TextView = itemView.findViewById(R.id.tv_tanggal_kembali)
         val btnEdit: Button = itemView.findViewById(R.id.btn_edit)
-        val btnDelete: Button = itemView.findViewById(R.id.btn_delete)
+        val btnDelete: Button = itemView.findViewById(R.id.btn_finish)
     }
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): KapalViewHolder {

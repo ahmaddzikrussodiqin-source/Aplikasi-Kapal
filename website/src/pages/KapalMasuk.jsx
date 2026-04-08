@@ -64,13 +64,22 @@ const KapalMasuk = () => {
 
   const loadData = async () => {
     try {
+      console.log('Loading data...');
       const [kapalMasukRes, kapalRes] = await Promise.all([
         kapalMasukAPI.getAll(token),
         kapalAPI.getAll(token),
       ]);
 
       if (kapalMasukRes.success) {
-        setKapalMasukList(kapalMasukRes.data || []);
+        // Ensure checklist states are properly initialized
+        const processedKapalMasuk = (kapalMasukRes.data || []).map(kapal => ({
+          ...kapal,
+          checklistStates: kapal.checklistStates || {},
+          checklistDates: kapal.checklistDates || {},
+          finishedChecklistStates: kapal.finishedChecklistStates || {},
+        }));
+        setKapalMasukList(processedKapalMasuk);
+        console.log('Loaded kapalMasuk with states:', processedKapalMasuk.length);
       }
       if (kapalRes.success) {
         setKapalList(kapalRes.data || []);
@@ -221,13 +230,23 @@ const KapalMasuk = () => {
     setShowKebutuhanModal(true);
   };
 
-  const handleTambahKebutuhanConfirm = async () => {
+const handleTambahKebutuhanConfirm = async () => {
     if (!newKebutuhan.trim() || !selectedKapalForKebutuhan) return;
 
     try {
+      console.log('=== ADD KEBUTUHAN DEBUG ===');
+      console.log('Current kapal:', selectedKapalForKebutuhan.nama);
+      console.log('Before - existing checklistStates:', selectedKapalForKebutuhan.checklistStates);
+      console.log('New kebutuhan:', newKebutuhan.trim());
+
       const updatedList = [...(selectedKapalForKebutuhan.listPersiapan || []), newKebutuhan.trim()];
-      const updatedChecklistStates = { ...(selectedKapalForKebutuhan.checklistStates || {}), [newKebutuhan.trim()]: false };
-      const updatedChecklistDates = { ...(selectedKapalForKebutuhan.checklistDates || {}), [newKebutuhan.trim()]: '' };
+      
+      // Preserve ALL existing states, add new item as false
+      const updatedChecklistStates = { ...(selectedKapalForKebutuhan.checklistStates || {}) };
+      updatedChecklistStates[newKebutuhan.trim()] = false;
+      
+      const updatedChecklistDates = { ...(selectedKapalForKebutuhan.checklistDates || {}) };
+      updatedChecklistDates[newKebutuhan.trim()] = '';
 
       const response = await kapalMasukAPI.update(token, selectedKapalForKebutuhan.id, {
         ...selectedKapalForKebutuhan,
@@ -236,12 +255,17 @@ const KapalMasuk = () => {
         checklistDates: updatedChecklistDates,
       });
 
+      console.log('After update - response:', response);
+      console.log('Sent checklistStates:', updatedChecklistStates);
+
       if (response.success) {
+        console.log('Add successful - reloading data');
         loadData();
         setShowKebutuhanModal(false);
         setSelectedKapalForKebutuhan(null);
         setNewKebutuhan('');
       }
+      console.log('=== END ADD DEBUG ===');
     } catch (error) {
       console.error('Error adding kebutuhan:', error);
     }
@@ -261,6 +285,10 @@ const KapalMasuk = () => {
     const newItemName = editKebutuhanName.trim();
 
     try {
+      console.log('=== EDIT KEBUTUHAN DEBUG ===');
+      console.log('Current kapal:', kapal.nama);
+      console.log('Old item:', oldItem, 'Old state:', kapal.checklistStates?.[oldItem]);
+      console.log('Before - existing checklistStates:', kapal.checklistStates);
       // Update listPersiapan
       const updatedList = (kapal.listPersiapan || []).map(i => i === oldItem ? newItemName : i);
 
@@ -302,12 +330,17 @@ const KapalMasuk = () => {
         finishedChecklistStates: updatedFinishedChecklistStates,
       });
 
+      console.log('After edit update - response:', response);
+      console.log('New checklistStates:', updatedChecklistStates);
+
       if (response.success) {
+        console.log('Edit successful - reloading');
         loadData();
         setShowEditKebutuhanModal(false);
         setEditingKebutuhan(null);
         setEditKebutuhanName('');
       }
+      console.log('=== END EDIT DEBUG ===');
     } catch (error) {
       console.error('Error editing kebutuhan:', error);
     }

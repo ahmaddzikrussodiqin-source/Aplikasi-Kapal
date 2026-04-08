@@ -31,6 +31,8 @@ class InputActivity : AppCompatActivity() {
     private var editMode: Boolean = false
     private var kapalIndex: Int = -1
     private var selectedKapalId: Int? = null
+    private var selectedNamaPemilik: String? = null
+    private var selectedTandaSelar: String? = null
 
 
 
@@ -52,6 +54,7 @@ class InputActivity : AppCompatActivity() {
         val namaKapalFromIntent = intent.getStringExtra("nama_kapal")
 
         val etNamaKapal = findViewById<EditText>(R.id.et_nama_kapal)
+        val etNamaPemilik = findViewById<EditText>(R.id.et_nama_pemilik)
         val etTanggalKembali = findViewById<EditText>(R.id.et_tanggal_kembali)
         val etStatus = findViewById<EditText>(R.id.et_status)
         etPersiapan = findViewById<EditText>(R.id.et_persiapan)
@@ -93,10 +96,13 @@ class InputActivity : AppCompatActivity() {
                                 builder.setItems(namaKapalList.toTypedArray()) { _, which ->
                                     val selectedKapal = kapalList[which]
                                     etNamaKapal.setText(selectedKapal.nama)
+                                    etNamaPemilik.setText(selectedKapal.namaPemilik ?: "")
+                                    // Copy other fields if available
                                     // Tidak set selectedKapalId karena ini untuk kapal masuk baru
                                 }
                                 builder.setNegativeButton("Batal", null)
                                 builder.show()
+
                             } else {
                                 Toast.makeText(this@InputActivity, "Tidak ada kapal tersimpan", Toast.LENGTH_SHORT).show()
                             }
@@ -247,6 +253,8 @@ class InputActivity : AppCompatActivity() {
                             val kapalMasukEntity = KapalMasukEntity(
                                 id = 0,  // Selalu 0 untuk entry baru
                                 nama = namaKapal,
+                                namaPemilik = etNamaPemilik.text.toString().ifBlank { null },
+                                tandaSelar = selectedTandaSelar,
                                 tanggalKembali = parsedDate.toString(),
                                 listPersiapan = listPersiapan,
                                 tanggalInput = java.text.SimpleDateFormat("dd/MM/yyyy", java.util.Locale.getDefault()).format(java.util.Date()),
