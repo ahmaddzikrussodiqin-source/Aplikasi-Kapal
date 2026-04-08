@@ -1665,7 +1665,7 @@ async function autoFillKapalInfo(namaKapal, kapalMasukData) {
   
   try {
     const result = await kapalPool.query(
-      'SELECT namaPemilik, tandaSelar, tandaPengenal, beratKotor, beratBersih, merekMesin, nomorSeriMesin, jenisAlatTangkap FROM kapal_info WHERE LOWER(nama) = LOWER($1) LIMIT 1',
+'SELECT namaPemilik, tandaSelar, tandaPengenal, beratKotor, beratBersih, merekMesin, nomorSeriMesin, jenisAlatTangkap FROM kapal_info WHERE LOWER(nama) LIKE LOWER($1) LIMIT 1',
       [namaKapal]
     );
     
