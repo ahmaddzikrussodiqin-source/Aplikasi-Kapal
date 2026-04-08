@@ -227,8 +227,10 @@ const KapalMasuk = () => {
   };
 
   const handleTambahKebutuhan = (kapalId) => {
+    // Get FRESH data from kapalMasukList at call time
     const currentKapal = kapalMasukList.find(k => k.id === kapalId);
     if (currentKapal) {
+      console.log('handleTambahKebutuhan currentKapal states:', currentKapal.checklistStates);
       setSelectedKapalForKebutuhan(currentKapal);
       setNewKebutuhan('');
       setShowKebutuhanModal(true);
@@ -238,27 +240,37 @@ const KapalMasuk = () => {
 const handleTambahKebutuhanConfirm = async () => {
     if (!newKebutuhan.trim() || !selectedKapalForKebutuhan) return;
 
-    try {
-      console.log('=== ADD KEBUTUHAN DEBUG ===');
-      console.log('Current kapal:', selectedKapalForKebutuhan.nama);
-      console.log('Before - existing checklistStates:', selectedKapalForKebutuhan.checklistStates);
-      console.log('New kebutuhan:', newKebutuhan.trim());
+    // CRITICAL: Get FRESH data from kapalMasukList - avoid stale state
+    const freshKapal = kapalMasukList.find(k => k.id === selectedKapalForKebutuhan.id);
+    
+    console.log('=== ADD KEBUTUHAN DEBUG ===');
+    console.log('Selected ID:', selectedKapalForKebutuhan.id);
+    console.log('Fresh from list states:', freshKapal?.checklistStates);
+    console.log('Selected stored states:', selectedKapalForKebutuhan.checklistStates);
+    console.log('Using fresh states:', freshKapal?.checklistStates || selectedKapalForKebutuhan.checklistStates);
+    console.log('New kebutuhan:', newKebutuhan.trim());
 
-      // IMMUTABLE COPY: Create new kapal object with current states
-      const currentKapalData = {
-        ...selectedKapalForKebutuhan,
-        checklistStates: { ...selectedKapalForKebutuhan.checklistStates },
-        checklistDates: { ...selectedKapalForKebutuhan.checklistDates }
-      };
-      
-      const updatedList = [...currentKapalData.listPersiapan, newKebutuhan.trim()];
-      currentKapalData.checklistStates[newKebutuhan.trim()] = false;
-      currentKapalData.checklistDates[newKebutuhan.trim()] = '';
+    const currentStates = freshKapal?.checklistStates || selectedKapalForKebutuhan.checklistStates || {};
+    const updatedChecklistStates = { ...currentStates };
+    updatedChecklistStates[newKebutuhan.trim()] = false;
 
-      const response = await kapalMasukAPI.update(token, selectedKapalForKebutuhan.id, {
-        ...currentKapalData,
-        listPersiapan: updatedList
-      });
+    const currentDates = freshKapal?.checklistDates || selectedKapalForKebutuhan.checklistDates || {};
+    const updatedChecklistDates = { ...currentDates };
+    updatedChecklistDates[newKebutuhan.trim()] = '';
+
+    const updatedList = [...(freshKapal?.listPersiapan || selectedKapalForKebutuhan.listPersiapan || []), newKebutuhan.trim()];
+
+    const updatePayload = {
+      ...freshKapal,
+      ...selectedKapalForKebutuhan,
+      listPersiapan: updatedList,
+      checklistStates: updatedChecklistStates,
+      checklistDates: updatedChecklistDates
+    };
+
+    console.log('Final payload checklistStates:', updatePayload.checklistStates);
+
+    const response = await kapalMasukAPI.update(token, selectedKapalForKebutuhan.id, updatePayload);
 
       console.log('After update - response:', response);
       console.log('Sent checklistStates:', updatedChecklistStates);
