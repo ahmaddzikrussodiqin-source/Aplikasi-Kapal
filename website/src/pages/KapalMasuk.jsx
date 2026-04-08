@@ -237,14 +237,17 @@ const KapalMasuk = () => {
     }
   };
 
-const handleTambahKebutuhanConfirm = async () => {
-  if (!newKebutuhan.trim() || !selectedKapalForKebutuhan) return;
-  
-  try {
-    const freshKapal = kapalMasukList.find(k => k.id === selectedKapalForKebutuhan.id) || selectedKapalForKebutuhan;
-    
-    const updatedChecklistStates = { ...(freshKapal.checklistStates || {}) };
-    updatedChecklistStates[newKebutuhan.trim()] = false;
+  const handleTambahKebutuhanConfirm = async () => {
+    if (!newKebutuhan.trim() || !selectedKapalForKebutuhan) return;
+
+    try {
+      // Get FRESH data to avoid stale state
+      const freshKapal = kapalMasukList.find(k => k.id === selectedKapalForKebutuhan.id) || selectedKapalForKebutuhan;
+
+      
+      const updatedChecklistStates = { ...(freshKapal.checklistStates || {}) };
+      updatedChecklistStates[newKebutuhan.trim()] = false;
+
 
     const updatedChecklistDates = { ...(freshKapal.checklistDates || {}) };
     updatedChecklistDates[newKebutuhan.trim()] = '';
