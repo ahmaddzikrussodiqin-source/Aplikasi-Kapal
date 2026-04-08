@@ -70,16 +70,18 @@ const KapalMasuk = () => {
         kapalAPI.getAll(token),
       ]);
 
+      console.log('API Response kapalMasukRes.data[0].checklistStates:', kapalMasukRes.data?.[0]?.checklistStates);
+
       if (kapalMasukRes.success) {
-        // Ensure checklist states are properly initialized
+        // Ensure checklist states are properly initialized - NO REPLACEMENT
         const processedKapalMasuk = (kapalMasukRes.data || []).map(kapal => ({
           ...kapal,
-          checklistStates: kapal.checklistStates || {},
-          checklistDates: kapal.checklistDates || {},
-          finishedChecklistStates: kapal.finishedChecklistStates || {},
+          checklistStates: kapal.checklistStates,
+          checklistDates: kapal.checklistDates,
+          finishedChecklistStates: kapal.finishedChecklistStates,
         }));
         setKapalMasukList(processedKapalMasuk);
-        console.log('Loaded kapalMasuk with states:', processedKapalMasuk.length);
+        console.log('Loaded kapalMasuk[0].checklistStates:', processedKapalMasuk[0]?.checklistStates);
       }
       if (kapalRes.success) {
         setKapalList(kapalRes.data || []);
