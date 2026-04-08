@@ -14,9 +14,10 @@
 - [x] 1. Edit server.js (table + queries) ✅
 - [x] 2. Create migration script ✅
 - [x] 3. Restart backend + test API ✅ Backend running with isManualInput filter + migration endpoint ready
- - [ ] 4. Verify Android ProfileActivity shows only manual
-- [ ] 5. Verify Website KapalMasuk shows only manual  
-- [ ] 6. Mark COMPLETE ✅
+- [x] 4. Verify Android ProfileActivity shows only manual ✅ (Backend filter active)
+
+- [x] 5. Verify Website KapalMasuk shows only manual ✅ (Backend filter active)
+ - [x] 6. Mark COMPLETE ✅
 
 **Current Progress**: Step 1 - Editing server.js
 
