@@ -1,6 +1,6 @@
 # Fix Blank Screen - Status Kerja Kapal (/kapal-masuk)
 
-**Status:** ✅ COMPLETE
+**Status:** ✅ COMPLETE - Minimal fixes: loading/error states preserved, UI simplified (no blank screen).
 
 ## Steps:
 - [✅] 1. Plan approval ✓

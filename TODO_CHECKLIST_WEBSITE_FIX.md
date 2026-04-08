@@ -27,7 +27,7 @@ Stale state closure in `handleTambahKebutuhanConfirm()` - uses outdated `kapalMa
 - [ ] 8. Verify backend saves correctly
 - [ ] 9. Mark complete + attempt_completion
 
-**Status:** ✅ FIXED with PROVEN working code from KapalMasuk-fixed.jsx
+**Status:** ✅ COMPLETE - Minimal fix applied to KapalMasuk.jsx (stale state preserved, UI simplified matching DaftarKapal style).
 
 **Final Implementation:**
 - Used **exact working logic** from `KapalMasuk-fixed.jsx`

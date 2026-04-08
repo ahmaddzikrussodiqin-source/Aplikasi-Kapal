@@ -11,16 +11,9 @@ const KapalMasuk = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [showModal, setShowModal] = useState(false);
-  const [showDateModal, setShowDateModal] = useState(false);
-  const [showFinishModal, setShowFinishModal] = useState(false);
   const [editingKapal, setEditingKapal] = useState(null);
-  const [selectedItem, setSelectedItem] = useState(null);
-  const [selectedKapal, setSelectedKapal] = useState(null);
-  const [selectedDate, setSelectedDate] = useState('');
-  const [finishKapal, setFinishKapal] = useState(null);
-  const [finishDate, setFinishDate] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedOwner, setSelectedOwner] = useState('');
+  const [deleteConfirmId, setDeleteConfirmId] = useState(null);
   const [newKebutuhan, setNewKebutuhan] = useState('');
   const [showKebutuhanModal, setShowKebutuhanModal] = useState(false);
   const [selectedKapalForKebutuhan, setSelectedKapalForKebutuhan] = useState(null);
@@ -31,11 +24,6 @@ const KapalMasuk = () => {
     status: '',
     listPersiapan: [],
   });
-  const [newPersiapan, setNewPersiapan] = useState('');
-  const [deleteConfirmId, setDeleteConfirmId] = useState(null);
-  const [showEditKebutuhanModal, setShowEditKebutuhanModal] = useState(false);
-  const [editingKebutuhan, setEditingKebutuhan] = useState(null);
-  const [editKebutuhanName, setEditKebutuhanName] = useState('');
 
   useEffect(() => {
     if (token) {
@@ -73,13 +61,10 @@ const KapalMasuk = () => {
     try {
       setLoading(true);
       setError(null);
-      console.log('Loading data...');
       const [kapalMasukRes, kapalRes] = await Promise.all([
         kapalMasukAPI.getAll(token),
         kapalAPI.getAll(token),
       ]);
-
-      console.log('API Response kapalMasukRes.data[0].checklistStates:', kapalMasukRes.data?.[0]?.checklistStates);
 
       if (kapalMasukRes.success) {
         const processedKapalMasuk = (kapalMasukRes.data || []).map(kapal => ({
@@ -89,14 +74,13 @@ const KapalMasuk = () => {
           finishedChecklistStates: kapal.finishedChecklistStates || {},
         }));
         setKapalMasukList(processedKapalMasuk);
-        console.log('Loaded kapalMasuk[0].checklistStates:', processedKapalMasuk[0]?.checklistStates);
       }
       if (kapalRes.success) {
         setKapalList(kapalRes.data || []);
       }
     } catch (error) {
       console.error('Error loading data:', error);
-      setError('Gagal memuat data kapal masuk. Periksa koneksi atau login ulang. ' + error.message);
+      setError('Gagal memuat data: ' + error.message);
     } finally {
       setLoading(false);
     }
@@ -105,7 +89,6 @@ const KapalMasuk = () => {
   const handleTambahKebutuhan = useCallback((kapalId) => {
     const currentKapal = kapalMasukList.find(k => k.id === kapalId);
     if (currentKapal) {
-      console.log('handleTambahKebutuhan currentKapal states:', currentKapal.checklistStates);
       setSelectedKapalForKebutuhan({ ...currentKapal });
       setNewKebutuhan('');
       setShowKebutuhanModal(true);
@@ -142,13 +125,9 @@ const KapalMasuk = () => {
         setShowKebutuhanModal(false);
         setSelectedKapalForKebutuhan(null);
         setNewKebutuhan('');
-      } else {
-        console.error('API failed:', response);
-        loadData();
       }
     } catch (error) {
       console.error('Error adding kebutuhan:', error);
-      loadData();
     }
   }, [kapalMasukList, token, newKebutuhan, selectedKapalForKebutuhan, loadData]);
 
@@ -271,7 +250,7 @@ const KapalMasuk = () => {
           <div className="relative">
             <input
               type="text"
-              placeholder="Cari berdasarkan nama kapal atau status..."
+              placeholder="Cari nama kapal atau status..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="w-full max-w-md px-4 py-3 pl-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 outline-none"
@@ -282,163 +261,93 @@ const KapalMasuk = () => {
           </div>
         </div>
 
-        {/* Loading */}
+        {/* Loading / Empty */}
         {loading ? (
           <div className="flex justify-center py-12">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600"></div>
           </div>
         ) : filteredKapalMasuk.length === 0 ? (
           <div className="text-center py-12">
-            <div className="bg-gray-100 rounded-full w-24 h-24 flex items-center justify-center mx-auto mb-4">
-              <svg className="w-12 h-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-              </svg>
-            </div>
-            <h3 className="text-lg font-semibold text-gray-700 mb-2">Belum ada kapal masuk</h3>
-            <p className="text-gray-500 mb-6">Tambahkan kapal masuk pertama untuk memulai tracking status kerja.</p>
-            <button
-              onClick={() => {
-                setEditingKapal(null);
-                setFormData({
-                  kapalId: '',
-                  nama: '',
-                  tanggalKembali: '',
-                  status: '',
-                  listPersiapan: [],
-                });
-                setShowModal(true);
-              }}
-              className="bg-green-600 text-white px-6 py-3 rounded-lg hover:bg-green-700 transition-colors font-medium flex items-center gap-2 mx-auto"
-            >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-              </svg>
-              Tambah Kapal Masuk Pertama
-            </button>
+            <p className="text-gray-500 text-lg mb-4">Belum ada kapal masuk</p>
           </div>
         ) : (
-          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2">
+          <div className="grid gap-4">
             {filteredKapalMasuk.map((kapal) => (
-              <div key={kapal.id} className="bg-white rounded-lg shadow hover:shadow-xl transition-all">
+              <div key={kapal.id} className="bg-white rounded-lg shadow hover:shadow-lg transition-all">
                 <div className="p-6">
-                  <div className="flex items-start justify-between mb-4">
+                  <div className="flex items-start justify-between">
                     <div className="flex-1">
-                      <div className="flex items-center gap-3">
-                        <div className="bg-green-100 p-3 rounded-full">
-                          <svg className="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                      <div className="flex items-center gap-3 mb-2">
+                        <div className="bg-green-100 p-2 rounded-full">
+                          <svg className="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                           </svg>
                         </div>
                         <div>
                           <h3 className="text-xl font-semibold text-gray-800">{kapal.nama}</h3>
-                          <p className="text-green-600 font-medium">{kapal.status || 'Status: Belum ditentukan'}</p>
+                          <p className="text-green-600 font-medium">{kapal.status || 'Belum ditentukan'}</p>
+                          <p className="text-gray-500">Kembali: {kapal.tanggalKembali || 'Belum ditentukan'}</p>
                         </div>
                       </div>
-                      <p className="text-gray-500 mt-2">Kembali: {kapal.tanggalKembali || 'Belum ditentukan'}</p>
                     </div>
                     <div className="flex gap-2">
                       <button onClick={() => handleTambahKebutuhan(kapal.id)} className="bg-yellow-500 text-white px-3 py-1 rounded hover:bg-yellow-600 text-sm">
                         + Kebutuhan
                       </button>
-                      <button onClick={() => handleEdit(kapal)} className="bg-blue-500 text-white px-3 py-1 rounded hover:bg-blue-600 text-sm flex items-center gap-1">
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                        </svg>
+                      <button onClick={() => handleEdit(kapal)} className="bg-blue-500 text-white px-3 py-1 rounded hover:bg-blue-600 text-sm">
                         Edit
                       </button>
-                      <button onClick={() => handleDelete(kapal.id)} className="bg-red-500 text-white px-3 py-1 rounded hover:bg-red-600 text-sm flex items-center gap-1">
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-4v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                        </svg>
+                      <button onClick={() => handleDelete(kapal.id)} className="bg-red-500 text-white px-3 py-1 rounded hover:bg-red-600 text-sm">
                         Hapus
                       </button>
                     </div>
                   </div>
-
-                  {/* Checklist Preview */}
-                  {kapal.listPersiapan && kapal.listPersiapan.length > 0 && (
-                    <div className="mt-4 p-4 bg-gray-50 rounded-lg">
-                      <h4 className="font-medium text-gray-700 mb-3">Checklist Persiapan ({kapal.listPersiapan.length} items)</h4>
-                      <div className="space-y-1">
-                        {kapal.listPersiapan.slice(0, 5).map((item, idx) => (
-                          <div key={idx} className="flex items-center gap-2 text-sm">
-                            <span className={`w-2 h-2 rounded-full ${kapal.checklistStates?.[item] ? 'bg-green-500' : 'bg-gray-300'}`}></span>
-                            <span>{item}</span>
-                          </div>
-                        ))}
-                        {kapal.listPersiapan.length > 5 && (
-                          <p className="text-xs text-gray-500">+{kapal.listPersiapan.length - 5} lainnya</p>
-                        )}
-                      </div>
-                    </div>
-                  )}
                 </div>
               </div>
             ))}
           </div>
         )}
 
-        {/* Tambah Kapal Masuk Modal */}
+        {/* Tambah/Edit Modal (minimal) */}
         {showModal && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-            <div className="bg-white rounded-xl shadow-2xl w-full max-w-md">
-              <div className="p-6 border-b flex justify-between items-center">
-                <h2 className="text-xl font-semibold">{editingKapal ? 'Edit Kapal Masuk' : 'Tambah Kapal Masuk'}</h2>
-                <button onClick={() => setShowModal(false)} className="text-gray-500 hover:text-gray-700">
-                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                </button>
-              </div>
-              <form onSubmit={handleSubmit} className="p-6 space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Pilih Kapal</label>
-                  <select
-                    value={formData.kapalId}
-                    onChange={(e) => setFormData({...formData, kapalId: e.target.value})}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500"
-                    required
-                  >
-                    <option value="">Pilih kapal dari daftar</option>
-                    {kapalList.map(k => (
-                      <option key={k.id} value={k.id}>{k.nama} ({k.tandaSelar})</option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Nama Khusus (opsional)</label>
-                  <input
-                    type="text"
-                    value={formData.nama}
-                    onChange={(e) => setFormData({...formData, nama: e.target.value})}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Tanggal Kembali</label>
-                  <DatePicker
-                    selected={formData.tanggalKembali || null}
-                    onChange={(date) => setFormData({...formData, tanggalKembali: date})}
-                    placeholderText="Pilih tanggal"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Status</label>
-                  <input
-                    type="text"
-                    value={formData.status}
-                    onChange={(e) => setFormData({...formData, status: e.target.value})}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500"
-                    placeholder="Contoh: Perbaikan Mesin"
-                  />
-                </div>
-                <div className="flex justify-end gap-4">
-                  <button type="button" onClick={() => setShowModal(false)} className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50">
-                    Batal
-                  </button>
-                  <button type="submit" className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700">
-                    {editingKapal ? 'Simpan' : 'Tambah'}
-                  </button>
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+            <div className="bg-white rounded-lg shadow-2xl w-full max-w-md p-6">
+              <h2 className="text-xl font-bold mb-4">{editingKapal ? 'Edit' : 'Tambah'} Kapal Masuk</h2>
+              <form onSubmit={handleSubmit} className="space-y-4">
+                <select
+                  value={formData.kapalId}
+                  onChange={(e) => setFormData({...formData, kapalId: e.target.value})}
+                  className="w-full p-2 border rounded"
+                  required
+                >
+                  <option value="">Pilih Kapal</option>
+                  {kapalList.map(k => (
+                    <option key={k.id} value={k.id}>{k.nama}</option>
+                  ))}
+                </select>
+                <input
+                  type="text"
+                  placeholder="Nama khusus"
+                  value={formData.nama}
+                  onChange={(e) => setFormData({...formData, nama: e.target.value})}
+                  className="w-full p-2 border rounded"
+                />
+                <input
+                  type="date"
+                  value={formData.tanggalKembali}
+                  onChange={(e) => setFormData({...formData, tanggalKembali: e.target.value})}
+                  className="w-full p-2 border rounded"
+                />
+                <input
+                  type="text"
+                  placeholder="Status"
+                  value={formData.status}
+                  onChange={(e) => setFormData({...formData, status: e.target.value})}
+                  className="w-full p-2 border rounded"
+                />
+                <div className="flex gap-2">
+                  <button type="button" onClick={() => setShowModal(false)} className="flex-1 p-2 border rounded">Batal</button>
+                  <button type="submit" className="flex-1 bg-green-600 text-white p-2 rounded">Simpan</button>
                 </div>
               </form>
             </div>
@@ -447,45 +356,33 @@ const KapalMasuk = () => {
 
         {/* Kebutuhan Modal */}
         {showKebutuhanModal && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-            <div className="bg-white rounded-xl shadow-2xl w-full max-w-sm">
-              <div className="p-6">
-                <h2 className="text-xl font-semibold mb-4">Tambah Kebutuhan Baru</h2>
-                <input
-                  type="text"
-                  value={newKebutuhan}
-                  onChange={(e) => setNewKebutuhan(e.target.value)}
-                  placeholder="Masukkan kebutuhan baru (contoh: Ganti oli)"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-yellow-500 mb-4"
-                />
-                <div className="flex gap-3">
-                  <button onClick={handleTambahKebutuhanConfirm} className="flex-1 bg-yellow-500 text-white py-2 px-4 rounded-lg hover:bg-yellow-600">
-                    Tambah
-                  </button>
-                  <button onClick={() => setShowKebutuhanModal(false)} className="flex-1 bg-gray-300 py-2 px-4 rounded-lg hover:bg-gray-400">
-                    Batal
-                  </button>
-                </div>
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+            <div className="bg-white rounded-lg shadow-2xl w-full max-w-sm p-6">
+              <h2 className="text-xl font-bold mb-4">Tambah Kebutuhan</h2>
+              <input
+                type="text"
+                value={newKebutuhan}
+                onChange={(e) => setNewKebutuhan(e.target.value)}
+                placeholder="Kebutuhan baru..."
+                className="w-full p-2 border rounded mb-4"
+              />
+              <div className="flex gap-2">
+                <button onClick={handleTambahKebutuhanConfirm} className="flex-1 bg-yellow-500 text-white p-2 rounded">Tambah</button>
+                <button onClick={() => setShowKebutuhanModal(false)} className="flex-1 p-2 border rounded">Batal</button>
               </div>
             </div>
           </div>
         )}
 
-        {/* Delete Confirmation */}
+        {/* Delete Confirm */}
         {deleteConfirmId && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-            <div className="bg-white rounded-xl shadow-2xl w-full max-w-sm">
-              <div className="p-6">
-                <h2 className="text-xl font-semibold text-red-600 mb-2">Konfirmasi Hapus</h2>
-                <p className="text-gray-700 mb-6">Yakin hapus kapal masuk ini? Tindakan tidak bisa dibatalkan.</p>
-                <div className="flex gap-3">
-                  <button onClick={confirmDelete} className="flex-1 bg-red-600 text-white py-2 px-4 rounded-lg hover:bg-red-700">
-                    Hapus
-                  </button>
-                  <button onClick={() => setDeleteConfirmId(null)} className="flex-1 bg-gray-300 py-2 px-4 rounded-lg hover:bg-gray-400">
-                    Batal
-                  </button>
-                </div>
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+            <div className="bg-white rounded-lg shadow-2xl w-full max-w-sm p-6">
+              <h2 className="text-xl font-bold text-red-600 mb-2">Hapus?</h2>
+              <p className="mb-4">Yakin hapus kapal masuk ini?</p>
+              <div className="flex gap-2">
+                <button onClick={confirmDelete} className="flex-1 bg-red-500 text-white p-2 rounded">Hapus</button>
+                <button onClick={() => setDeleteConfirmId(null)} className="flex-1 p-2 border rounded">Batal</button>
               </div>
             </div>
           </div>
@@ -496,4 +393,3 @@ const KapalMasuk = () => {
 };
 
 export default KapalMasuk;
-
