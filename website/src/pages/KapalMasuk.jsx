@@ -242,17 +242,23 @@ const handleTambahKebutuhanConfirm = async () => {
       const updatedList = [...(selectedKapalForKebutuhan.listPersiapan || []), newKebutuhan.trim()];
       
       // Preserve ALL existing states, add new item as false
-      const updatedChecklistStates = { ...(selectedKapalForKebutuhan.checklistStates || {}) };
-      updatedChecklistStates[newKebutuhan.trim()] = false;
+      // CRITICAL FIX: Ensure states are strings for backend JSON storage
+      const stringChecklistStates = JSON.stringify(selectedKapalForKebutuhan.checklistStates || {});
+      const stringChecklistDates = JSON.stringify(selectedKapalForKebutuhan.checklistDates || {});
       
-      const updatedChecklistDates = { ...(selectedKapalForKebutuhan.checklistDates || {}) };
-      updatedChecklistDates[newKebutuhan.trim()] = '';
+      const updatedList = [...(selectedKapalForKebutuhan.listPersiapan || []), newKebutuhan.trim()];
+      
+      const newStatesObj = JSON.parse(stringChecklistStates);
+      newStatesObj[newKebutuhan.trim()] = false;
+      
+      const newDatesObj = JSON.parse(stringChecklistDates);
+      newDatesObj[newKebutuhan.trim()] = '';
 
       const response = await kapalMasukAPI.update(token, selectedKapalForKebutuhan.id, {
         ...selectedKapalForKebutuhan,
         listPersiapan: updatedList,
-        checklistStates: updatedChecklistStates,
-        checklistDates: updatedChecklistDates,
+        checklistStates: newStatesObj,
+        checklistDates: newDatesObj,
       });
 
       console.log('After update - response:', response);
