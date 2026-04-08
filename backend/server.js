@@ -1659,8 +1659,10 @@ app.delete('/api/kapal-status/:id', authenticateToken, async (req, res) => {
 // Kapal Masuk routes (protected)
 app.get('/api/kapal-masuk', authenticateToken, async (req, res) => {
     try {
+        console.log('📥 GET /api/kapal-masuk called');
         const result = await kapalMasukPool.query('SELECT * FROM kapal_masuk_schema.kapal_masuk ORDER BY id DESC');
         const kapalMasuk = result.rows;
+        console.log(`📊 Found ${kapalMasuk.length} kapal-masuk records`);
 
         // Parse JSON strings back to arrays and convert isFinished to boolean, and map to camelCase
         const parsedKapalMasuk = kapalMasuk.map(k => ({
@@ -1819,6 +1821,11 @@ app.put('/api/kapal-masuk/:id', authenticateToken, async (req, res) => {
         const { id } = req.params;
         const kapalMasukData = req.body;
 
+        console.log(`🔄 Updating kapal-masuk ${id}:`);
+        console.log('- listPersiapan length:', (kapalMasukData.listPersiapan || []).length);
+        console.log('- checklistStates keys:', Object.keys(kapalMasukData.checklistStates || {}));
+        console.log('- checked count:', Object.values(kapalMasukData.checklistStates || {}).filter(Boolean).length);
+
         const result = await kapalMasukPool.query(`
             UPDATE kapal_masuk_schema.kapal_masuk SET
                 nama = $1, namaPemilik = $2, tandaSelar = $3, tandaPengenal = $4,
@@ -1851,12 +1858,13 @@ app.put('/api/kapal-masuk/:id', authenticateToken, async (req, res) => {
             });
         }
 
+        console.log('✅ Update kapal-masuk ${id} completed successfully');
         res.json({
             success: true,
             message: 'Kapal Masuk updated successfully'
         });
     } catch (error) {
-        console.error('Update kapal masuk error:', error);
+        console.error('❌ Update kapal masuk error for id', id, ':', error);
         res.status(500).json({
             success: false,
             message: 'Failed to update kapal masuk'
