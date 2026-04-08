@@ -1660,66 +1660,88 @@ app.delete('/api/kapal-status/:id', authenticateToken, async (req, res) => {
 app.get('/api/kapal-masuk', authenticateToken, async (req, res) => {
     try {
         console.log('📥 GET /api/kapal-masuk called');
+        
+        // Validate pool connection
+        if (!kapalMasukPool) {
+            throw new Error('kapalMasukPool not initialized');
+        }
+        
         const result = await kapalMasukPool.query('SELECT * FROM kapal_masuk_schema.kapal_masuk ORDER BY id DESC');
         const kapalMasuk = result.rows;
         console.log(`📊 Found ${kapalMasuk.length} kapal-masuk records`);
 
-        // Parse JSON strings back to arrays and convert isFinished to boolean, and map to camelCase
-        const parsedKapalMasuk = kapalMasuk.map(k => {
+        // Safe parsing with detailed logging
+        const parsedKapalMasuk = kapalMasuk.map((k, index) => {
             try {
-              const states = JSON.parse(k.checklistStates || '{}');
-              const dates = JSON.parse(k.checklistDates || '{}');
-              return {
-                id: k.id,
-                nama: k.nama,
-                namaPemilik: k.namapemilik,
-                tandaSelar: k.tandaselar,
-                tandaPengenal: k.tandapengenal,
-                beratKotor: k.beratkotor,
-                beratBersih: k.beratbersih,
-                merekMesin: k.merekmesin,
-                nomorSeriMesin: k.nomorserimesin,
-                jenisAlatTangkap: k.jenisalattangkap,
-                tanggalInput: k.tanggalinput,
-                tanggalKeberangkatan: k.tanggalkeberangkatan,
-                totalHariPersiapan: k.totalharipersiapan,
-                tanggalBerangkat: k.tanggalberangkat,
-                tanggalKembali: k.tanggalkembali,
-                listPersiapan: parseListPersiapan(k.listpersiapan),
-                isFinished: Boolean(k.isfinished),
-                perkiraanKeberangkatan: k.perkiraankeberangkatan,
-                durasiSelesaiPersiapan: k.durasiselesaiPersiapan,
-                durasiBerlayar: k.durasiberlayar,
-                status: k.status,
-                statusKerja: k.statuskerja,
-                checklistStates: states,
-                checklistDates: dates,
-                newItemsAddedAfterFinish: JSON.parse(k.newItemsAddedAfterFinish || '[]'),
-                finishedChecklistStates: JSON.parse(k.finishedChecklistStates || '{}'),
-                finishedAt: k.finishedat
-              };
-            } catch (parseError) {
-              console.error('JSON parse error for kapal', k.id, ':', parseError);
-              return {
-                ...k,
-                checklistStates: {},
-                checklistDates: {},
-                newItemsAddedAfterFinish: [],
-                finishedChecklistStates: {}
-              };
-            }
-          });
+                console.log(`Parsing kapal ${k.id}: checklistStates length=${(k.checkliststates || '').length}`);
+                
+                const safeParse = (field, fallback) => {
+                    if (!field) return fallback;
+                    try {
+                        return JSON.parse(field);
+                    } catch (e) {
+                        console.error(`Parse error ${k.id}.${field.slice(0,20)}...:`, e.message);
+                        return fallback;
+                    }
+                };
 
+                return {
+                    id: k.id,
+                    nama: k.nama || '',
+                    "namaPemilik": k."namapemilik" || k.namapemilik || '',
+                    "tandaSelar": k."tandaselar" || k.tandaselar || '',
+                    "tandaPengenal": k."tandapengenal" || k.tandapengenal || '',
+                    "beratKotor": k."beratkotor" || k.beratkotor || '',
+                    "beratBersih": k."beratbersih" || k.beratbersih || '',
+                    "merekMesin": k."merekmesin" || k.merekmesin || '',
+                    "nomorSeriMesin": k."nomorserimesin" || k.nomorserimesin || '',
+                    "jenisAlatTangkap": k."jenisalattangkap" || k.jenisalattangkap || '',
+                    tanggalInput: k.tanggalinput || '',
+                    tanggalKeberangkatan: k.tanggalkeberangkatan || '',
+                    totalHariPersiapan: parseInt(k.totalharipersiapan) || 0,
+                    tanggalBerangkat: k.tanggalberangkat || '',
+                    tanggalKembali: k.tanggalkembali || '',
+                    listPersiapan: parseListPersiapan(k.listpersiapan || '[]'),
+                    isFinished: Boolean(k.isfinished),
+                    perkiraanKeberangkatan: k.perkiraankeberangkatan || '',
+                    durasiSelesaiPersiapan: k.durasiselesaipersiapan || '',
+                    durasiBerlayar: k.durasiberlayar || '',
+                    status: k.status || '',
+                    statusKerja: k.statuskerja || 'persiapan',
+                    checklistStates: safeParse(k.checkliststates || k."checklistStates" || '{}', {}),
+                    checklistDates: safeParse(k.checklistdates || k."checklistDates" || '{}', {}),
+                    newItemsAddedAfterFinish: safeParse(k.newitemsaddedafterfinish || k."newItemsAddedAfterFinish" || '[]', []),
+                    finishedChecklistStates: safeParse(k.finishedcheckliststates || k."finishedChecklistStates" || '{}', {}),
+                    finishedAt: k.finishedat || ''
+                };
+            } catch (parseError) {
+                console.error(`❌ Full parse error for kapal ${k.id || index}:`, parseError);
+                return {
+                    id: k.id || index,
+                    error: 'Parse failed',
+                    raw: k  // Include raw for debugging
+                };
+            }
+        });
+
+        console.log('✅ /api/kapal-masuk parsed successfully');
         res.json({
             success: true,
             message: 'Kapal Masuk retrieved successfully',
-            data: parsedKapalMasuk
+            data: parsedKapalMasuk,
+            debug: { totalRecords: kapalMasuk.length, firstId: kapalMasuk[0]?.id }
         });
     } catch (error) {
-        console.error('Get kapal masuk error:', error);
+        console.error('💥 GET /api/kapal-masuk FULL ERROR:', {
+            message: error.message,
+            stack: error.stack,
+            code: error.code,
+            queryFailed: error.code === 'ECONNREFUSED'
+        });
         res.status(500).json({
             success: false,
-            message: 'Database error'
+            message: `Database error: ${error.message}`,
+            details: process.env.NODE_ENV === 'development' ? error.stack : 'Check server logs'
         });
     }
 });
@@ -1727,6 +1749,11 @@ app.get('/api/kapal-masuk', authenticateToken, async (req, res) => {
 app.get('/api/kapal-masuk/:id', authenticateToken, async (req, res) => {
     try {
         const { id } = req.params;
+        
+        if (!kapalMasukPool) {
+            throw new Error('kapalMasukPool not initialized');
+        }
+        
         const result = await kapalMasukPool.query('SELECT * FROM kapal_masuk_schema.kapal_masuk WHERE id = $1', [id]);
         const kapalMasuk = result.rows[0];
 
@@ -1737,34 +1764,43 @@ app.get('/api/kapal-masuk/:id', authenticateToken, async (req, res) => {
             });
         }
 
-        // Parse JSON strings back to arrays and map to camelCase
+        const safeParse = (field, fallback) => {
+            if (!field) return fallback;
+            try {
+                return JSON.parse(field);
+            } catch (e) {
+                console.error(`Parse error kapal ${id}.${field.slice(0,20)}...:`, e.message);
+                return fallback;
+            }
+        };
+
         const parsedKapalMasuk = {
             id: kapalMasuk.id,
-            nama: kapalMasuk.nama,
-            namaPemilik: kapalMasuk.namapemilik,
-            tandaSelar: kapalMasuk.tandaselar,
-            tandaPengenal: kapalMasuk.tandapengenal,
-            beratKotor: kapalMasuk.beratkotor,
-            beratBersih: kapalMasuk.beratbersih,
-            merekMesin: kapalMasuk.merekmesin,
-            nomorSeriMesin: kapalMasuk.nomorserimesin,
-            jenisAlatTangkap: kapalMasuk.jenisalattangkap,
-            tanggalInput: kapalMasuk.tanggalinput,
-            tanggalKeberangkatan: kapalMasuk.tanggalkeberangkatan,
-            totalHariPersiapan: kapalMasuk.totalharipersiapan,
-            tanggalBerangkat: kapalMasuk.tanggalberangkat,
-            tanggalKembali: kapalMasuk.tanggalkembali,
-            listPersiapan: parseListPersiapan(kapalMasuk.listpersiapan),
+            nama: kapalMasuk.nama || '',
+            "namaPemilik": kapalMasuk."namapemilik" || kapalMasuk.namapemilik || '',
+            "tandaSelar": kapalMasuk."tandaselar" || kapalMasuk.tandaselar || '',
+            "tandaPengenal": kapalMasuk."tandapengenal" || kapalMasuk.tandapengenal || '',
+            "beratKotor": kapalMasuk."beratkotor" || kapalMasuk.beratkotor || '',
+            "beratBersih": kapalMasuk."beratbersih" || kapalMasuk.beratbersih || '',
+            "merekMesin": kapalMasuk."merekmesin" || kapalMasuk.merekmesin || '',
+            "nomorSeriMesin": kapalMasuk."nomorserimesin" || kapalMasuk.nomorserimesin || '',
+            "jenisAlatTangkap": kapalMasuk."jenisalattangkap" || kapalMasuk.jenisalattangkap || '',
+            tanggalInput: kapalMasuk.tanggalinput || '',
+            tanggalKeberangkatan: kapalMasuk.tanggalkeberangkatan || '',
+            totalHariPersiapan: parseInt(kapalMasuk.totalharipersiapan) || 0,
+            tanggalBerangkat: kapalMasuk.tanggalberangkat || '',
+            tanggalKembali: kapalMasuk.tanggalkembali || '',
+            listPersiapan: parseListPersiapan(kapalMasuk.listpersiapan || '[]'),
             isFinished: Boolean(kapalMasuk.isfinished),
-            perkiraanKeberangkatan: kapalMasuk.perkiraankeberangkatan,
-            durasiSelesaiPersiapan: kapalMasuk.durasiselesaiPersiapan,
-            durasiBerlayar: kapalMasuk.durasiberlayar,
-            statusKerja: kapalMasuk.statuskerja,
-            checklistStates: JSON.parse(kapalMasuk.checklistStates || '{}'),
-            checklistDates: JSON.parse(kapalMasuk.checklistDates || '{}'),
-            newItemsAddedAfterFinish: JSON.parse(kapalMasuk.newItemsAddedAfterFinish || '[]'),
-            finishedChecklistStates: JSON.parse(kapalMasuk.finishedChecklistStates || '{}'),
-            finishedAt: kapalMasuk.finishedat
+            perkiraanKeberangkatan: kapalMasuk.perkiraankeberangkatan || '',
+            durasiSelesaiPersiapan: kapalMasuk.durasiselesaipersiapan || '',
+            durasiBerlayar: kapalMasuk.durasiberlayar || '',
+            statusKerja: kapalMasuk.statuskerja || 'persiapan',
+            checklistStates: safeParse(kapalMasuk.checkliststates || kapalMasuk."checklistStates" || '{}', {}),
+            checklistDates: safeParse(kapalMasuk.checklistdates || kapalMasuk."checklistDates" || '{}', {}),
+            newItemsAddedAfterFinish: safeParse(kapalMasuk.newitemsaddedafterfinish || kapalMasuk."newItemsAddedAfterFinish" || '[]', []),
+            finishedChecklistStates: safeParse(kapalMasuk.finishedcheckliststates || kapalMasuk."finishedChecklistStates" || '{}', {}),
+            finishedAt: kapalMasuk.finishedat || ''
         };
 
         res.json({
@@ -1773,10 +1809,15 @@ app.get('/api/kapal-masuk/:id', authenticateToken, async (req, res) => {
             data: parsedKapalMasuk
         });
     } catch (error) {
-        console.error('Get kapal masuk by id error:', error);
+        console.error('💥 GET /api/kapal-masuk/:id FULL ERROR:', {
+            id: req.params.id,
+            message: error.message,
+            stack: error.stack
+        });
         res.status(500).json({
             success: false,
-            message: 'Database error'
+            message: `Database error: ${error.message}`,
+            details: process.env.NODE_ENV === 'development' ? error.stack : 'Check logs'
         });
     }
 });
