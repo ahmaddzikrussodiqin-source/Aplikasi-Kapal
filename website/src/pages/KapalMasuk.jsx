@@ -237,43 +237,56 @@ const KapalMasuk = () => {
     }
   };
 
-const handleTambahKebutuhanConfirm = async () => {
+  const handleTambahKebutuhanConfirm = async () => {
     if (!newKebutuhan.trim() || !selectedKapalForKebutuhan) return;
 
-    // CRITICAL: Get FRESH data from kapalMasukList - avoid stale state
-    const freshKapal = kapalMasukList.find(k => k.id === selectedKapalForKebutuhan.id);
-    
-    console.log('=== ADD KEBUTUHAN DEBUG ===');
-    console.log('Selected ID:', selectedKapalForKebutuhan.id);
-    console.log('Fresh from list states:', freshKapal?.checklistStates);
-    console.log('Selected stored states:', selectedKapalForKebutuhan.checklistStates);
-    console.log('Using fresh states:', freshKapal?.checklistStates || selectedKapalForKebutuhan.checklistStates);
-    console.log('New kebutuhan:', newKebutuhan.trim());
+    try {
+      // CRITICAL: Get FRESH data from kapalMasukList - avoid stale state
+      const freshKapal = kapalMasukList.find(k => k.id === selectedKapalForKebutuhan.id);
+      
+      console.log('=== ADD KEBUTUHAN DEBUG ===');
+      console.log('Selected ID:', selectedKapalForKebutuhan.id);
+      console.log('Fresh from list states:', freshKapal?.checklistStates);
+      console.log('Selected stored states:', selectedKapalForKebutuhan.checklistStates);
+      console.log('Using fresh states:', JSON.stringify(freshKapal?.checklistStates || selectedKapalForKebutuhan.checklistStates));
+      console.log('New kebutuhan:', newKebutuhan.trim());
 
-    const currentStates = freshKapal?.checklistStates || selectedKapalForKebutuhan.checklistStates || {};
-    const updatedChecklistStates = { ...currentStates };
-    updatedChecklistStates[newKebutuhan.trim()] = false;
+      const currentStates = freshKapal?.checklistStates || selectedKapalForKebutuhan.checklistStates || {};
+      const updatedChecklistStates = { ...currentStates };
+      updatedChecklistStates[newKebutuhan.trim()] = false;
 
-    const currentDates = freshKapal?.checklistDates || selectedKapalForKebutuhan.checklistDates || {};
-    const updatedChecklistDates = { ...currentDates };
-    updatedChecklistDates[newKebutuhan.trim()] = '';
+      const currentDates = freshKapal?.checklistDates || selectedKapalForKebutuhan.checklistDates || {};
+      const updatedChecklistDates = { ...currentDates };
+      updatedChecklistDates[newKebutuhan.trim()] = '';
 
-    const updatedList = [...(freshKapal?.listPersiapan || selectedKapalForKebutuhan.listPersiapan || []), newKebutuhan.trim()];
+      const updatedList = [...(freshKapal?.listPersiapan || selectedKapalForKebutuhan.listPersiapan || []), newKebutuhan.trim()];
 
-    const updatePayload = {
-      ...freshKapal,
-      ...selectedKapalForKebutuhan,
-      listPersiapan: updatedList,
-      checklistStates: updatedChecklistStates,
-      checklistDates: updatedChecklistDates
-    };
+      const updatePayload = {
+        ...freshKapal,
+        ...selectedKapalForKebutuhan,
+        listPersiapan: updatedList,
+        checklistStates: updatedChecklistStates,
+        checklistDates: updatedChecklistDates
+      };
 
-    console.log('Final payload checklistStates:', updatePayload.checklistStates);
+      console.log('Final payload checklistStates:', updatePayload.checklistStates);
 
-    const response = await kapalMasukAPI.update(token, selectedKapalForKebutuhan.id, updatePayload);
+      const response = await kapalMasukAPI.update(token, selectedKapalForKebutuhan.id, updatePayload);
 
       console.log('After update - response:', response);
-      console.log('Sent checklistStates:', updatedChecklistStates);
+
+      if (response.success) {
+        console.log('Add successful - reloading data');
+        loadData();
+        setShowKebutuhanModal(false);
+        setSelectedKapalForKebutuhan(null);
+        setNewKebutuhan('');
+        console.log('=== END ADD DEBUG ===');
+      }
+    } catch (error) {
+      console.error('Error adding kebutuhan:', error);
+    }
+  };
 
       if (response.success) {
         console.log('Add successful - reloading data');
