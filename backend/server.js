@@ -1688,9 +1688,9 @@ app.get('/api/kapal-masuk', authenticateToken, async (req, res) => {
                 return {
                     id: k.id,
                     nama: k.nama || '',
-                    "namaPemilik": k."namapemilik" || k.namapemilik || '',
-                    "tandaSelar": k."tandaselar" || k.tandaselar || '',
-                    "tandaPengenal": k."tandapengenal" || k.tandapengenal || '',
+"namaPemilik": k['namapemilik'] || k.namapemilik || '',
+"tandaSelar": k['tandaselar'] || k.tandaselar || '',
+"tandaPengenal": k['tandapengenal'] || k.tandapengenal || '',
                     "beratKotor": k."beratkotor" || k.beratkotor || '',
                     "beratBersih": k."beratbersih" || k.beratbersih || '',
                     "merekMesin": k."merekmesin" || k.merekmesin || '',
@@ -1777,8 +1777,8 @@ app.get('/api/kapal-masuk/:id', authenticateToken, async (req, res) => {
         const parsedKapalMasuk = {
             id: kapalMasuk.id,
             nama: kapalMasuk.nama || '',
-            "namaPemilik": kapalMasuk."namapemilik" || kapalMasuk.namapemilik || '',
-            "tandaSelar": kapalMasuk."tandaselar" || kapalMasuk.tandaselar || '',
+"namaPemilik": kapalMasuk['namapemilik'] || kapalMasuk.namapemilik || '',
+"tandaSelar": kapalMasuk['tandaselar'] || kapalMasuk.tandaselar || '',
             "tandaPengenal": kapalMasuk."tandapengenal" || kapalMasuk.tandapengenal || '',
             "beratKotor": kapalMasuk."beratkotor" || kapalMasuk.beratkotor || '',
             "beratBersih": kapalMasuk."beratbersih" || kapalMasuk.beratbersih || '',
