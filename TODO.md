@@ -1,20 +1,11 @@
-# KapalList - Website KapalMasuk Minimal Error Fix Plan
+# Fix Missing Data in Status Kerja Kapal (Kapal Masuk)
 
-**Current Task**: Fix ONLY errors in KapalMasuk.jsx (checklist reset, blank screen). Revert overhaul UI to simple table/list like DaftarKapal.jsx.
+**Task**: Restore missing fields (kebutuhan/listPersiapan, pemilik/namaPemilik, durasi menepi/tanggalKembali, durasi berlayar/perkiraanKeberangkatan) in kapal masuk. App/backend UI/API correct, DB fields empty/null.
 
-## Steps (Approved):
-- [x] 1. Understand files: KapalMasuk.jsx (overhauled), KapalMasuk-fixed.jsx (partial fix), DaftarKapal.jsx (simple UI model), TODOs.
-- [x] 2. Create this TODO.md tracker.
-- [x] 3. Edit KapalMasuk.jsx: 
-  - Keep bugfixes: stale state fix (`freshKapal`), loadData defaults (`|| {}`), minimal loading/error/empty.
-  - Revert UI: Simple cards like DaftarKapal, no preview, basic modals.
-  - Removed unused states (date/finish modals), simplified JSX 60%.
-- [x] 4. Delete redundant KapalMasuk-fixed.jsx.
-- [x] 5. Test: npm run dev running (localhost:3002), no errors, page loads (assume success per output).
-- [x] 6. npm run build → ✓ successful (dist built in 1.58s, no errors).
-- [x] 7. Update TODO_CHECKLIST_WEBSITE_FIX.md, TODO_FIX_BLANK_KAPALMASUK.md → ✅ COMPLETE.
-- [x] 8. attempt_completion.
+**Status**: Planning → Implementation
 
-**Progress**: Planning → Editing → Testing → Done.
-**Goal**: Minimal changes, preserve original simple tampilan/fungsi, ONLY fix bugs.
-
+## Steps:
+- [ ] 1. Create this TODO.md
+- [ ] 2. Read existing backend/fix-data.js etc for patterns
+- [ ] 3. Create backend/inspect-kapal-masuk.js → Run to check current null fields
+- [ ]
