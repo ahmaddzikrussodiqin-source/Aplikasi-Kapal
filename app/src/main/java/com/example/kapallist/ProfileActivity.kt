@@ -178,19 +178,10 @@ private fun showKapalInfoDialog(kapal: KapalMasukEntity) {
         
         dialogView.findViewById<TextView>(R.id.tv_nama_kapal_view).text = "Nama Kapal: ${kapal.nama ?: "-"}"
         dialogView.findViewById<TextView>(R.id.tv_nama_pemilik_view).text = "Nama Pemilik: ${kapal.namaPemilik ?: "-"}"
-        dialogView.findViewById<TextView>(R.id.tv_tanda_selar_view).text = "Tanda Selar: ${kapal.tandaSelar ?: "-"}"
-        dialogView.findViewById<TextView>(R.id.tv_tanda_pengenal_view).text = "Tanda Pengenal: ${kapal.tandaPengenal ?: "-"}"
-        dialogView.findViewById<TextView>(R.id.tv_berat_kotor_view).text = "Berat Kotor: ${kapal.beratKotor ?: "-"}"
-        dialogView.findViewById<TextView>(R.id.tv_berat_bersih_view).text = "Berat Bersih: ${kapal.beratBersih ?: "-"}"
-        dialogView.findViewById<TextView>(R.id.tv_merek_mesin_view).text = "Merek Mesin: ${kapal.merekMesin ?: "-"}"
-        dialogView.findViewById<TextView>(R.id.tv_nomor_seri_mesin_view).text = "Nomor Seri Mesin: ${kapal.nomorSeriMesin ?: "-"}"
-        dialogView.findViewById<TextView>(R.id.tv_jenis_alat_tangkap_view).text = "Jenis Alat Tangkap: ${kapal.jenisAlatTangkap ?: "-"}"
-        dialogView.findViewById<TextView>(R.id.tv_tanggal_input_view).text = "Tanggal Input: ${kapal.tanggalInput ?: "-"}"
-        dialogView.findViewById<TextView>(R.id.tv_tanggal_keberangkatan_view).text = "Tanggal Keberangkatan: ${kapal.tanggalKeberangkatan ?: "-"}"
-        dialogView.findViewById<TextView>(R.id.tv_durasi_berlayar_view).text = "Durasi Berlayar: ${kapal.durasiBerlayar ?: "-"}"
         dialogView.findViewById<TextView>(R.id.tv_status_kerja_view).text = "Status Kerja: ${kapal.statusKerja ?: "-"}"
         dialogView.findViewById<TextView>(R.id.tv_status_view).text = "Status: ${kapal.status ?: "-"}"
         dialogView.findViewById<TextView>(R.id.tv_is_finished_view).text = "Selesai: ${if (kapal.isFinished) "Ya" else "Tidak"}"
+
 
         AlertDialog.Builder(this)
             .setView(dialogView)
