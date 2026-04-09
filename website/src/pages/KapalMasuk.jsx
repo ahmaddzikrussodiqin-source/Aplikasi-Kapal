@@ -79,6 +79,26 @@ const KapalMasuk = () => {
     safeTanggalKeberangkatan: safeDateParse(kapal.tanggalKeberangkatan)
   });
 
+  const getStatusBadge = (status) => {
+    const s = (status || '').toLowerCase().trim();
+    if (s.includes('berlayar') || s === 'sailing') {
+      return { icon: '🛥️', text: 'Berlayar', color: 'bg-emerald-100 text-emerald-800 border-emerald-300' };
+    }
+    if (s.includes('menepi') || s === 'docked') {
+      return { icon: '⚓', text: 'Menepi', color: 'bg-blue-100 text-blue-800 border-blue-300' };
+    }
+    return { icon: '⏳', text: status || 'Persiapan', color: 'bg-yellow-100 text-yellow-800 border-yellow-300' };
+  };
+
+  const getChecklistProgress = (kapal) => {
+    const items = kapal.listPersiapan || [];
+    const states = kapal.checklistStates || {};
+    const checked = items.filter(item => states[item]).length;
+    const total = items.length;
+    const percent = total > 0 ? Math.round((checked / total) * 100) : 0;
+    return { checked, total, percent };
+  };
+
   const getKebutuhanSection = (kapal) => {
     const listPersiapan = kapal.listPersiapan || [];
     const isEmpty = listPersiapan.length === 0;
@@ -406,11 +426,14 @@ const KapalMasuk = () => {
                           </svg>
                         </div>
                         <div>
-                          <h3 className="text-xl font-semibold text-gray-800">{kapal.nama}</h3>
-                          <p className="text-green-600 font-medium">{kapal.status || kapal.statusKerja || 'Belum ditentukan'}</p>
-                          <p className="text-gray-500">Kembali: {kapal.tanggalKembali || 'Belum ditentukan'}</p>
-                          <p className="text-gray-500 text-sm">Pemilik: {kapal.namaPemilik || '-' }</p>
+                        <h3 className="text-xl font-semibold text-gray-800">{kapal.nama}</h3>
+                        <div className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium border ${getStatusBadge(kapal.status || kapal.statusKerja).color}`}>
+                          {getStatusBadge(kapal.status || kapal.statusKerja).icon}
+                          <span className="ml-1">{getStatusBadge(kapal.status || kapal.statusKerja).text}</span>
                         </div>
+                        <p className="text-gray-500">Kembali: {kapal.tanggalKembali || 'Belum ditentukan'}</p>
+                        <p className="text-gray-500 text-sm">Pemilik: {kapal.namaPemilik || '-'}</p>
+                      </div>
                       </div>
                     </div>
                     <div className="flex gap-2 flex-wrap">
