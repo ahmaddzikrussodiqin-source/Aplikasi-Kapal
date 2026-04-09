@@ -160,27 +160,25 @@ const KapalMasuk = () => {
           />
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3 max-h-48 overflow-y-auto">
-          {listPersiapan.slice(0, 10).map((item, idx) => (
-            <div key={idx} className="flex items-center gap-3 p-3 bg-white rounded-lg border-l-4 border-yellow-400">
-              <label className="flex items-center gap-3 p-2 rounded-lg hover:bg-gray-100 cursor-pointer w-full">
-                <input
-                  type="checkbox"
-                  checked={kapal.checklistStates?.[item] || false}
-                  onChange={() => onToggle && onToggle(item)}
-                  className="w-5 h-5 text-emerald-600 rounded focus:ring-emerald-500"
-                />
-                <div>
-                  <p className="font-medium text-gray-900">{item}</p>
-                  {kapal.checklistDates?.[item] && (
-                    <p className="text-xs text-gray-500">Selesai: {kapal.checklistDates[item]}</p>
-                  )}
-                </div>
-              </label>
-            </div>
+          {itemsToShow.map((item) => (
+            <label key={item} className="flex items-start gap-3 p-3 bg-white rounded-lg border-l-4 border-yellow-400 hover:bg-yellow-100 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={kapal.checklistStates?.[item] || false}
+                onChange={() => onToggle && onToggle(item)}
+                className="mt-1 w-5 h-5 text-emerald-600 rounded focus:ring-emerald-500 flex-shrink-0"
+              />
+              <div className="flex-1 min-w-0">
+                <p className="font-medium text-gray-900 truncate">{item}</p>
+                {kapal.checklistDates?.[item] && (
+                  <p className="text-xs text-gray-500">Selesai: {kapal.checklistDates[item]}</p>
+                )}
+              </div>
+            </label>
           ))}
         </div>
-        {listPersiapan.length > 10 && (
-          <p className="text-sm text-gray-500 mt-2">+{listPersiapan.length - 10} more...</p>
+        {listPersiapan.length > itemsToShow.length && (
+          <p className="text-sm text-gray-500 mt-2">+{listPersiapan.length - itemsToShow.length} more...</p>
         )}
       </div>
     );
