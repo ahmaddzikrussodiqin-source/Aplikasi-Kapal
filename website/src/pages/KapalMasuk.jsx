@@ -99,9 +99,11 @@ const KapalMasuk = () => {
     return { checked, total, percent };
   };
 
-  const getKebutuhanSection = (kapal) => {
+  const getKebutuhanSection = (kapal, isCompact = true, onToggle) => {
     const listPersiapan = kapal.listPersiapan || [];
     const isEmpty = listPersiapan.length === 0;
+    const progress = getChecklistProgress(kapal);
+    const itemsToShow = isCompact ? listPersiapan.slice(0, 4) : listPersiapan;
 
     if (isEmpty) {
       // Generate default kebutuhan from ship data
@@ -148,25 +150,32 @@ const KapalMasuk = () => {
         <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
           Kebutuhan / Persiapan
           <span className="bg-yellow-200 text-yellow-800 px-2 py-1 rounded-full text-xs font-medium">
-            {listPersiapan.length} items
+            {progress.checked}/{progress.total} ({progress.percent}%)
           </span>
         </h3>
+        <div className="w-full bg-gray-200 rounded-full h-2 mb-4">
+          <div 
+            className="bg-emerald-500 h-2 rounded-full transition-all duration-300" 
+            style={{ width: `${progress.percent}%` }}
+          />
+        </div>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3 max-h-48 overflow-y-auto">
           {listPersiapan.slice(0, 10).map((item, idx) => (
             <div key={idx} className="flex items-center gap-3 p-3 bg-white rounded-lg border-l-4 border-yellow-400">
-              <div className={`w-2 h-2 rounded-full flex-shrink-0 ${
-                kapal.checklistStates?.[item] 
-                  ? 'bg-emerald-500' 
-                  : kapal.finishedChecklistStates?.[item]
-                  ? 'bg-gray-400' 
-                  : 'bg-yellow-400'
-              }`} />
-              <div>
-                <p className="font-medium text-gray-900">{item}</p>
-                {kapal.checklistDates?.[item] && (
-                  <p className="text-xs text-gray-500">Selesai: {kapal.checklistDates[item]}</p>
-                )}
-              </div>
+              <label className="flex items-center gap-3 p-2 rounded-lg hover:bg-gray-100 cursor-pointer w-full">
+                <input
+                  type="checkbox"
+                  checked={kapal.checklistStates?.[item] || false}
+                  onChange={() => onToggle && onToggle(item)}
+                  className="w-5 h-5 text-emerald-600 rounded focus:ring-emerald-500"
+                />
+                <div>
+                  <p className="font-medium text-gray-900">{item}</p>
+                  {kapal.checklistDates?.[item] && (
+                    <p className="text-xs text-gray-500">Selesai: {kapal.checklistDates[item]}</p>
+                  )}
+                </div>
+              </label>
             </div>
           ))}
         </div>
@@ -324,6 +333,38 @@ const KapalMasuk = () => {
     setDeleteConfirmId(id);
   };
 
+  const handleChecklistToggle = useCallback(async (item, kapalId) => {
+    try {
+      const kapal = kapalMasukList.find(k => k.id === kapalId);
+      if (!kapal) return;
+
+      // Optimistic update
+      const newStates = { ...kapal.checklistStates, [item]: !kapal.checklistStates?.[item] };
+      const isChecked = newStates[item];
+      const newDates = { ...kapal.checklistDates };
+      if (isChecked) {
+        newDates[item] = new Date().toLocaleDateString('id-ID');
+      } else {
+        newDates[item] = '';
+      }
+
+      setKapalMasukList(prev => prev.map(k => k.id === kapalId ? { ...k, checklistStates: newStates, checklistDates: newDates } : k));
+
+      const payload = { ...kapal, checklistStates: newStates, checklistDates: newDates };
+      const response = await kapalMasukAPI.update(token, kapalId, payload);
+
+      if (!response.success) {
+        // Revert on failure
+        loadData();
+        throw new Error(response.message || 'Update failed');
+      }
+    } catch (error) {
+      console.error('Checklist toggle error:', error);
+      loadData(); // Reload to revert
+      alert('Gagal update checklist: ' + error.message);
+    }
+  }, [token, kapalMasukList, loadData]);
+
   const confirmDelete = async () => {
     if (!deleteConfirmId) return;
     try {
@@ -457,7 +498,7 @@ const KapalMasuk = () => {
                   </div>
 
                   {/* Detail Grid - Compact view */}
-                  <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3 mb-4 p-4 bg-gray-50 rounded-lg">\n                    <div>\n                      <span className="text-xs text-gray-500 uppercase tracking-wide block">Tanda Selar</span>\n                      <p className="font-medium text-gray-800 text-sm">{kapal.tandaSelar || '-' }</p>\n                    </div>\n                    <div>\n                      <span className="text-xs text-gray-500 uppercase tracking-wide block">T. Pengenal</span>\n                      <p className="font-medium text-gray-800 text-sm">{kapal.tandaPengenal || '-' }</p>\n                    </div>\n                    <div>\n                      <span className="text-xs text-gray-500 uppercase tracking-wide block">Berat Kotor</span>\n                      <p className="font-medium text-gray-800 text-sm">{kapal.beratKotor || '-' } GT</p>\n                    </div>\n                    <div>\n                      <span className="text-xs text-gray-500 uppercase tracking-wide block">Berat Bersih</span>\n                      <p className="font-medium text-gray-800 text-sm">{kapal.beratBersih || '-' } NT</p>\n                    </div>\n                    <div className="lg:col-span-2">\n                      <span className="text-xs text-gray-500 uppercase tracking-wide block">Alat Tangkap</span>\n                      <p className="font-medium text-gray-800 text-sm">{kapal.jenisAlatTangkap || '-' }</p>\n                    </div>\n                  </div>\n\n                  {/* Kebutuhan / Persiapan Inline - Compact */}\n                  <div className="mt-4 p-4 bg-yellow-50 rounded-lg border border-yellow-200">\n                    {getKebutuhanSection(kapal)}\n                  </div>\n                </div>
+                    {getKebutuhanSection(kapal, true, (item) => handleChecklistToggle(item, kapal.id))}
               </div>
             ))}
           </div>
