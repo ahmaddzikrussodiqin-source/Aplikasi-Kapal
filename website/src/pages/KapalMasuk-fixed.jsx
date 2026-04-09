@@ -106,7 +106,6 @@ const KapalMasuk = () => {
     const itemsToShow = isCompact ? listPersiapan.slice(0, 4) : listPersiapan;
 
     if (isEmpty) {
-      // Generate default kebutuhan from ship data
       const defaults = [
         `Persiapan umum untuk "${kapal.nama || 'kapal'}"`,
         ...(kapal.namaPemilik ? [`Cek dokumen pemilik: ${kapal.namaPemilik}`] : []),
@@ -116,7 +115,7 @@ const KapalMasuk = () => {
         'Persiapan mesin dan bahan bakar',
         'Cek navigasi dan alat komunikasi',
         'Pemeriksaan keselamatan kru'
-      ].slice(0, 8); // Limit to 8
+      ].slice(0, 8);
 
       return (
         <div className="bg-blue-50 p-6 rounded-xl border-2 border-dashed border-blue-200">
@@ -144,7 +143,6 @@ const KapalMasuk = () => {
       );
     }
 
-    // Original logic for non-empty
     return (
       <div className="bg-yellow-50 p-6 rounded-xl">
         <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
@@ -159,7 +157,7 @@ const KapalMasuk = () => {
             style={{ width: `${progress.percent}%` }}
           />
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 max-h-48 overflow-y-auto">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 max-h-96 overflow-y-auto">
           {itemsToShow.map((item) => (
             <label key={item} className="flex items-start gap-3 p-3 bg-white rounded-lg border-l-4 border-yellow-400 hover:bg-yellow-100 cursor-pointer">
               <input
@@ -242,7 +240,7 @@ const KapalMasuk = () => {
     if (!newKebutuhan.trim() || !selectedKapalForKebutuhan) return;
 
     try {
-      const freshKapal = kapalMasukList.find(k => k.id === selectedKapalForKebutuhan.id);
+      const freshKapal = kapalMasukList.find(k => k.id = selectedKapalForKebutuhan.id);
       
       const currentStates = freshKapal?.checklistStates || selectedKapalForKebutuhan.checklistStates || {};
       const updatedChecklistStates = { ...currentStates };
@@ -495,8 +493,9 @@ const KapalMasuk = () => {
                     </div>
                   </div>
 
-                  {/* Kebutuhan / Persiapan Inline */}
-                  {getKebutuhanSection(kapal, true, (item) => handleChecklistToggle(item, kapal.id))}
+                  {/* Detail Grid - Compact view */}
+                    {getKebutuhanSection(kapal, true, (item) => handleChecklistToggle(item, kapal.id))}
+              </div>
             ))}
           </div>
         )}
@@ -556,7 +555,6 @@ const KapalMasuk = () => {
                 <button onClick={() => setShowDetailModal(false)} className="text-gray-500 hover:text-gray-700 p-1 -m-1 rounded-lg">
                   <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                  </svg>
                 </button>
               </div>
               <div className="p-6 space-y-6">
@@ -614,36 +612,8 @@ const KapalMasuk = () => {
                   </div>
                 </div>
 
-                {/* Kebutuhan / Persiapan Preview */}\n                {(selectedKapalMasuk.listPersiapan?.length || 0) > 0 && (
-                  <div className="bg-yellow-50 p-6 rounded-xl">
-                    <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
-                      Kebutuhan / Persiapan
-                      <span className="bg-yellow-200 text-yellow-800 px-2 py-1 rounded-full text-xs font-medium">
-                        {selectedKapalMasuk.listPersiapan?.length || 0} items
-                      </span>
-                    </h3>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3 max-h-48 overflow-y-auto">
-                      {selectedKapalMasuk.listPersiapan?.slice(0, 10).map((item, idx) => (
-                        <div key={idx} className="flex items-center gap-3 p-3 bg-white rounded-lg border-l-4 border-yellow-400">
-                          <div className={`w-2 h-2 rounded-full flex-shrink-0 ${
-                            selectedKapalMasuk.checklistStates?.[item] 
-                              ? 'bg-emerald-500' 
-                              : selectedKapalMasuk.finishedChecklistStates?.[item]
-                              ? 'bg-gray-400' 
-                              : 'bg-yellow-400'
-                          }`} />
-                          <div>
-                            <p className="font-medium text-gray-900">{item}</p>\n                            {selectedKapalMasuk.checklistDates?.[item] && (
-                              <p className="text-xs text-gray-500">Selesai: {selectedKapalMasuk.checklistDates[item]}</p>
-                            )}
-                          </div>
-                        </div>
-                      )) || []}
-                    </div>\n                    {selectedKapalMasuk.listPersiapan?.length > 10 && (
-                      <p className="text-sm text-gray-500 mt-2">+{selectedKapalMasuk.listPersiapan.length - 10} more...</p>
-                    )}
-                  </div>
-                )}
+                {/* Kebutuhan / Persiapan Preview */}
+                {getKebutuhanSection(selectedKapalMasuk, false, (item) => handleChecklistToggle(item, selectedKapalMasuk.id))}
 
                 {/* Action Buttons */}
                 <div className="flex flex-col sm:flex-row gap-3 pt-4 border-t">
@@ -672,7 +642,7 @@ const KapalMasuk = () => {
         )}
 
         {/* Kebutuhan Modal */}
-{showKebutuhanModal && (
+        {showKebutuhanModal && (
           <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
             <div className="bg-white rounded-lg shadow-2xl w-full max-w-sm p-6">
               <h2 className="text-xl font-bold mb-4">Tambah Kebutuhan</h2>
@@ -692,7 +662,7 @@ const KapalMasuk = () => {
         )}
 
         {/* Delete Confirm */}
-{deleteConfirmId && (
+        {deleteConfirmId && (
           <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
             <div className="bg-white rounded-lg shadow-2xl w-full max-w-sm p-6">
               <h2 className="text-xl font-bold text-red-600 mb-2">Hapus?</h2>
