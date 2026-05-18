@@ -79,7 +79,9 @@ const KapalMasuk = () => {
     safeTanggalKeberangkatan: safeDateParse(kapal.tanggalKeberangkatan)
   });
 
+
   const getStatusBadge = (status) => {
+
     const s = (status || '').toLowerCase().trim();
     if (s.includes('berlayar') || s === 'sailing') {
       return { icon: '🛥️', text: 'Berlayar', color: 'bg-emerald-100 text-emerald-800 border-emerald-300' };
@@ -103,7 +105,7 @@ const KapalMasuk = () => {
     const listPersiapan = kapal.listPersiapan || [];
     const isEmpty = listPersiapan.length === 0;
     const progress = getChecklistProgress(kapal);
-    const itemsToShow = isCompact ? listPersiapan.slice(0, 4) : listPersiapan;
+const itemsToShow = listPersiapan;
 
     if (isEmpty) {
       const defaults = [
@@ -240,7 +242,7 @@ const KapalMasuk = () => {
     if (!newKebutuhan.trim() || !selectedKapalForKebutuhan) return;
 
     try {
-      const freshKapal = kapalMasukList.find(k => k.id = selectedKapalForKebutuhan.id);
+const freshKapal = kapalMasukList.find(k => k.id === selectedKapalForKebutuhan.id);
       
       const currentStates = freshKapal?.checklistStates || selectedKapalForKebutuhan.checklistStates || {};
       const updatedChecklistStates = { ...currentStates };
@@ -272,9 +274,9 @@ const KapalMasuk = () => {
     }
   }, [kapalMasukList, token, newKebutuhan, selectedKapalForKebutuhan, loadData]);
 
-  const filteredKapalMasuk = kapalMasukList.filter(kapal =>
+const filteredKapalMasuk = kapalMasukList.filter(kapal =>
     kapal.nama?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    kapal.status?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (kapal.status || kapal.statusKerja || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
     kapal.namaPemilik?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 

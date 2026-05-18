@@ -6,19 +6,24 @@ import DatePicker from '../components/DatePicker';
 
 const KapalMasuk = () => {
   const { token, socket } = useAuth();
+
   const [kapalMasukList, setKapalMasukList] = useState([]);
   const [kapalList, setKapalList] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+
   const [showModal, setShowModal] = useState(false);
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [editingKapal, setEditingKapal] = useState(null);
   const [selectedKapalMasuk, setSelectedKapalMasuk] = useState(null);
+
   const [searchTerm, setSearchTerm] = useState('');
   const [deleteConfirmId, setDeleteConfirmId] = useState(null);
+
   const [newKebutuhan, setNewKebutuhan] = useState('');
   const [showKebutuhanModal, setShowKebutuhanModal] = useState(false);
   const [selectedKapalForKebutuhan, setSelectedKapalForKebutuhan] = useState(null);
+
   const [formData, setFormData] = useState({
     kapalId: '',
     nama: '',
@@ -28,15 +33,16 @@ const KapalMasuk = () => {
   });
 
   useEffect(() => {
-    if (token) {
-      loadData();
-    }
+    if (token) loadData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token]);
 
   useEffect(() => {
-    if (socket) {
-      socket.on('checklist-updated', (data) => {
-        setKapalMasukList(prev => prev.map(kapal => {
+    if (!socket) return;
+
+    socket.on('checklist-updated', (data) => {
+      setKapalMasukList((prev) =>
+        prev.map((kapal) => {
           if (kapal.id === data.kapalId) {
             return {
               ...kapal,
@@ -45,13 +51,12 @@ const KapalMasuk = () => {
             };
           }
           return kapal;
-        }));
-      });
-    }
+        })
+      );
+    });
+
     return () => {
-      if (socket) {
-        socket.off('checklist-updated');
-      }
+      socket.off('checklist-updated');
     };
   }, [socket]);
 
@@ -76,7 +81,7 @@ const KapalMasuk = () => {
     finishedChecklistStates: kapal.finishedChecklistStates || {},
     safeTanggalKembali: safeDateParse(kapal.tanggalKembali),
     safeTanggalBerangkat: safeDateParse(kapal.tanggalBerangkat),
-    safeTanggalKeberangkatan: safeDateParse(kapal.tanggalKeberangkatan)
+    safeTanggalKeberangkatan: safeDateParse(kapal.tanggalKeberangkatan),
   });
 
   const getStatusBadge = (status) => {
@@ -93,20 +98,20 @@ const KapalMasuk = () => {
   const getChecklistProgress = (kapal) => {
     const items = kapal.listPersiapan || [];
     const states = kapal.checklistStates || {};
-    const checked = items.filter(item => states[item]).length;
+    const checked = items.filter((item) => states[item]).length;
     const total = items.length;
     const percent = total > 0 ? Math.round((checked / total) * 100) : 0;
     return { checked, total, percent };
   };
 
+  // NOTE: untuk menampilkan data railway fully, tidak dipotong slice.
   const getKebutuhanSection = (kapal, isCompact = true, onToggle) => {
     const listPersiapan = kapal.listPersiapan || [];
     const isEmpty = listPersiapan.length === 0;
     const progress = getChecklistProgress(kapal);
-    const itemsToShow = isCompact ? listPersiapan.slice(0, 4) : listPersiapan;
+    const itemsToShow = listPersiapan; // full
 
     if (isEmpty) {
-      // Generate default kebutuhan from ship data
       const defaults = [
         `Persiapan umum untuk "${kapal.nama || 'kapal'}"`,
         ...(kapal.namaPemilik ? [`Cek dokumen pemilik: ${kapal.namaPemilik}`] : []),
@@ -115,8 +120,8 @@ const KapalMasuk = () => {
         ...(kapal.jenisAlatTangkap ? [`Persiapan alat tangkap: ${kapal.jenisAlatTangkap}`] : []),
         'Persiapan mesin dan bahan bakar',
         'Cek navigasi dan alat komunikasi',
-        'Pemeriksaan keselamatan kru'
-      ].slice(0, 8); // Limit to 8
+        'Pemeriksaan keselamatan kru',
+      ].slice(0, 8);
 
       return (
         <div className="bg-blue-50 p-6 rounded-xl border-2 border-dashed border-blue-200">
@@ -144,7 +149,6 @@ const KapalMasuk = () => {
       );
     }
 
-    // Original logic for non-empty
     return (
       <div className="bg-yellow-50 p-6 rounded-xl">
         <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
@@ -154,14 +158,17 @@ const KapalMasuk = () => {
           </span>
         </h3>
         <div className="w-full bg-gray-200 rounded-full h-2 mb-4">
-          <div 
-            className="bg-emerald-500 h-2 rounded-full transition-all duration-300" 
+          <div
+            className="bg-emerald-500 h-2 rounded-full transition-all duration-300"
             style={{ width: `${progress.percent}%` }}
           />
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 max-h-48 overflow-y-auto">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 max-h-96 overflow-y-auto">
           {itemsToShow.map((item) => (
-            <label key={item} className="flex items-start gap-3 p-3 bg-white rounded-lg border-l-4 border-yellow-400 hover:bg-yellow-100 cursor-pointer">
+            <label
+              key={item}
+              className="flex items-start gap-3 p-3 bg-white rounded-lg border-l-4 border-yellow-400 hover:bg-yellow-100 cursor-pointer"
+            >
               <input
                 type="checkbox"
                 checked={kapal.checklistStates?.[item] || false}
@@ -177,9 +184,6 @@ const KapalMasuk = () => {
             </label>
           ))}
         </div>
-        {listPersiapan.length > itemsToShow.length && (
-          <p className="text-sm text-gray-500 mt-2">+{listPersiapan.length - itemsToShow.length} more...</p>
-        )}
       </div>
     );
   };
@@ -189,39 +193,34 @@ const KapalMasuk = () => {
       setLoading(false);
       return;
     }
+
     try {
       setLoading(true);
       setError(null);
-      
-      console.log('🔄 Loading kapal masuk data...');
+
       const [kapalMasukRes, kapalRes] = await Promise.all([
         kapalMasukAPI.getAll(token),
         kapalAPI.getAll(token),
       ]);
 
-      console.log('📥 KapalMasuk response:', kapalMasukRes);
-      console.log('📥 Kapal response:', kapalRes);
-
       if (kapalMasukRes.success && Array.isArray(kapalMasukRes.data)) {
         const processedKapalMasuk = kapalMasukRes.data
-          .filter(k => k && !k.error)
+          .filter((k) => k && !k.error)
           .map(safeProcessKapal);
         setKapalMasukList(processedKapalMasuk);
-        console.log(`✅ Processed ${processedKapalMasuk.length} kapal masuk records`);
       } else {
-        console.warn('KapalMasuk API failed:', kapalMasukRes);
         setKapalMasukList([]);
+        console.warn('KapalMasuk API failed:', kapalMasukRes);
       }
 
       if (kapalRes.success && Array.isArray(kapalRes.data)) {
         setKapalList(kapalRes.data);
       } else {
-        console.warn('Kapal API failed:', kapalRes);
         setKapalList([]);
+        console.warn('Kapal API failed:', kapalRes);
       }
-    } catch (error) {
-      console.error('💥 loadData error:', error);
-      setError(`Gagal memuat data: ${error.message || 'Unknown error'}`);
+    } catch (e) {
+      setError(`Gagal memuat data: ${e.message || 'Unknown error'}`);
       setKapalMasukList([]);
       setKapalList([]);
     } finally {
@@ -229,39 +228,50 @@ const KapalMasuk = () => {
     }
   };
 
-  const handleTambahKebutuhan = useCallback((kapalId) => {
-    const currentKapal = kapalMasukList.find(k => k.id === kapalId);
-    if (currentKapal) {
+  const handleTambahKebutuhan = useCallback(
+    (kapalId) => {
+      const currentKapal = kapalMasukList.find((k) => k.id === kapalId);
+      if (!currentKapal) return;
       setSelectedKapalForKebutuhan({ ...currentKapal });
       setNewKebutuhan('');
       setShowKebutuhanModal(true);
-    }
-  }, [kapalMasukList]);
+    },
+    [kapalMasukList]
+  );
 
   const handleTambahKebutuhanConfirm = useCallback(async () => {
     if (!newKebutuhan.trim() || !selectedKapalForKebutuhan) return;
 
     try {
-      const freshKapal = kapalMasukList.find(k => k.id === selectedKapalForKebutuhan.id);
-      
-      const currentStates = freshKapal?.checklistStates || selectedKapalForKebutuhan.checklistStates || {};
+      const freshKapal = kapalMasukList.find((k) => k.id === selectedKapalForKebutuhan.id);
+
+      const currentStates =
+        freshKapal?.checklistStates || selectedKapalForKebutuhan.checklistStates || {};
       const updatedChecklistStates = { ...currentStates };
       updatedChecklistStates[newKebutuhan.trim()] = false;
 
-      const currentDates = freshKapal?.checklistDates || selectedKapalForKebutuhan.checklistDates || {};
+      const currentDates =
+        freshKapal?.checklistDates || selectedKapalForKebutuhan.checklistDates || {};
       const updatedChecklistDates = { ...currentDates };
       updatedChecklistDates[newKebutuhan.trim()] = '';
 
-      const updatedList = [...(freshKapal?.listPersiapan || selectedKapalForKebutuhan.listPersiapan || []), newKebutuhan.trim()];
+      const updatedList = [
+        ...(freshKapal?.listPersiapan || selectedKapalForKebutuhan.listPersiapan || []),
+        newKebutuhan.trim(),
+      ];
 
       const updatePayload = {
-        ...freshKapal || selectedKapalForKebutuhan,
+        ...(freshKapal || selectedKapalForKebutuhan),
         listPersiapan: updatedList,
         checklistStates: updatedChecklistStates,
-        checklistDates: updatedChecklistDates
+        checklistDates: updatedChecklistDates,
       };
 
-      const response = await kapalMasukAPI.update(token, selectedKapalForKebutuhan.id, updatePayload);
+      const response = await kapalMasukAPI.update(
+        token,
+        selectedKapalForKebutuhan.id,
+        updatePayload
+      );
 
       if (response.success) {
         loadData();
@@ -269,15 +279,18 @@ const KapalMasuk = () => {
         setSelectedKapalForKebutuhan(null);
         setNewKebutuhan('');
       }
-    } catch (error) {
-      console.error('Error adding kebutuhan:', error);
+    } catch (e) {
+      console.error('Error adding kebutuhan:', e);
     }
-  }, [kapalMasukList, token, newKebutuhan, selectedKapalForKebutuhan, loadData]);
+  }, [kapalMasukList, token, newKebutuhan, selectedKapalForKebutuhan]);
 
-  const filteredKapalMasuk = kapalMasukList.filter(kapal =>
-    kapal.nama?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    kapal.status?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    kapal.namaPemilik?.toLowerCase().includes(searchTerm.toLowerCase())
+  const filteredKapalMasuk = kapalMasukList.filter(
+    (kapal) =>
+      kapal.nama?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (kapal.status || kapal.statusKerja || '')
+        .toLowerCase()
+        .includes(searchTerm.toLowerCase()) ||
+      kapal.namaPemilik?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   const handleSubmit = async (e) => {
@@ -287,26 +300,19 @@ const KapalMasuk = () => {
         ...formData,
         kapalId: parseInt(formData.kapalId),
       };
-      let response;
-      if (editingKapal) {
-        response = await kapalMasukAPI.update(token, editingKapal.id, payload);
-      } else {
-        response = await kapalMasukAPI.create(token, payload);
-      }
+
+      const response = editingKapal
+        ? await kapalMasukAPI.update(token, editingKapal.id, payload)
+        : await kapalMasukAPI.create(token, payload);
+
       if (response.success) {
         setShowModal(false);
         setEditingKapal(null);
-        setFormData({
-          kapalId: '',
-          nama: '',
-          tanggalKembali: '',
-          status: '',
-          listPersiapan: [],
-        });
+        setFormData({ kapalId: '', nama: '', tanggalKembali: '', status: '', listPersiapan: [] });
         loadData();
       }
-    } catch (error) {
-      console.error('Error saving kapal masuk:', error);
+    } catch (e) {
+      console.error('Error saving kapal masuk:', e);
     }
   };
 
@@ -331,37 +337,37 @@ const KapalMasuk = () => {
     setDeleteConfirmId(id);
   };
 
-  const handleChecklistToggle = useCallback(async (item, kapalId) => {
-    try {
-      const kapal = kapalMasukList.find(k => k.id === kapalId);
-      if (!kapal) return;
+  const handleChecklistToggle = useCallback(
+    async (item, kapalId) => {
+      try {
+        const kapal = kapalMasukList.find((k) => k.id === kapalId);
+        if (!kapal) return;
 
-      // Optimistic update
-      const newStates = { ...kapal.checklistStates, [item]: !kapal.checklistStates?.[item] };
-      const isChecked = newStates[item];
-      const newDates = { ...kapal.checklistDates };
-      if (isChecked) {
-        newDates[item] = new Date().toLocaleDateString('id-ID');
-      } else {
-        newDates[item] = '';
-      }
+        const newStates = { ...kapal.checklistStates, [item]: !kapal.checklistStates?.[item] };
+        const isChecked = newStates[item];
 
-      setKapalMasukList(prev => prev.map(k => k.id === kapalId ? { ...k, checklistStates: newStates, checklistDates: newDates } : k));
+        const newDates = { ...kapal.checklistDates };
+        newDates[item] = isChecked ? new Date().toLocaleDateString('id-ID') : '';
 
-      const payload = { ...kapal, checklistStates: newStates, checklistDates: newDates };
-      const response = await kapalMasukAPI.update(token, kapalId, payload);
+        setKapalMasukList((prev) =>
+          prev.map((k) => (k.id === kapalId ? { ...k, checklistStates: newStates, checklistDates: newDates } : k))
+        );
 
-      if (!response.success) {
-        // Revert on failure
+        const payload = { ...kapal, checklistStates: newStates, checklistDates: newDates };
+        const response = await kapalMasukAPI.update(token, kapalId, payload);
+
+        if (!response.success) {
+          loadData();
+          throw new Error(response.message || 'Update failed');
+        }
+      } catch (e) {
+        console.error('Checklist toggle error:', e);
         loadData();
-        throw new Error(response.message || 'Update failed');
+        alert('Gagal update checklist: ' + (e.message || 'Unknown error'));
       }
-    } catch (error) {
-      console.error('Checklist toggle error:', error);
-      loadData(); // Reload to revert
-      alert('Gagal update checklist: ' + error.message);
-    }
-  }, [token, kapalMasukList, loadData]);
+    },
+    [token, kapalMasukList]
+  );
 
   const confirmDelete = async () => {
     if (!deleteConfirmId) return;
@@ -370,8 +376,8 @@ const KapalMasuk = () => {
       if (response.success) {
         loadData();
       }
-    } catch (error) {
-      console.error('Error deleting kapal masuk:', error);
+    } catch (e) {
+      console.error('Error deleting kapal masuk:', e);
     } finally {
       setDeleteConfirmId(null);
     }
@@ -379,7 +385,6 @@ const KapalMasuk = () => {
 
   return (
     <div className="min-h-screen bg-gray-100">
-      {/* Header */}
       <header className="bg-green-600 text-white shadow-lg">
         <div className="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
           <div className="flex items-center gap-4">
@@ -390,16 +395,11 @@ const KapalMasuk = () => {
             </Link>
             <h1 className="text-2xl font-bold">Status Kerja Kapal</h1>
           </div>
+
           <button
             onClick={() => {
               setEditingKapal(null);
-              setFormData({
-                kapalId: '',
-                nama: '',
-                tanggalKembali: '',
-                status: '',
-                listPersiapan: [],
-              });
+              setFormData({ kapalId: '', nama: '', tanggalKembali: '', status: '', listPersiapan: [] });
               setShowModal(true);
             }}
             className="bg-white text-green-600 px-4 py-2 rounded-lg hover:bg-green-50 transition-colors font-medium flex items-center gap-2"
@@ -412,21 +412,24 @@ const KapalMasuk = () => {
         </div>
       </header>
 
-      {/* Error Banner */}
-{error && (
+      {error && (
         <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mx-4 mt-4 max-w-7xl">
           <div className="flex justify-between items-center">
             <span>{error}</span>
-            <button onClick={() => {setError(null); loadData();}} className="ml-4 text-red-700 hover:text-red-900 font-medium">
+            <button
+              onClick={() => {
+                setError(null);
+                loadData();
+              }}
+              className="ml-4 text-red-700 hover:text-red-900 font-medium"
+            >
               Coba lagi
             </button>
           </div>
         </div>
       )}
 
-      {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 py-8">
-        {/* Search */}
         <div className="mb-6">
           <div className="relative">
             <input
@@ -442,10 +445,9 @@ const KapalMasuk = () => {
           </div>
         </div>
 
-        {/* Loading / Empty */}
         {loading ? (
           <div className="flex justify-center py-12">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600"></div>
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600" />
           </div>
         ) : filteredKapalMasuk.length === 0 ? (
           <div className="text-center py-12">
@@ -465,18 +467,25 @@ const KapalMasuk = () => {
                           </svg>
                         </div>
                         <div>
-                        <h3 className="text-xl font-semibold text-gray-800">{kapal.nama}</h3>
-                        <div className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium border ${getStatusBadge(kapal.status || kapal.statusKerja).color}`}>
-                          {getStatusBadge(kapal.status || kapal.statusKerja).icon}
-                          <span className="ml-1">{getStatusBadge(kapal.status || kapal.statusKerja).text}</span>
+                          <h3 className="text-xl font-semibold text-gray-800">{kapal.nama}</h3>
+                          <div
+                            className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium border ${getStatusBadge(kapal.status || kapal.statusKerja).color}`}
+                          >
+                            {getStatusBadge(kapal.status || kapal.statusKerja).icon}
+                            <span className="ml-1">{getStatusBadge(kapal.status || kapal.statusKerja).text}</span>
+                          </div>
+                          <p className="text-gray-500">Kembali: {kapal.tanggalKembali || 'Belum ditentukan'}</p>
+                          <p className="text-gray-500 text-sm">Pemilik: {kapal.namaPemilik || '-'}</p>
                         </div>
-                        <p className="text-gray-500">Kembali: {kapal.tanggalKembali || 'Belum ditentukan'}</p>
-                        <p className="text-gray-500 text-sm">Pemilik: {kapal.namaPemilik || '-'}</p>
-                      </div>
                       </div>
                     </div>
+
                     <div className="flex gap-2 flex-wrap">
-                      <button onClick={() => handleViewDetail(kapal)} className="bg-gray-100 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-200 transition-colors flex items-center gap-1 text-sm" title="Lihat Detail">
+                      <button
+                        onClick={() => handleViewDetail(kapal)}
+                        className="bg-gray-100 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-200 transition-colors flex items-center gap-1 text-sm"
+                        title="Lihat Detail"
+                      >
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
@@ -495,113 +504,122 @@ const KapalMasuk = () => {
                     </div>
                   </div>
 
-                  {/* Kebutuhan / Persiapan Inline */}
                   {getKebutuhanSection(kapal, true, (item) => handleChecklistToggle(item, kapal.id))}
+                </div>
+              </div>
             ))}
           </div>
         )}
 
-        {/* Tambah/Edit Modal */}
-{showModal && (
+        {showModal && (
           <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
             <div className="bg-white rounded-lg shadow-2xl w-full max-w-md p-6">
               <h2 className="text-xl font-bold mb-4">{editingKapal ? 'Edit' : 'Tambah'} Kapal Masuk</h2>
               <form onSubmit={handleSubmit} className="space-y-4">
                 <select
                   value={formData.kapalId}
-                  onChange={(e) => setFormData({...formData, kapalId: e.target.value})}
+                  onChange={(e) => setFormData({ ...formData, kapalId: e.target.value })}
                   className="w-full p-2 border rounded"
                   required
                 >
                   <option value="">Pilih Kapal</option>
-                  {kapalList.map(k => (
-                    <option key={k.id} value={k.id}>{k.nama}</option>
+                  {kapalList.map((k) => (
+                    <option key={k.id} value={k.id}>
+                      {k.nama}
+                    </option>
                   ))}
                 </select>
                 <input
                   type="text"
                   placeholder="Nama khusus"
                   value={formData.nama}
-                  onChange={(e) => setFormData({...formData, nama: e.target.value})}
+                  onChange={(e) => setFormData({ ...formData, nama: e.target.value })}
                   className="w-full p-2 border rounded"
                 />
                 <input
                   type="date"
                   value={formData.tanggalKembali}
-                  onChange={(e) => setFormData({...formData, tanggalKembali: e.target.value})}
+                  onChange={(e) => setFormData({ ...formData, tanggalKembali: e.target.value })}
                   className="w-full p-2 border rounded"
                 />
                 <input
                   type="text"
                   placeholder="Status"
                   value={formData.status}
-                  onChange={(e) => setFormData({...formData, status: e.target.value})}
+                  onChange={(e) => setFormData({ ...formData, status: e.target.value })}
                   className="w-full p-2 border rounded"
                 />
                 <div className="flex gap-2">
-                  <button type="button" onClick={() => setShowModal(false)} className="flex-1 p-2 border rounded">Batal</button>
-                  <button type="submit" className="flex-1 bg-green-600 text-white p-2 rounded">Simpan</button>
+                  <button type="button" onClick={() => setShowModal(false)} className="flex-1 p-2 border rounded">
+                    Batal
+                  </button>
+                  <button type="submit" className="flex-1 bg-green-600 text-white p-2 rounded">
+                    Simpan
+                  </button>
                 </div>
               </form>
             </div>
           </div>
         )}
 
-        {/* Detail Modal */}
-{showDetailModal && selectedKapalMasuk && (
+        {showDetailModal && selectedKapalMasuk && (
           <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50 overflow-y-auto">
             <div className="bg-white rounded-xl shadow-2xl w-full max-w-4xl max-h-[90vh]">
               <div className="p-6 border-b flex justify-between items-center sticky top-0 bg-white z-10">
                 <h2 className="text-2xl font-semibold text-gray-800">Detail Kapal Masuk: {selectedKapalMasuk.nama}</h2>
-                <button onClick={() => setShowDetailModal(false)} className="text-gray-500 hover:text-gray-700 p-1 -m-1 rounded-lg">
+                <button
+                  onClick={() => setShowDetailModal(false)}
+                  className="text-gray-500 hover:text-gray-700 p-1 -m-1 rounded-lg"
+                >
                   <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                   </svg>
                 </button>
               </div>
+
               <div className="p-6 space-y-6">
-                {/* Informasi Kapal */}
                 <div className="bg-gray-50 p-6 rounded-xl">
                   <h3 className="text-lg font-semibold text-gray-800 mb-4 border-b pb-3">Informasi Kapal</h3>
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     <div>
                       <span className="text-sm font-medium text-gray-500 block mb-1">Pemilik Kapal</span>
-                      <p className="text-xl font-semibold text-gray-900">{selectedKapalMasuk.namaPemilik || '-' }</p>
+                      <p className="text-xl font-semibold text-gray-900">{selectedKapalMasuk.namaPemilik || '-'}</p>
                     </div>
                     <div>
                       <span className="text-sm font-medium text-gray-500 block mb-1">Tanda Selar</span>
-                      <p className="font-semibold text-gray-900">{selectedKapalMasuk.tandaSelar || '-' }</p>
+                      <p className="font-semibold text-gray-900">{selectedKapalMasuk.tandaSelar || '-'}</p>
                     </div>
                     <div>
                       <span className="text-sm font-medium text-gray-500 block mb-1">Tanda Pengenal</span>
-                      <p className="font-semibold text-gray-900">{selectedKapalMasuk.tandaPengenal || '-' }</p>
+                      <p className="font-semibold text-gray-900">{selectedKapalMasuk.tandaPengenal || '-'}</p>
                     </div>
                     <div>
                       <span className="text-sm font-medium text-gray-500 block mb-1">Berat Kotor</span>
-                      <p className="font-semibold text-gray-900">{selectedKapalMasuk.beratKotor || '-' } GT</p>
+                      <p className="font-semibold text-gray-900">{selectedKapalMasuk.beratKotor || '-'} GT</p>
                     </div>
                     <div>
                       <span className="text-sm font-medium text-gray-500 block mb-1">Berat Bersih</span>
-                      <p className="font-semibold text-gray-900">{selectedKapalMasuk.beratBersih || '-' } NT</p>
+                      <p className="font-semibold text-gray-900">{selectedKapalMasuk.beratBersih || '-'} NT</p>
                     </div>
                     <div className="md:col-span-2 lg:col-span-1">
                       <span className="text-sm font-medium text-gray-500 block mb-1">Merek Mesin</span>
-                      <p className="font-semibold text-gray-900">{selectedKapalMasuk.merekMesin || '-' }</p>
+                      <p className="font-semibold text-gray-900">{selectedKapalMasuk.merekMesin || '-'}</p>
                     </div>
                     <div className="lg:col-span-3">
                       <span className="text-sm font-medium text-gray-500 block mb-1">Jenis Alat Tangkap</span>
-                      <p className="font-semibold text-gray-900">{selectedKapalMasuk.jenisAlatTangkap || '-' }</p>
+                      <p className="font-semibold text-gray-900">{selectedKapalMasuk.jenisAlatTangkap || '-'}</p>
                     </div>
                   </div>
                 </div>
 
-                {/* Status Kerja */}
                 <div className="bg-emerald-50 p-6 rounded-xl border-l-4 border-emerald-400">
                   <h3 className="text-lg font-semibold text-gray-800 mb-4">Status Kerja</h3>
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <div>
                       <span className="text-sm text-gray-500 block">Status</span>
-                      <p className="text-2xl font-bold text-emerald-700">{selectedKapalMasuk.status || selectedKapalMasuk.statusKerja || 'Persiapan'}</p>
+                      <p className="text-2xl font-bold text-emerald-700">
+                        {selectedKapalMasuk.status || selectedKapalMasuk.statusKerja || 'Persiapan'}
+                      </p>
                     </div>
                     <div>
                       <span className="text-sm text-gray-500 block">Kembali</span>
@@ -614,38 +632,8 @@ const KapalMasuk = () => {
                   </div>
                 </div>
 
-                {/* Kebutuhan / Persiapan Preview */}\n                {(selectedKapalMasuk.listPersiapan?.length || 0) > 0 && (
-                  <div className="bg-yellow-50 p-6 rounded-xl">
-                    <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
-                      Kebutuhan / Persiapan
-                      <span className="bg-yellow-200 text-yellow-800 px-2 py-1 rounded-full text-xs font-medium">
-                        {selectedKapalMasuk.listPersiapan?.length || 0} items
-                      </span>
-                    </h3>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3 max-h-48 overflow-y-auto">
-                      {selectedKapalMasuk.listPersiapan?.slice(0, 10).map((item, idx) => (
-                        <div key={idx} className="flex items-center gap-3 p-3 bg-white rounded-lg border-l-4 border-yellow-400">
-                          <div className={`w-2 h-2 rounded-full flex-shrink-0 ${
-                            selectedKapalMasuk.checklistStates?.[item] 
-                              ? 'bg-emerald-500' 
-                              : selectedKapalMasuk.finishedChecklistStates?.[item]
-                              ? 'bg-gray-400' 
-                              : 'bg-yellow-400'
-                          }`} />
-                          <div>
-                            <p className="font-medium text-gray-900">{item}</p>\n                            {selectedKapalMasuk.checklistDates?.[item] && (
-                              <p className="text-xs text-gray-500">Selesai: {selectedKapalMasuk.checklistDates[item]}</p>
-                            )}
-                          </div>
-                        </div>
-                      )) || []}
-                    </div>\n                    {selectedKapalMasuk.listPersiapan?.length > 10 && (
-                      <p className="text-sm text-gray-500 mt-2">+{selectedKapalMasuk.listPersiapan.length - 10} more...</p>
-                    )}
-                  </div>
-                )}
+                {getKebutuhanSection(selectedKapalMasuk, false, (item) => handleChecklistToggle(item, selectedKapalMasuk.id))}
 
-                {/* Action Buttons */}
                 <div className="flex flex-col sm:flex-row gap-3 pt-4 border-t">
                   <button
                     onClick={() => {
@@ -654,9 +642,6 @@ const KapalMasuk = () => {
                     }}
                     className="flex-1 bg-blue-600 text-white py-3 px-6 rounded-lg hover:bg-blue-700 transition-all font-medium flex items-center justify-center gap-2"
                   >
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                    </svg>
                     Edit Kapal Masuk
                   </button>
                   <button
@@ -671,8 +656,7 @@ const KapalMasuk = () => {
           </div>
         )}
 
-        {/* Kebutuhan Modal */}
-{showKebutuhanModal && (
+        {showKebutuhanModal && (
           <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
             <div className="bg-white rounded-lg shadow-2xl w-full max-w-sm p-6">
               <h2 className="text-xl font-bold mb-4">Tambah Kebutuhan</h2>
@@ -684,22 +668,29 @@ const KapalMasuk = () => {
                 className="w-full p-2 border rounded mb-4"
               />
               <div className="flex gap-2">
-                <button onClick={handleTambahKebutuhanConfirm} className="flex-1 bg-yellow-500 text-white p-2 rounded">Tambah</button>
-                <button onClick={() => setShowKebutuhanModal(false)} className="flex-1 p-2 border rounded">Batal</button>
+                <button onClick={handleTambahKebutuhanConfirm} className="flex-1 bg-yellow-500 text-white p-2 rounded">
+                  Tambah
+                </button>
+                <button onClick={() => setShowKebutuhanModal(false)} className="flex-1 p-2 border rounded">
+                  Batal
+                </button>
               </div>
             </div>
           </div>
         )}
 
-        {/* Delete Confirm */}
-{deleteConfirmId && (
+        {deleteConfirmId && (
           <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
             <div className="bg-white rounded-lg shadow-2xl w-full max-w-sm p-6">
               <h2 className="text-xl font-bold text-red-600 mb-2">Hapus?</h2>
               <p className="mb-4">Yakin hapus kapal masuk ini?</p>
               <div className="flex gap-2">
-                <button onClick={confirmDelete} className="flex-1 bg-red-500 text-white p-2 rounded">Hapus</button>
-                <button onClick={() => setDeleteConfirmId(null)} className="flex-1 p-2 border rounded">Batal</button>
+                <button onClick={confirmDelete} className="flex-1 bg-red-500 text-white p-2 rounded">
+                  Hapus
+                </button>
+                <button onClick={() => setDeleteConfirmId(null)} className="flex-1 p-2 border rounded">
+                  Batal
+                </button>
               </div>
             </div>
           </div>
@@ -710,3 +701,4 @@ const KapalMasuk = () => {
 };
 
 export default KapalMasuk;
+
