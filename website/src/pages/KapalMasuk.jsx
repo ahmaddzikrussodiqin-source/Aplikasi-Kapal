@@ -315,8 +315,50 @@ const KapalMasuk = () => {
 
   const [activeTab, setActiveTab] = useState('berlayar'); // 'berlayar' | 'persiapan' | 'history'
 
+  const [finishModalOpen, setFinishModalOpen] = useState(false);
+  const [finishKapal, setFinishKapal] = useState(null);
+  const [finishTanggalKeberangkatan, setFinishTanggalKeberangkatan] = useState('');
+
+  const isFinishEligible = (kapal) => {
+    // Kapal eligible jika persiapan selesai (checklist 100%)
+    if (!kapal) return false;
+    return isPersiapanSelesai(kapal) && !isHistory(kapal);
+  };
+
+  const handleFinishClick = (kapal) => {
+    setFinishKapal(kapal);
+    setFinishTanggalKeberangkatan('');
+    setFinishModalOpen(true);
+  };
+
+  const handleFinishConfirm = async () => {
+    if (!finishKapal || !finishTanggalKeberangkatan) return;
+
+    try {
+      const fresh = kapalMasukList.find((k) => k.id === finishKapal.id) || finishKapal;
+
+      const payload = {
+        ...fresh,
+        tanggalKeberangkatan: finishTanggalKeberangkatan,
+        statusKerja: 'berlayar',
+      };
+
+      const response = await kapalMasukAPI.update(token, finishKapal.id, payload);
+      if (!response.success) throw new Error(response.message || 'Update failed');
+
+      setFinishModalOpen(false);
+      setFinishKapal(null);
+      setFinishTanggalKeberangkatan('');
+      await loadData();
+      setActiveTab('berlayar');
+    } catch (e) {
+      console.error('Finish error:', e);
+      alert('Gagal finish: ' + (e.message || 'Unknown error'));
+    }
+  };
 
   const filteredKapalMasuk = kapalMasukList
+
     .filter((kapal) => {
       const q = searchTerm.toLowerCase();
       return (
@@ -608,6 +650,15 @@ const KapalMasuk = () => {
                       <button onClick={() => handleEdit(kapal)} className="bg-blue-500 text-white px-3 py-2 rounded-lg hover:bg-blue-600 text-sm">
                         Edit
                       </button>
+                      {activeTab === 'persiapan' && isFinishEligible(kapal) && (
+                        <button
+                          onClick={() => handleFinishClick(kapal)}
+                          className="bg-emerald-700 text-white px-3 py-2 rounded-lg hover:bg-emerald-800 text-sm"
+                          title="Finish persiapan dan tentukan tanggal keberangkatan"
+                        >
+                          Finish
+                        </button>
+                      )}
                       <button onClick={() => handleDelete(kapal.id)} className="bg-red-500 text-white px-3 py-2 rounded-lg hover:bg-red-600 text-sm">
                         Hapus
                       </button>
@@ -800,6 +851,45 @@ const KapalMasuk = () => {
                 </button>
                 <button onClick={() => setDeleteConfirmId(null)} className="flex-1 p-2 border rounded">
                   Batal
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {finishModalOpen && finishKapal && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+            <div className="bg-white rounded-lg shadow-2xl w-full max-w-sm p-6">
+              <h2 className="text-xl font-bold mb-2">Finish Persiapan</h2>
+              <p className="text-gray-600 mb-4">
+                {finishKapal.nama} - tentukan tanggal keberangkatan.
+              </p>
+
+              <label className="block text-sm font-medium text-gray-700 mb-2">Tanggal Keberangkatan</label>
+              <input
+                type="date"
+                value={finishTanggalKeberangkatan}
+                onChange={(e) => setFinishTanggalKeberangkatan(e.target.value)}
+                className="w-full p-2 border rounded"
+                required
+              />
+
+              <div className="flex gap-2 mt-5">
+                <button
+                  onClick={() => {
+                    setFinishModalOpen(false);
+                    setFinishKapal(null);
+                    setFinishTanggalKeberangkatan('');
+                  }}
+                  className="flex-1 p-2 border rounded"
+                >
+                  Batal
+                </button>
+                <button
+                  onClick={handleFinishConfirm}
+                  className="flex-1 bg-emerald-700 text-white p-2 rounded"
+                >
+                  Finish
                 </button>
               </div>
             </div>
