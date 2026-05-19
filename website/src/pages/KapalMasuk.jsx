@@ -284,14 +284,39 @@ const KapalMasuk = () => {
     }
   }, [kapalMasukList, token, newKebutuhan, selectedKapalForKebutuhan]);
 
-  const filteredKapalMasuk = kapalMasukList.filter(
-    (kapal) =>
-      kapal.nama?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (kapal.status || kapal.statusKerja || '')
-        .toLowerCase()
-        .includes(searchTerm.toLowerCase()) ||
-      kapal.namaPemilik?.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const toStatusText = (kapal) => (kapal?.status || kapal?.statusKerja || '');
+
+  const isBerlayar = (kapal) => {
+    const s = toStatusText(kapal).toLowerCase().trim();
+    return s.includes('berlayar') || s === 'sailing';
+  };
+
+  const isMenepi = (kapal) => {
+    const s = toStatusText(kapal).toLowerCase().trim();
+    return s.includes('menepi') || s === 'docked';
+  };
+
+  const hasSudahBerangkat = (kapal) => !!(kapal?.safeTanggalBerangkat || kapal?.safeTanggalKeberangkatan);
+
+  const isHistory = (kapal) => isMenepi(kapal) && hasSudahBerangkat(kapal);
+
+  const [activeTab, setActiveTab] = useState('berlayar'); // 'berlayar' | 'persiapan' | 'history'
+
+  const filteredKapalMasuk = kapalMasukList
+    .filter((kapal) => {
+      const q = searchTerm.toLowerCase();
+      return (
+        kapal.nama?.toLowerCase().includes(q) ||
+        toStatusText(kapal).toLowerCase().includes(q) ||
+        kapal.namaPemilik?.toLowerCase().includes(q)
+      );
+    })
+    .filter((kapal) => {
+      if (activeTab === 'berlayar') return isBerlayar(kapal);
+      if (activeTab === 'history') return isHistory(kapal);
+      // persiapan: selain berlayar dan selain history
+      return !isBerlayar(kapal) && !isHistory(kapal);
+    });
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -431,19 +456,68 @@ const KapalMasuk = () => {
 
       <main className="max-w-7xl mx-auto px-4 py-8">
         <div className="mb-6">
-          <div className="relative">
-            <input
-              type="text"
-              placeholder="Cari nama kapal, pemilik, atau status..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full max-w-md px-4 py-3 pl-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 outline-none"
-            />
-            <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-            </svg>
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            {/* Search */}
+            <div className="relative flex-1">
+              <input
+                type="text"
+                placeholder="Cari nama kapal, pemilik, atau status..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full max-w-md px-4 py-3 pl-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 outline-none"
+              />
+              <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+              </svg>
+            </div>
+
+            {/* Tabs */}
+            <div className="flex gap-2 bg-white p-1 rounded-lg border border-gray-200 shadow-sm w-full sm:w-auto">
+              <button
+                type="button"
+                onClick={() => setActiveTab('berlayar')}
+                className={`flex-1 px-3 py-2 text-sm rounded-md font-medium transition-colors ${
+                  activeTab === 'berlayar'
+                    ? 'bg-emerald-600 text-white'
+                    : 'bg-transparent text-gray-700 hover:bg-gray-100'
+                }`}
+              >
+                Berlayar
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveTab('persiapan')}
+                className={`flex-1 px-3 py-2 text-sm rounded-md font-medium transition-colors ${
+                  activeTab === 'persiapan'
+                    ? 'bg-yellow-500 text-white'
+                    : 'bg-transparent text-gray-700 hover:bg-gray-100'
+                }`}
+              >
+                Persiapan
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveTab('history')}
+                className={`flex-1 px-3 py-2 text-sm rounded-md font-medium transition-colors ${
+                  activeTab === 'history'
+                    ? 'bg-blue-600 text-white'
+                    : 'bg-transparent text-gray-700 hover:bg-gray-100'
+                }`}
+              >
+                History
+              </button>
+            </div>
           </div>
+
+          {/* spacer to keep old layout spacing (search icon already moved) */}
+          <div className="hidden" />
+
+          {/* Old search icon removed by replacement */}
+          
         </div>
+
+        {/* Deprecated: search UI moved to tabs header */}
+        {/* Original markup removed */}
 
         {loading ? (
           <div className="flex justify-center py-12">
