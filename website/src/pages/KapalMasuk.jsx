@@ -286,10 +286,7 @@ const KapalMasuk = () => {
 
   const toStatusText = (kapal) => (kapal?.status || kapal?.statusKerja || '');
 
-  const isBerlayar = (kapal) => {
-    const s = toStatusText(kapal).toLowerCase().trim();
-    return s.includes('berlayar') || s === 'sailing';
-  };
+  // isBerlayar didefinisikan di bawah (mengacu pada checklist persiapan selesai)
 
   const isMenepi = (kapal) => {
     const s = toStatusText(kapal).toLowerCase().trim();
@@ -300,7 +297,24 @@ const KapalMasuk = () => {
 
   const isHistory = (kapal) => isMenepi(kapal) && hasSudahBerangkat(kapal);
 
+  // Kapal berlayar = semua persiapan selesai
+  const isPersiapanSelesai = (kapal) => {
+    const items = kapal?.listPersiapan || [];
+    if (!items.length) return false;
+    const states = kapal?.checklistStates || {};
+    return items.every((item) => !!states?.[item]);
+  };
+
+  // Override rule badge/tab: berlayar saat persiapan sudah selesai
+  const isBerlayar = (kapal) => {
+    if (isPersiapanSelesai(kapal)) return true;
+    // backward compatibility: fallback berdasarkan status string
+    const s = toStatusText(kapal).toLowerCase().trim();
+    return s.includes('berlayar') || s === 'sailing';
+  };
+
   const [activeTab, setActiveTab] = useState('berlayar'); // 'berlayar' | 'persiapan' | 'history'
+
 
   const filteredKapalMasuk = kapalMasukList
     .filter((kapal) => {
@@ -378,8 +392,30 @@ const KapalMasuk = () => {
           prev.map((k) => (k.id === kapalId ? { ...k, checklistStates: newStates, checklistDates: newDates } : k))
         );
 
-        const payload = { ...kapal, checklistStates: newStates, checklistDates: newDates };
+        // Kapal berlayar saat semua persiapan selesai.
+        // TANGGAL keberangkatan diisi MANUAL oleh user, jadi jangan otomatis.
+        // Backend memakai field: tanggalBerangkat / tanggalKeberangkatan (lihat mapping server.js)
+        const items = kapal.listPersiapan || [];
+        const statesAfter = newStates;
+        const allDone = items.length > 0 && items.every((item) => !!statesAfter?.[item]);
+
+        const payload = {
+          ...kapal,
+          checklistStates: newStates,
+          checklistDates: newDates,
+          ...(allDone
+            ? {
+                statusKerja: kapal.statusKerja || kapal.status || 'berlayar',
+              }
+            : {
+                // jika persiapan belum selesai lagi, tetap biarkan tanggal apa adanya
+                tanggalKeberangkatan: kapal.tanggalKeberangkatan || '',
+              }),
+        };
+
+
         const response = await kapalMasukAPI.update(token, kapalId, payload);
+
 
         if (!response.success) {
           loadData();
