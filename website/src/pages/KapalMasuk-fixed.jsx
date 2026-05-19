@@ -80,16 +80,40 @@ const KapalMasuk = () => {
   });
 
 
+  const isSailing = (s) => {
+    const t = (s || '').toLowerCase().trim();
+    return t.includes('berlayar') || t === 'sailing';
+  };
+
   const getStatusBadge = (status) => {
 
     const s = (status || '').toLowerCase().trim();
-    if (s.includes('berlayar') || s === 'sailing') {
+    if (isSailing(s)) {
       return { icon: '🛥️', text: 'Berlayar', color: 'bg-emerald-100 text-emerald-800 border-emerald-300' };
     }
     if (s.includes('menepi') || s === 'docked') {
       return { icon: '⚓', text: 'Menepi', color: 'bg-blue-100 text-blue-800 border-blue-300' };
     }
     return { icon: '⏳', text: status || 'Persiapan', color: 'bg-yellow-100 text-yellow-800 border-yellow-300' };
+  };
+
+  const getBerapaLamaBerlayar = (kapal) => {
+    const start = kapal.safeTanggalBerangkat || kapal.safeTanggalKeberangkatan;
+    if (!start) return null;
+    const diffMs = Date.now() - start.getTime();
+    if (diffMs < 0) return null;
+
+    const totalMinutes = Math.floor(diffMs / (1000 * 60));
+    const hours = Math.floor(totalMinutes / 60);
+    const minutes = totalMinutes % 60;
+
+    if (hours >= 24) {
+      const days = Math.floor(hours / 24);
+      const remHours = hours % 24;
+      return `${days} hari ${remHours} jam`;
+    }
+
+    return `${hours} jam ${minutes} menit`;
   };
 
   const getChecklistProgress = (kapal) => {
@@ -606,6 +630,14 @@ const filteredKapalMasuk = kapalMasukList.filter(kapal =>
                     <div>
                       <span className="text-sm text-gray-500 block">Kembali</span>
                       <p className="text-xl font-semibold">{selectedKapalMasuk.tanggalKembali || 'Belum ditentukan'}</p>
+                    </div>
+                    <div>
+                      <span className="text-sm text-gray-500 block">Durasi Berlayar</span>
+                      <p className="text-xl font-semibold">
+                        {isSailing(selectedKapalMasuk.status || selectedKapalMasuk.statusKerja)
+                          ? (getBerapaLamaBerlayar(selectedKapalMasuk) || '- tidak ada data')
+                          : '-'}
+                      </p>
                     </div>
                     <div>
                       <span className="text-sm text-gray-500 block">Persiapan</span>
