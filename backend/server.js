@@ -152,6 +152,12 @@ app.use(cors({
         // allow our frontend
         if (origin === FRONTEND_ORIGIN) return callback(null, true);
 
+        // Railway sometimes uses different subdomain strings; allow the whole website-production family
+        // Example: https://website-production-0b71.up.railway.app
+        if (origin && origin.includes('website-production-') && origin.endsWith('.railway.app')) {
+            return callback(null, true);
+        }
+
         return callback(new Error('Not allowed by CORS: ' + origin));
     },
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
