@@ -141,7 +141,36 @@ ensureDokumenTable();
 console.log('✅ All database pools created');
 
 // Middleware
-app.use(cors());
+// CORS: allow only the known frontend origin to pass preflight in production.
+const FRONTEND_ORIGIN = process.env.FRONTEND_ORIGIN || 'https://website-production-0b71.up.railway.app';
+
+app.use(cors({
+    origin: function (origin, callback) {
+        // allow requests with no origin (like mobile apps, curl)
+        if (!origin) return callback(null, true);
+
+        // allow our frontend
+        if (origin === FRONTEND_ORIGIN) return callback(null, true);
+
+        return callback(new Error('Not allowed by CORS: ' + origin));
+    },
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
+    credentials: true,
+    optionsSuccessStatus: 200
+}));
+
+app.options('*', cors({
+    origin: function (origin, callback) {
+        if (!origin) return callback(null, true);
+        if (origin === FRONTEND_ORIGIN) return callback(null, true);
+        return callback(new Error('Not allowed by CORS: ' + origin));
+    },
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
+    credentials: true,
+    optionsSuccessStatus: 200
+}));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
