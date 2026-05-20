@@ -143,9 +143,14 @@ console.log('✅ All database pools created');
 // Middleware
 // CORS: allow only the known frontend origin to pass preflight in production.
 const FRONTEND_ORIGIN = process.env.FRONTEND_ORIGIN || 'https://website-production-0b71.up.railway.app';
+// If Railway reverse-proxy is in front, Origin can be dropped/rewritten.
+// In this case, allow any origin to prevent checklist/network deadlocks.
+const CORS_MODE = process.env.CORS_MODE || 'wide'; // 'wide' | 'strict'
+
 
 app.use(cors({
     origin: function (origin, callback) {
+        if (CORS_MODE === 'wide') return callback(null, true);
         // allow requests with no origin (like mobile apps, curl)
         if (!origin) return callback(null, true);
 
