@@ -146,7 +146,8 @@ const FRONTEND_ORIGIN = process.env.FRONTEND_ORIGIN || 'https://website-producti
 // If Railway reverse-proxy is in front, Origin can be dropped/rewritten.
 // In this case, allow any origin to prevent checklist/network deadlocks.
 const CORS_MODE = process.env.CORS_MODE || 'wide'; // 'wide' | 'strict'
-
+// Untuk debug: pastikan CORS selalu mengizinkan origin yang diminta agar Railway reverse-proxy tidak memblokir.
+// Set ke 'wide' akan allow semua origin (menghilangkan error CORS/502).
 
 app.use(cors({
     origin: function (origin, callback) {
