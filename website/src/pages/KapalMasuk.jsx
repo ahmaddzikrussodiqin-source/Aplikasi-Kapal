@@ -37,28 +37,13 @@ const KapalMasuk = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token]);
 
+  // Socket real-time dimatikan sementara untuk memastikan checklist hanya pakai REST PUT.
+  // Real-time update bisa diaktifkan kembali setelah checklist REST stabil.
   useEffect(() => {
     if (!socket) return;
-
-    socket.on('checklist-updated', (data) => {
-      setKapalMasukList((prev) =>
-        prev.map((kapal) => {
-          if (kapal.id === data.kapalId) {
-            return {
-              ...kapal,
-              checklistStates: data.checklistStates,
-              checklistDates: data.checklistDates,
-            };
-          }
-          return kapal;
-        })
-      );
-    });
-
-    return () => {
-      socket.off('checklist-updated');
-    };
+    return () => {};
   }, [socket]);
+
 
   const safeDateParse = (dateStr) => {
     if (!dateStr || dateStr === '' || dateStr === null) return null;
@@ -888,6 +873,7 @@ const KapalMasuk = () => {
                 <button
                   onClick={handleFinishConfirm}
                   className="flex-1 bg-emerald-700 text-white p-2 rounded"
+                  type="button"
                 >
                   Finish
                 </button>
