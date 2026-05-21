@@ -563,12 +563,16 @@ function authenticateToken(req, res, next) {
 
 // Health check
 app.get('/', (req, res) => {
-    res.json({
+// Fingerprint untuk memastikan versi server yang aktif (setelah redeploy)
+const DEPLOY_FINGERPRINT = process.env.DEPLOY_FINGERPRINT || 'local-dev';
+
+res.json({
         success: true,
         message: 'KapalList Backend API is running!',
         version: '1.03.04',
         updateLink: 'https://drive.google.com/file/d/1KQlcAv1sogEC9DjUpklznolaezTsj-ZN/view?usp=sharing',
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
+        deployFingerprint: DEPLOY_FINGERPRINT
     });
 });
 
