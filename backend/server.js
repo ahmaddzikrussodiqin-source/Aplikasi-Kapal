@@ -2000,12 +2000,15 @@ app.put('/api/kapal-masuk/:id', authenticateToken, async (req, res) => {
             message: 'Kapal Masuk updated successfully'
         });
     } catch (error) {
-        console.error('❌ Update kapal masuk error for id', id, ':', error);
+        // use req.params.id to avoid ReferenceError when variables go out of scope
+        const kapalMasukId = req.params.id;
+        console.error('❌ Update kapal masuk error for id', kapalMasukId, ':', error);
         res.status(500).json({
             success: false,
             message: 'Failed to update kapal masuk'
         });
     }
+
 });
 
 app.delete('/api/kapal-masuk/:id', authenticateToken, async (req, res) => {
