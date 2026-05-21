@@ -439,8 +439,10 @@ async function initializeDatabase() {
         await kapalMasukPool.query(`
             CREATE SCHEMA IF NOT EXISTS kapal_masuk_schema
         `);
+
+        // CREATE TABLE dalam 1 query utuh (menghindari syntax error saat deploy)
         await kapalMasukPool.query(`
-(
+            CREATE TABLE IF NOT EXISTS kapal_masuk_schema.kapal_masuk (
                 id SERIAL PRIMARY KEY,
                 nama TEXT,
                 namaPemilik TEXT NOT NULL DEFAULT '',
@@ -467,6 +469,7 @@ async function initializeDatabase() {
                 checklistDates TEXT NOT NULL DEFAULT '{}'
             )
         `);
+
 
         // Add missing columns if they don't exist
         const columnsToCheck = ['durasiBerlayar', 'status', 'checklistStates', 'checklistDates', 'newItemsAddedAfterFinish', 'finishedChecklistStates', 'finishedAt'];
