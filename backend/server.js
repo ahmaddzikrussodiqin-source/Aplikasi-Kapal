@@ -149,38 +149,22 @@ const CORS_MODE = process.env.CORS_MODE || 'wide'; // 'wide' | 'strict'
 // Untuk debug: pastikan CORS selalu mengizinkan origin yang diminta agar Railway reverse-proxy tidak memblokir.
 // Set ke 'wide' akan allow semua origin (menghilangkan error CORS/502).
 
+// CORS (longgar untuk debug): izinkan semua origin agar Railway proxy tidak memblokir.
+// origin: true -> mirror request Origin
+// credentials: true -> cocok dengan Authorization header.
 app.use(cors({
-    origin: function (origin, callback) {
-        if (CORS_MODE === 'wide') return callback(null, true);
-        // allow requests with no origin (like mobile apps, curl)
-        if (!origin) return callback(null, true);
-
-        // allow our frontend
-        if (origin === FRONTEND_ORIGIN) return callback(null, true);
-
-        // Railway sometimes uses different subdomain strings; allow the whole website-production family
-        // Example: https://website-production-0b71.up.railway.app
-        if (origin && origin.includes('website-production-') && origin.endsWith('.railway.app')) {
-            return callback(null, true);
-        }
-
-        return callback(new Error('Not allowed by CORS: ' + origin));
-    },
+    origin: true,
+    credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization'],
-    credentials: true,
     optionsSuccessStatus: 200
 }));
 
 app.options('*', cors({
-    origin: function (origin, callback) {
-        if (!origin) return callback(null, true);
-        if (origin === FRONTEND_ORIGIN) return callback(null, true);
-        return callback(new Error('Not allowed by CORS: ' + origin));
-    },
+    origin: true,
+    credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization'],
-    credentials: true,
     optionsSuccessStatus: 200
 }));
 app.use(express.json());
