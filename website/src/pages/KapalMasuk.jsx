@@ -433,22 +433,20 @@ const KapalMasuk = () => {
         const statesAfter = newStates;
         const allDone = items.length > 0 && items.every((item) => !!statesAfter?.[item]);
 
+        // Payload minimal: hindari mengirim ulang field lain yang berpotensi
+        // memicu filter status/tab ikut berubah.
         const payload = {
-          ...kapal,
           checklistStates: newStates,
           checklistDates: newDates,
           ...(allDone
             ? {
                 statusKerja: kapal.statusKerja || kapal.status || 'berlayar',
               }
-            : {
-                // jika persiapan belum selesai lagi, tetap biarkan tanggal apa adanya
-                tanggalKeberangkatan: kapal.tanggalKeberangkatan || '',
-              }),
+            : {}),
         };
 
-
         const response = await kapalMasukAPI.update(token, kapalId, payload);
+
 
 
         if (!response.success) {
