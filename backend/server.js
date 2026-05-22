@@ -1950,17 +1950,47 @@ app.post('/api/kapal-masuk', authenticateToken, async (req, res) => {
 app.put('/api/kapal-masuk/:id', authenticateToken, async (req, res) => {
     try {
         const { id } = req.params;
-        let kapalMasukData = req.body;
+        let kapalMasukData = req.body || {};
 
         // Auto-fill from kapal_info if nama provided and pemilik missing
         if (kapalMasukData.nama) {
           kapalMasukData = await autoFillKapalInfo(kapalMasukData.nama, kapalMasukData);
         }
 
+        // HARDEN / DEFAULT payload to avoid crashes when frontend sends partial data
+        const normalized = {
+            nama: kapalMasukData.nama ?? '',
+            namaPemilik: kapalMasukData.namaPemilik ?? '',
+            tandaSelar: kapalMasukData.tandaSelar ?? '',
+            tandaPengenal: kapalMasukData.tandaPengenal ?? '',
+            beratKotor: kapalMasukData.beratKotor ?? '',
+            beratBersih: kapalMasukData.beratBersih ?? '',
+            merekMesin: kapalMasukData.merekMesin ?? '',
+            nomorSeriMesin: kapalMasukData.nomorSeriMesin ?? '',
+            jenisAlatTangkap: kapalMasukData.jenisAlatTangkap ?? '',
+            tanggalInput: kapalMasukData.tanggalInput ?? '',
+            tanggalKeberangkatan: kapalMasukData.tanggalKeberangkatan ?? '',
+            totalHariPersiapan: kapalMasukData.totalHariPersiapan ?? 0,
+            tanggalBerangkat: kapalMasukData.tanggalBerangkat ?? '',
+            tanggalKembali: kapalMasukData.tanggalKembali ?? '',
+            listPersiapan: Array.isArray(kapalMasukData.listPersiapan) ? kapalMasukData.listPersiapan : (kapalMasukData.listPersiapan ? [String(kapalMasukData.listPersiapan)] : []),
+            isFinished: Boolean(kapalMasukData.isFinished),
+            perkiraanKeberangkatan: kapalMasukData.perkiraanKeberangkatan ?? '',
+            durasiSelesaiPersiapan: kapalMasukData.durasiSelesaiPersiapan ?? '',
+            durasiBerlayar: kapalMasukData.durasiBerlayar ?? '',
+            status: kapalMasukData.status ?? '',
+            statusKerja: kapalMasukData.statusKerja ?? kapalMasukData.status ?? 'persiapan',
+            checklistStates: kapalMasukData.checklistStates && typeof kapalMasukData.checklistStates === 'object' ? kapalMasukData.checklistStates : {},
+            checklistDates: kapalMasukData.checklistDates && typeof kapalMasukData.checklistDates === 'object' ? kapalMasukData.checklistDates : {},
+            newItemsAddedAfterFinish: Array.isArray(kapalMasukData.newItemsAddedAfterFinish) ? kapalMasukData.newItemsAddedAfterFinish : [],
+            finishedChecklistStates: kapalMasukData.finishedChecklistStates && typeof kapalMasukData.finishedChecklistStates === 'object' ? kapalMasukData.finishedChecklistStates : {},
+            finishedAt: kapalMasukData.finishedAt ?? ''
+        };
+
         console.log(`🔄 Updating kapal-masuk ${id}:`);
-        console.log('- listPersiapan length:', (kapalMasukData.listPersiapan || []).length);
-        console.log('- checklistStates keys:', Object.keys(kapalMasukData.checklistStates || {}));
-        console.log('- checked count:', Object.values(kapalMasukData.checklistStates || {}).filter(Boolean).length);
+        console.log('- listPersiapan length:', normalized.listPersiapan.length);
+        console.log('- checklistStates keys:', Object.keys(normalized.checklistStates || {}));
+        console.log('- checked count:', Object.values(normalized.checklistStates || {}).filter(Boolean).length);
 
         const result = await kapalMasukPool.query(`
             UPDATE kapal_masuk_schema.kapal_masuk SET
@@ -1969,21 +1999,38 @@ app.put('/api/kapal-masuk/:id', authenticateToken, async (req, res) => {
                 jenisAlatTangkap = $9, tanggalInput = $10, tanggalKeberangkatan = $11,
                 totalHariPersiapan = $12, tanggalBerangkat = $13, tanggalKembali = $14,
                 listPersiapan = $15, isFinished = $16, perkiraanKeberangkatan = $17,
+                durasiSelesaiPersiapan = $18, durasiBerlayar = $19,
                 statusKerja = $21,
                 "checklistStates" = $22, "checklistDates" = $23, "newItemsAddedAfterFinish" = $24,
                 "finishedChecklistStates" = $25, "finishedAt" = $26
             WHERE id = $27
         `, [
-            sanitizeTextField(kapalMasukData.nama), sanitizeTextField(kapalMasukData.namaPemilik), sanitizeTextField(kapalMasukData.tandaSelar), sanitizeTextField(kapalMasukData.tandaPengenal),
-            sanitizeTextField(kapalMasukData.beratKotor), sanitizeTextField(kapalMasukData.beratBersih), sanitizeTextField(kapalMasukData.merekMesin), sanitizeTextField(kapalMasukData.nomorSeriMesin),
-            sanitizeTextField(kapalMasukData.jenisAlatTangkap), sanitizeTextField(kapalMasukData.tanggalInput), sanitizeTextField(kapalMasukData.tanggalKeberangkatan),
-            kapalMasukData.totalHariPersiapan, sanitizeTextField(kapalMasukData.tanggalBerangkat), sanitizeTextField(kapalMasukData.tanggalKembali),
-            JSON.stringify(kapalMasukData.listPersiapan || []), kapalMasukData.isFinished ? 1 : 0,
-            sanitizeTextField(kapalMasukData.perkiraanKeberangkatan), sanitizeTextField(kapalMasukData.durasiSelesaiPersiapan),
-            sanitizeTextField(kapalMasukData.durasiBerlayar), sanitizeTextField(kapalMasukData.status),
-            sanitizeTextField(kapalMasukData.statusKerja),
-            JSON.stringify(kapalMasukData.checklistStates || {}), JSON.stringify(kapalMasukData.checklistDates || {}), JSON.stringify(kapalMasukData.newItemsAddedAfterFinish || []),
-            JSON.stringify(kapalMasukData.finishedChecklistStates || {}), sanitizeTextField(kapalMasukData.finishedAt),
+            sanitizeTextField(normalized.nama),
+            sanitizeTextField(normalized.namaPemilik),
+            sanitizeTextField(normalized.tandaSelar),
+            sanitizeTextField(normalized.tandaPengenal),
+            sanitizeTextField(normalized.beratKotor),
+            sanitizeTextField(normalized.beratBersih),
+            sanitizeTextField(normalized.merekMesin),
+            sanitizeTextField(normalized.nomorSeriMesin),
+            sanitizeTextField(normalized.jenisAlatTangkap),
+            sanitizeTextField(normalized.tanggalInput),
+            sanitizeTextField(normalized.tanggalKeberangkatan),
+            normalized.totalHariPersiapan,
+            sanitizeTextField(normalized.tanggalBerangkat),
+            sanitizeTextField(normalized.tanggalKembali),
+            JSON.stringify(normalized.listPersiapan || []),
+            normalized.isFinished ? 1 : 0,
+            sanitizeTextField(normalized.perkiraanKeberangkatan),
+            sanitizeTextField(normalized.durasiSelesaiPersiapan),
+            sanitizeTextField(normalized.durasiBerlayar),
+            sanitizeTextField(normalized.status),
+            sanitizeTextField(normalized.statusKerja),
+            JSON.stringify(normalized.checklistStates || {}),
+            JSON.stringify(normalized.checklistDates || {}),
+            JSON.stringify(normalized.newItemsAddedAfterFinish || []),
+            JSON.stringify(normalized.finishedChecklistStates || {}),
+            sanitizeTextField(normalized.finishedAt),
             id
         ]);
 
@@ -1994,7 +2041,7 @@ app.put('/api/kapal-masuk/:id', authenticateToken, async (req, res) => {
             });
         }
 
-        console.log('✅ Update kapal-masuk ${id} completed successfully');
+        console.log(`✅ Update kapal-masuk ${id} completed successfully`);
         res.json({
             success: true,
             message: 'Kapal Masuk updated successfully'
@@ -2005,7 +2052,8 @@ app.put('/api/kapal-masuk/:id', authenticateToken, async (req, res) => {
         console.error('❌ Update kapal masuk error for id', kapalMasukId, ':', error);
         res.status(500).json({
             success: false,
-            message: 'Failed to update kapal masuk'
+            message: 'Failed to update kapal masuk',
+            details: process.env.NODE_ENV === 'development' ? String(error.message || error) : undefined
         });
     }
 
