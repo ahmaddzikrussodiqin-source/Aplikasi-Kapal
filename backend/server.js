@@ -2024,6 +2024,7 @@ app.put('/api/kapal-masuk/:id', authenticateToken, async (req, res) => {
             sanitizeTextField(normalized.perkiraanKeberangkatan),
             sanitizeTextField(normalized.durasiSelesaiPersiapan),
             sanitizeTextField(normalized.durasiBerlayar),
+            // NOTE: statusKerja column is $20, so payload needs exactly $20 before checklist fields
             sanitizeTextField(normalized.status),
             sanitizeTextField(normalized.statusKerja),
             JSON.stringify(normalized.checklistStates || {}),
@@ -2031,8 +2032,10 @@ app.put('/api/kapal-masuk/:id', authenticateToken, async (req, res) => {
             JSON.stringify(normalized.newItemsAddedAfterFinish || []),
             JSON.stringify(normalized.finishedChecklistStates || {}),
             sanitizeTextField(normalized.finishedAt),
+            // WHERE id = $26
             id
         ]);
+
 
         if (result.rowCount === 0) {
             return res.status(404).json({
