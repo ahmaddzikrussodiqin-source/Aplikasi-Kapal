@@ -1991,6 +1991,10 @@ app.put('/api/kapal-masuk/:id', authenticateToken, async (req, res) => {
         console.log('- listPersiapan length:', normalized.listPersiapan.length);
         console.log('- checklistStates keys:', Object.keys(normalized.checklistStates || {}));
         console.log('- checked count:', Object.values(normalized.checklistStates || {}).filter(Boolean).length);
+        console.log('- normalized.statusKerja:', normalized.statusKerja);
+        console.log('- normalized.status (payload only):', normalized.status);
+        console.log('- normalized.checklistDates keys:', Object.keys(normalized.checklistDates || {}));
+
 
         const result = await kapalMasukPool.query(`
             UPDATE kapal_masuk_schema.kapal_masuk SET
