@@ -2000,10 +2000,10 @@ app.put('/api/kapal-masuk/:id', authenticateToken, async (req, res) => {
                 totalHariPersiapan = $12, tanggalBerangkat = $13, tanggalKembali = $14,
                 listPersiapan = $15, isFinished = $16, perkiraanKeberangkatan = $17,
                 durasiSelesaiPersiapan = $18, durasiBerlayar = $19,
-                statusKerja = $21,
-                "checklistStates" = $22, "checklistDates" = $23, "newItemsAddedAfterFinish" = $24,
-                "finishedChecklistStates" = $25, "finishedAt" = $26
-            WHERE id = $27
+                statusKerja = $20,
+                "checklistStates" = $21, "checklistDates" = $22, "newItemsAddedAfterFinish" = $23,
+                "finishedChecklistStates" = $24, "finishedAt" = $25
+            WHERE id = $26
         `, [
             sanitizeTextField(normalized.nama),
             sanitizeTextField(normalized.namaPemilik),
