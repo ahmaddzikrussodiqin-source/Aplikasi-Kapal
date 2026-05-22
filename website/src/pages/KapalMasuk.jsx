@@ -297,13 +297,12 @@ const KapalMasuk = () => {
     return items.every((item) => !!states?.[item]);
   };
 
-  // Override rule badge/tab: berlayar saat persiapan sudah selesai
+  // Berlayar ditentukan oleh statusKerja/status (bukan infer dari checklist)
   const isBerlayar = (kapal) => {
-    if (isPersiapanSelesai(kapal)) return true;
-    // backward compatibility: fallback berdasarkan status string
     const s = toStatusText(kapal).toLowerCase().trim();
     return s.includes('berlayar') || s === 'sailing';
   };
+
 
   const [activeTab, setActiveTab] = useState('berlayar'); // 'berlayar' | 'persiapan' | 'history'
 
@@ -364,6 +363,7 @@ const KapalMasuk = () => {
       if (activeTab === 'history') return isHistory(kapal);
       // persiapan: selain berlayar dan selain history
       return !isBerlayar(kapal) && !isHistory(kapal);
+
     });
 
   const handleSubmit = async (e) => {
