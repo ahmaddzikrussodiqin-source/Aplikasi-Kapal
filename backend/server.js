@@ -2005,35 +2005,32 @@ app.put('/api/kapal-masuk/:id', authenticateToken, async (req, res) => {
                 "finishedChecklistStates" = $24, "finishedAt" = $25
             WHERE id = $26
         `, [
-            sanitizeTextField(normalized.nama),
-            sanitizeTextField(normalized.namaPemilik),
-            sanitizeTextField(normalized.tandaSelar),
-            sanitizeTextField(normalized.tandaPengenal),
-            sanitizeTextField(normalized.beratKotor),
-            sanitizeTextField(normalized.beratBersih),
-            sanitizeTextField(normalized.merekMesin),
-            sanitizeTextField(normalized.nomorSeriMesin),
-            sanitizeTextField(normalized.jenisAlatTangkap),
-            sanitizeTextField(normalized.tanggalInput),
-            sanitizeTextField(normalized.tanggalKeberangkatan),
-            normalized.totalHariPersiapan,
-            sanitizeTextField(normalized.tanggalBerangkat),
-            sanitizeTextField(normalized.tanggalKembali),
-            JSON.stringify(normalized.listPersiapan || []),
-            normalized.isFinished ? 1 : 0,
-            sanitizeTextField(normalized.perkiraanKeberangkatan),
-            sanitizeTextField(normalized.durasiSelesaiPersiapan),
-            sanitizeTextField(normalized.durasiBerlayar),
-            // NOTE: statusKerja column is $20, so payload needs exactly $20 before checklist fields
-            sanitizeTextField(normalized.status),
-            sanitizeTextField(normalized.statusKerja),
-            JSON.stringify(normalized.checklistStates || {}),
-            JSON.stringify(normalized.checklistDates || {}),
-            JSON.stringify(normalized.newItemsAddedAfterFinish || []),
-            JSON.stringify(normalized.finishedChecklistStates || {}),
-            sanitizeTextField(normalized.finishedAt),
-            // WHERE id = $26
-            id
+            sanitizeTextField(normalized.nama),               // $1
+            sanitizeTextField(normalized.namaPemilik),      // $2
+            sanitizeTextField(normalized.tandaSelar),       // $3
+            sanitizeTextField(normalized.tandaPengenal),      // $4
+            sanitizeTextField(normalized.beratKotor),       // $5
+            sanitizeTextField(normalized.beratBersih),      // $6
+            sanitizeTextField(normalized.merekMesin),       // $7
+            sanitizeTextField(normalized.nomorSeriMesin),   // $8
+            sanitizeTextField(normalized.jenisAlatTangkap), // $9
+            sanitizeTextField(normalized.tanggalInput),     // $10
+            sanitizeTextField(normalized.tanggalKeberangkatan), // $11
+            normalized.totalHariPersiapan,                  // $12
+            sanitizeTextField(normalized.tanggalBerangkat), // $13
+            sanitizeTextField(normalized.tanggalKembali),   // $14
+            JSON.stringify(normalized.listPersiapan || []),// $15
+            normalized.isFinished ? 1 : 0,                 // $16
+            sanitizeTextField(normalized.perkiraanKeberangkatan), // $17
+            sanitizeTextField(normalized.durasiSelesaiPersiapan), // $18
+            sanitizeTextField(normalized.durasiBerlayar),  // $19
+            sanitizeTextField(normalized.statusKerja),    // $20
+            JSON.stringify(normalized.checklistStates || {}), // $21
+            JSON.stringify(normalized.checklistDates || {}),   // $22
+            JSON.stringify(normalized.newItemsAddedAfterFinish || []), // $23
+            JSON.stringify(normalized.finishedChecklistStates || {}), // $24
+            sanitizeTextField(normalized.finishedAt),     // $25
+            id                                               // $26
         ]);
 
 
