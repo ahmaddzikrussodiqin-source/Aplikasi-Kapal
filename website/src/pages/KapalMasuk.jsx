@@ -192,6 +192,13 @@ const KapalMasuk = () => {
         const processedKapalMasuk = kapalMasukRes.data
           .filter((k) => k && !k.error)
           .map(safeProcessKapal);
+
+        // Diagnostics: prevent “menghilang” by verifying data presence
+        console.log('[loadData] kapalMasukRes.data length:', kapalMasukRes.data.length);
+        console.log('[loadData] processedKapalMasuk length:', processedKapalMasuk.length);
+        console.log('[loadData] first processed kapal id:', processedKapalMasuk[0]?.id);
+        console.log('[loadData] sample checklistPersiapan length:', processedKapalMasuk[0]?.listPersiapan?.length);
+
         setKapalMasukList(processedKapalMasuk);
       } else {
         setKapalMasukList([]);
