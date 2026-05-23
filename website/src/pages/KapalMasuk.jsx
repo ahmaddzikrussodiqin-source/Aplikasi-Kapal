@@ -362,9 +362,10 @@ const KapalMasuk = () => {
     if (!kebutuhanTrim) return;
     if (!selectedKapalForKebutuhan) return;
 
+    // kapalId dari modal = id kapal_info (bukan id record kapal_masuk)
     const kapalId = selectedKapalForKebutuhan?.id;
 
-    // defensif: tolak null/undefined/"null"/""/NaN/<=0 sebelum PUT
+    // defensif: tolak null/undefined/"null"/""/NaN/<=0 sebelum create/update
     if (!kebutuhanTargetValid || !isValidKapalId(kapalId)) {
       const kapalIdNum = Number(kapalId);
       console.warn('[TambahKebutuhanConfirm] blocked invalid kapalId:', kapalId, 'kapalIdNum:', kapalIdNum);
@@ -376,34 +377,69 @@ const KapalMasuk = () => {
     if (!Number.isFinite(kapalIdNum) || kapalIdNum <= 0) return;
 
     try {
-      const freshKapal = kapalMasukList.find((k) => Number(k.id) === kapalIdNum);
-      if (!freshKapal && !selectedKapalForKebutuhan) return;
+      // Cari record kapal_masuk berdasarkan relasi kapalId
+      const recordFromList = kapalMasukList.find((k) => Number(k.kapalId) === kapalIdNum);
+      let kapalMasukRecord = recordFromList;
 
-      const currentStates =
-        freshKapal?.checklistStates || selectedKapalForKebutuhan.checklistStates || {};
-      const updatedChecklistStates = { ...currentStates };
-      updatedChecklistStates[kebutuhanTrim] = false;
+      // Jika belum ada record kapal_masuk, buat dulu agar punya id untuk PUT
+      if (!kapalMasukRecord || !Number.isFinite(Number(kapalMasukRecord.id)) || Number(kapalMasukRecord.id) <= 0) {
+        const kapalInfoSource = kapalList.find((k) => Number(k.id) === kapalIdNum);
+        if (!kapalInfoSource) throw new Error('kapal info not found');
 
-      const currentDates =
-        freshKapal?.checklistDates || selectedKapalForKebutuhan.checklistDates || {};
-      const updatedChecklistDates = { ...currentDates };
-      updatedChecklistDates[kebutuhanTrim] = '';
+        const createPayload = {
+          kapalId: kapalIdNum,
+          nama: kapalInfoSource.nama || '',
+          namaPemilik: kapalInfoSource.namaPemilik || '',
+          tandaSelar: kapalInfoSource.tandaSelar || '',
+          tandaPengenal: kapalInfoSource.tandaPengenal || '',
+          beratKotor: kapalInfoSource.beratKotor || '',
+          beratBersih: kapalInfoSource.beratBersih || '',
+          merekMesin: kapalInfoSource.merekMesin || '',
+          nomorSeriMesin: kapalInfoSource.nomorSeriMesin || '',
+          jenisAlatTangkap: kapalInfoSource.jenisAlatTangkap || '',
+          listPersiapan: kapalInfoSource.listPersiapan || [],
+          statusKerja: 'persiapan',
+          checklistStates: {},
+          checklistDates: {},
+          finishedChecklistStates: {},
+          isFinished: false,
+        };
+
+        const created = await kapalMasukAPI.create(token, createPayload);
+        if (!created?.success) throw new Error(created?.message || 'Gagal create kapal-masuk');
+
+        await loadData();
+
+        // Ambil ulang record kapal_masuk terbaru
+        const refreshed = kapalMasukList.find((k) => Number(k.kapalId) === kapalIdNum);
+        kapalMasukRecord = refreshed || created.data;
+      }
+
+      if (!kapalMasukRecord) return;
+
+      const currentStates = kapalMasukRecord.checklistStates || {};
+      const updatedChecklistStates = { ...currentStates, [kebutuhanTrim]: false };
+
+      const currentDates = kapalMasukRecord.checklistDates || {};
+      const updatedChecklistDates = { ...currentDates, [kebutuhanTrim]: '' };
 
       const updatedList = [
-        ...(freshKapal?.listPersiapan || selectedKapalForKebutuhan.listPersiapan || []),
+        ...(kapalMasukRecord.listPersiapan || []),
         kebutuhanTrim,
       ];
 
+      const recordIdNum = Number(kapalMasukRecord.id);
+
       const updatePayload = {
-        ...(freshKapal || selectedKapalForKebutuhan),
-        id: kapalIdNum,
+        ...kapalMasukRecord,
         listPersiapan: updatedList,
         checklistStates: updatedChecklistStates,
         checklistDates: updatedChecklistDates,
       };
 
-      console.log('[TambahKebutuhanConfirm] PUT kapal-masuk id=', kapalIdNum);
-      const response = await kapalMasukAPI.update(token, kapalIdNum, updatePayload);
+      console.log('[TambahKebutuhanConfirm] PUT kapal-masuk record id=', recordIdNum);
+
+      const response = await kapalMasukAPI.update(token, recordIdNum, updatePayload);
 
       if (response.success) {
         loadData();
@@ -415,14 +451,17 @@ const KapalMasuk = () => {
       }
     } catch (e) {
       console.error('Error adding kebutuhan:', e);
+      alert('Gagal tambah kebutuhan: ' + (e.message || 'Unknown error'));
     }
   }, [
     kapalMasukList,
+    kapalList,
     token,
     newKebutuhan,
     selectedKapalForKebutuhan,
     kebutuhanTargetValid,
     isValidKapalId,
+    loadData,
   ]);
 
   const toStatusText = (kapal) => (kapal?.status || kapal?.statusKerja || '');
