@@ -250,11 +250,17 @@ const KapalMasuk = () => {
       }
 
       // 3) Bangun default: semua kapal_info -> persiapan (berlayar kosong)
-      // Ini memastikan jumlah tab persiapan = jumlah kapal_info walau statusKerja response kosong.
+      // IMPORTANT:
+      // - id di UI ini harus id record kapal_masuk (untuk PUT /api/kapal-masuk/:id)
+      // - jika statusKerja response tidak mengirim id kapal_masuk untuk kapal ini,
+      //   kita set id=0 agar aksi (+Kebutuhan/checkbox/finish) tidak memanggil PUT
+      //   dengan id salah.
+      // Ini memastikan persiapan/belayar tidak kosong dan mencegah PUT 404.
       const semuaPersiapanDariKapalInfo = kapalInfoList.map((k) => ({
         // Map yang UI butuhkan
-        id: k.id,
+        id: 0,
         kapalId: k.id,
+
         nama: k.nama,
         namaPemilik: k.namaPemilik,
         tandaSelar: k.tandaSelar,
