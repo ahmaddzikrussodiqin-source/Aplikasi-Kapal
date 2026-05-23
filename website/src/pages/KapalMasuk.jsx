@@ -427,9 +427,25 @@ const KapalMasuk = () => {
         kapalMasukRecord = refreshed || created.data;
       }
 
-      if (!kapalMasukRecord) return;
+      if (!kapalMasukRecord) throw new Error('kapal-masuk record not found after create');
+
+      // HARD GUARD: pastikan id yang dipakai PUT adalah record kapal_masuk yang benar-benar terkait kapalId
+      const recordIdNum = Number(kapalMasukRecord.id);
+      if (!Number.isFinite(recordIdNum) || recordIdNum <= 0) {
+        throw new Error('kapal-masuk record id invalid');
+      }
+      if (Number(kapalMasukRecord.kapalId) !== kapalIdNum) {
+        // mismatch relasi, re-fetch via POST lalu lookup ulang
+        await loadData();
+        const retryRecord = (kapalMasukList || []).find((k) => Number(k.kapalId) === kapalIdNum);
+        if (!retryRecord || Number(retryRecord.id) <= 0) {
+          throw new Error('kapal-masuk record relasi mismatch');
+        }
+        kapalMasukRecord = retryRecord;
+      }
 
       const currentStates = kapalMasukRecord.checklistStates || {};
+
       const updatedChecklistStates = { ...currentStates, [kebutuhanTrim]: false };
 
       const currentDates = kapalMasukRecord.checklistDates || {};
@@ -439,8 +455,6 @@ const KapalMasuk = () => {
         ...(kapalMasukRecord.listPersiapan || []),
         kebutuhanTrim,
       ];
-
-      const recordIdNum = Number(kapalMasukRecord.id);
 
       const updatePayload = {
         ...kapalMasukRecord,
