@@ -196,9 +196,16 @@ const KapalMasuk = () => {
         const rawBerlayar = (kapalStatusRes?.data?.berlayar || []).filter(Boolean);
 
         // Filter agar tidak ada item dengan id invalid (null/0/NaN) masuk ke UI
+        // Backend bisa kirim field id sebagai `id` atau `kapalId`, jadi ambil keduanya.
+        const getKapalMasukIdNum = (k) => {
+          const candidate = k?.id ?? k?.kapalId ?? k?.kapal_id;
+          const idNum = Number(candidate);
+          return idNum;
+        };
+
         const filterValid = (arr) =>
-          arr.filter((k) => {
-            const idNum = Number(k?.id);
+          (Array.isArray(arr) ? arr : []).filter((k) => {
+            const idNum = getKapalMasukIdNum(k);
             return Number.isFinite(idNum) && idNum > 0;
           });
 
