@@ -187,94 +187,120 @@ const KapalMasuk = () => {
       setLoading(true);
       setError(null);
 
+      // 1) Ambil data status (persiapan/berlayar) dari endpoint status-kerja
       const [kapalStatusRes] = await Promise.all([
         statusKerjaKapalAPI.getStatusKerja(token),
       ]);
 
-      if (kapalStatusRes.success) {
-        // Filter agar tidak ada item dengan id invalid (null/0/NaN) masuk ke UI
-        // Backend bisa kirim field id sebagai `id` atau `kapalId`, jadi ambil keduanya.
-        const getKapalMasukIdNum = (k) => {
-          const candidate = k?.id ?? k?.kapalId ?? k?.kapal_id;
-          const idNum = Number(candidate);
-          return idNum;
-        };
+      // Filter agar tidak ada item dengan id invalid (null/0/NaN) masuk ke UI
+      // Backend bisa kirim field id sebagai `id` atau `kapalId`, jadi ambil keduanya.
+      const getKapalMasukIdNum = (k) => {
+        const candidate = k?.id ?? k?.kapalId ?? k?.kapal_id;
+        const idNum = Number(candidate);
+        return idNum;
+      };
 
-        const filterValid = (arr) =>
-          (Array.isArray(arr) ? arr : []).filter((k) => {
-            const idNum = getKapalMasukIdNum(k);
-            return Number.isFinite(idNum) && idNum > 0;
-          });
+      const filterValid = (arr) =>
+        (Array.isArray(arr) ? arr : []).filter((k) => {
+          const idNum = getKapalMasukIdNum(k);
+          return Number.isFinite(idNum) && idNum > 0;
+        });
 
-        // diagnosa bentuk data
-        console.log('[loadData] kapalStatusRes.data keys:', Object.keys(kapalStatusRes?.data || {}));
-        console.log(
-          '[loadData] persiapan isArray:',
-          Array.isArray(kapalStatusRes?.data?.persiapan),
-          'len:',
-          kapalStatusRes?.data?.persiapan?.length
-        );
-        console.log(
-          '[loadData] berlayar isArray:',
-          Array.isArray(kapalStatusRes?.data?.berlayar),
-          'len:',
-          kapalStatusRes?.data?.berlayar?.length
-        );
+      // diagnosa bentuk data
+      console.log('[loadData] kapalStatusRes.data keys:', Object.keys(kapalStatusRes?.data || {}));
+      console.log(
+        '[loadData] persiapan isArray:',
+        Array.isArray(kapalStatusRes?.data?.persiapan),
+        'len:',
+        kapalStatusRes?.data?.persiapan?.length
+      );
+      console.log(
+        '[loadData] berlayar isArray:',
+        Array.isArray(kapalStatusRes?.data?.berlayar),
+        'len:',
+        kapalStatusRes?.data?.berlayar?.length
+      );
 
-        const rawPersiapan = kapalStatusRes?.data?.persiapan;
-        const rawBerlayar = kapalStatusRes?.data?.berlayar;
+      const rawPersiapan = kapalStatusRes?.data?.persiapan;
+      const rawBerlayar = kapalStatusRes?.data?.berlayar;
 
-        const filteredPersiapan = filterValid(rawPersiapan);
-        const filteredBerlayar = filterValid(rawBerlayar);
+      const filteredPersiapan = filterValid(rawPersiapan);
+      const filteredBerlayar = filterValid(rawBerlayar);
 
-        const useStatusKerjaLists = filteredPersiapan.length > 0 || filteredBerlayar.length > 0;
+      const useStatusKerjaLists =
+        filteredPersiapan.length > 0 || filteredBerlayar.length > 0;
 
-        if (useStatusKerjaLists) {
-          setPersiapanList(filteredPersiapan);
-          setBerlayarList(filteredBerlayar);
-
-          // gabungan untuk kebutuhan checklist/finish/menepi
-          setKapalMasukList(filteredPersiapan.concat(filteredBerlayar));
-        } else {
-          // fallback: jika statusKerja tidak mengirim/ kosong,
-          // tetap tampilkan kapal dari kapal_masuk / kapal_info berdasar status/statusKerja
-          const allKapalMasuk = Array.isArray(kapalMasukList) ? kapalMasukList : [];
-
-          // NOTE:
-          // kapalMasukList di loadData belum terisi saat ini, jadi fallback ini
-          // mengambil dari kapal API dulu (di bawah) via setKapalMasukList setelah kapal API sukses.
-          // Untuk sementara, kosongkan dulu agar tidak bercampur state lama.
-          setPersiapanList([]);
-          setBerlayarList([]);
-          setKapalMasukList([]);
-        }
-      } else {
-        setPersiapanList([]);
-        setBerlayarList([]);
-        setKapalMasukList([]);
-      }
-
+      // 2) Ambil daftar kapal dari kapal_info (harus selalu ada untuk tampilan persiapan)
       const kapalRes = await kapalAPI.getAll(token);
 
+      let kapalInfoList = [];
       if (kapalRes.success && Array.isArray(kapalRes.data)) {
+        kapalInfoList = kapalRes.data;
         setKapalList(kapalRes.data);
       } else {
         setKapalList([]);
+        kapalInfoList = [];
         console.warn('Kapal API failed:', kapalRes);
       }
 
-      // kapalStatusRes sudah dibentuk oleh backend untuk persiapan & berlayar
-      // kapalMasukList tetap dipakai untuk checklist/finish/menepi
+      // 3) Bangun default: semua kapal_info -> persiapan (berlayar kosong)
+      // Ini memastikan jumlah tab persiapan = jumlah kapal_info walau statusKerja response kosong.
+      const semuaPersiapanDariKapalInfo = kapalInfoList.map((k) => ({
+        // Map yang UI butuhkan
+        id: k.id,
+        kapalId: k.id,
+        nama: k.nama,
+        namaPemilik: k.namaPemilik,
+        tandaSelar: k.tandaSelar,
+        tandaPengenal: k.tandaPengenal,
+        beratKotor: k.beratKotor,
+        beratBersih: k.beratBersih,
+        merekMesin: k.merekMesin,
+        nomorSeriMesin: k.nomorSeriMesin,
+        jenisAlatTangkap: k.jenisAlatTangkap,
 
-      // Diagnostics: pastikan kita tidak pakai variabel yang tidak ada
-      console.log('[loadData] kapalStatusRes.persiapan length:', kapalStatusRes?.data?.persiapan?.length);
-      console.log('[loadData] kapalStatusRes.berlayar length:', kapalStatusRes?.data?.berlayar?.length);
-      console.log('[loadData] kapalMasukList length (merged):', kapalStatusRes?.success ? kapalStatusRes.data.persiapan.length + kapalStatusRes.data.berlayar.length : 0);
+        // checklist/aksi berbasis kapal_masuk schema, default kosong
+        tanggalInput: k.tanggalInput || '',
+        tanggalKeberangkatan: '',
+        tanggalBerangkat: '',
+        tanggalKembali: '',
+        listPersiapan: k.listPersiapan || [],
+        checklistStates: {},
+        checklistDates: {},
+        finishedChecklistStates: {},
+
+        // status kerja default persiapan
+        statusKerja: k.statusKerja || k.status || 'persiapan',
+        status: k.status || '',
+        perkiraanKeberangkatan: '',
+        durasiSelesaiPersiapan: '',
+        durasiBerlayar: '',
+        isFinished: false,
+      }));
+
+      // 4) Jika statusKerja sukses dan berisi, override default dengan data statusKerja
+      if (useStatusKerjaLists) {
+        setPersiapanList(filteredPersiapan);
+        setBerlayarList(filteredBerlayar);
+
+        // gabungan untuk kebutuhan checklist/finish/menepi
+        setKapalMasukList(filteredPersiapan.concat(filteredBerlayar));
+      } else {
+        setPersiapanList(semuaPersiapanDariKapalInfo);
+        setBerlayarList([]);
+
+        // checklist/finish/menepi butuh record kapal_masuk,
+        // namun agar UI tetap tampil, gunakan map default dari kapal_info.
+        // (Finish tetap membutuhkan record kapal_masuk yang ada, tapi tab tetap terisi sesuai permintaan.)
+        setKapalMasukList(semuaPersiapanDariKapalInfo);
+      }
 
     } catch (e) {
       setError(`Gagal memuat data: ${e.message || 'Unknown error'}`);
       setKapalMasukList([]);
       setKapalList([]);
+      setPersiapanList([]);
+      setBerlayarList([]);
     } finally {
       setLoading(false);
     }
