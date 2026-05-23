@@ -223,9 +223,31 @@ const KapalMasuk = () => {
 
   const handleTambahKebutuhan = useCallback(
     (kapalId) => {
-      const currentKapal = kapalMasukList.find((k) => k.id === kapalId);
-      if (!currentKapal) return;
-      setSelectedKapalForKebutuhan({ ...currentKapal });
+      const kapalIdNum = Number(kapalId);
+
+      // Guard: jangan buka modal jika id kapal tidak valid (mencegah warning & PUT /api/kapal-masuk/null)
+      const invalidId =
+        kapalId === null ||
+        kapalId === undefined ||
+        kapalId === '' ||
+        kapalId === 'null' ||
+        Number.isNaN(kapalIdNum) ||
+        kapalIdNum <= 0;
+
+      if (invalidId) {
+        console.warn('[TambahKebutuhan] invalid kapalId:', kapalId, 'kapalIdNum:', kapalIdNum);
+        alert('Kapal tidak valid untuk tambah kebutuhan');
+        return;
+      }
+
+      const currentKapal = kapalMasukList.find((k) => Number(k.id) === kapalIdNum);
+      if (!currentKapal) {
+        console.warn('[TambahKebutuhan] currentKapal tidak ditemukan untuk kapalId:', kapalIdNum);
+        alert('Kapal tidak valid untuk tambah kebutuhan');
+        return;
+      }
+
+      setSelectedKapalForKebutuhan({ ...currentKapal, id: kapalIdNum });
       setNewKebutuhan('');
       setShowKebutuhanModal(true);
     },
@@ -250,13 +272,12 @@ const KapalMasuk = () => {
 
     if (invalidId) {
       console.warn('[TambahKebutuhanConfirm] invalid kapalId:', kapalId, 'kapalIdNum:', kapalIdNum);
-      // tetap tampilkan alert agar jelas ke user, tapi pastikan tidak ada request PUT
       alert('Kapal tidak valid untuk tambah kebutuhan');
       return;
     }
 
     try {
-      const freshKapal = kapalMasukList.find((k) => k.id === kapalIdNum);
+      const freshKapal = kapalMasukList.find((k) => Number(k.id) === kapalIdNum);
 
       const currentStates =
         freshKapal?.checklistStates || selectedKapalForKebutuhan.checklistStates || {};
@@ -275,6 +296,7 @@ const KapalMasuk = () => {
 
       const updatePayload = {
         ...(freshKapal || selectedKapalForKebutuhan),
+        id: kapalIdNum,
         listPersiapan: updatedList,
         checklistStates: updatedChecklistStates,
         checklistDates: updatedChecklistDates,
