@@ -197,30 +197,21 @@ const KapalMasuk = () => {
 
       const kapalRes = await kapalAPI.getAll(token);
 
-
-      if (kapalMasukRes.success && Array.isArray(kapalMasukRes.data)) {
-        const processedKapalMasuk = kapalMasukRes.data
-          .filter((k) => k && !k.error)
-          .map(safeProcessKapal);
-
-        // Diagnostics: prevent “menghilang” by verifying data presence
-        console.log('[loadData] kapalMasukRes.data length:', kapalMasukRes.data.length);
-        console.log('[loadData] processedKapalMasuk length:', processedKapalMasuk.length);
-        console.log('[loadData] first processed kapal id:', processedKapalMasuk[0]?.id);
-        console.log('[loadData] sample checklistPersiapan length:', processedKapalMasuk[0]?.listPersiapan?.length);
-
-        setKapalMasukList(processedKapalMasuk);
-      } else {
-        setKapalMasukList([]);
-        console.warn('KapalMasuk API failed:', kapalMasukRes);
-      }
-
       if (kapalRes.success && Array.isArray(kapalRes.data)) {
         setKapalList(kapalRes.data);
       } else {
         setKapalList([]);
         console.warn('Kapal API failed:', kapalRes);
       }
+
+      // kapalStatusRes sudah dibentuk oleh backend untuk persiapan & berlayar
+      // kapalMasukList tetap dipakai untuk checklist/finish/menepi
+
+      // Diagnostics: pastikan kita tidak pakai variabel yang tidak ada
+      console.log('[loadData] kapalStatusRes.persiapan length:', kapalStatusRes?.data?.persiapan?.length);
+      console.log('[loadData] kapalStatusRes.berlayar length:', kapalStatusRes?.data?.berlayar?.length);
+      console.log('[loadData] kapalMasukList length (merged):', kapalStatusRes?.success ? kapalStatusRes.data.persiapan.length + kapalStatusRes.data.berlayar.length : 0);
+
     } catch (e) {
       setError(`Gagal memuat data: ${e.message || 'Unknown error'}`);
       setKapalMasukList([]);
