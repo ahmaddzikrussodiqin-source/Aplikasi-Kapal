@@ -238,19 +238,19 @@ const KapalMasuk = () => {
 
     const kapalId = selectedKapalForKebutuhan?.id;
 
-    // defensif: tolak null, undefined, string "null", kosong, atau NaN
+    // defensif: tolak null/undefined/"null"/""/NaN sebelum PUT
     const kapalIdNum = Number(kapalId);
     const invalidId =
       kapalId === null ||
       kapalId === undefined ||
       kapalId === 'null' ||
       (typeof kapalId === 'string' && kapalId.trim() === '') ||
-      Number.isNaN(kapalIdNum);
+      Number.isNaN(kapalIdNum) ||
+      kapalIdNum <= 0;
 
     if (invalidId) {
-      // jangan blokir UI; fokus hanya mencegah request invalid
-      // modal akan tetap bisa ditutup user via tombol "Batal"
-      console.warn('[TambahKebutuhanConfirm] invalid kapalId:', kapalId);
+      console.warn('[TambahKebutuhanConfirm] invalid kapalId:', kapalId, 'kapalIdNum:', kapalIdNum);
+      // tetap tampilkan alert agar jelas ke user, tapi pastikan tidak ada request PUT
       alert('Kapal tidak valid untuk tambah kebutuhan');
       return;
     }
