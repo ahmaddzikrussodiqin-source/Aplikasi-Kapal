@@ -235,6 +235,22 @@ const KapalMasuk = () => {
   const handleTambahKebutuhanConfirm = useCallback(async () => {
     if (!newKebutuhan.trim() || !selectedKapalForKebutuhan) return;
 
+    const kapalId = selectedKapalForKebutuhan?.id;
+
+    // defensif: tolak null, undefined, string "null", kosong, atau NaN
+    if (
+      kapalId === null ||
+      kapalId === undefined ||
+      kapalId === 'null' ||
+      (typeof kapalId === 'string' && kapalId.trim() === '') ||
+      Number.isNaN(Number(kapalId))
+    ) {
+      alert('Kapal tidak valid untuk tambah kebutuhan');
+      return;
+    }
+
+
+
     try {
       const freshKapal = kapalMasukList.find((k) => k.id === selectedKapalForKebutuhan.id);
 
@@ -260,6 +276,7 @@ const KapalMasuk = () => {
         checklistDates: updatedChecklistDates,
       };
 
+      console.log('[TambahKebutuhanConfirm] selectedKapalForKebutuhan.id=', selectedKapalForKebutuhan?.id);
       const response = await kapalMasukAPI.update(
         token,
         selectedKapalForKebutuhan.id,
