@@ -514,15 +514,58 @@ const KapalMasuk = () => {
     if (!finishKapal || !finishTanggalKeberangkatan) return;
 
     try {
-      const fresh = kapalMasukList.find((k) => k.id === finishKapal.id) || finishKapal;
+      // finishKapal.id pada default biasanya = id kapal_info (bukan id record kapal_masuk)
+      const kapalIdNum = Number(finishKapal.kapalId ?? finishKapal.id);
+      if (!Number.isFinite(kapalIdNum) || kapalIdNum <= 0) throw new Error('kapalId invalid');
+
+      // cari record kapal_masuk berdasarkan relasi kapalId
+      const recordFromList = kapalMasukList.find((k) => Number(k.kapalId) === kapalIdNum);
+      let kapalMasukRecord = recordFromList;
+
+      // jika belum ada record kapal_masuk -> create dulu
+      if (!kapalMasukRecord || !Number.isFinite(Number(kapalMasukRecord.id)) || Number(kapalMasukRecord.id) <= 0) {
+        const kapalInfoSource = kapalList.find((k) => Number(k.id) === kapalIdNum);
+        if (!kapalInfoSource) throw new Error('kapal info not found');
+
+        const createPayload = {
+          kapalId: kapalIdNum,
+          nama: kapalInfoSource.nama || '',
+          namaPemilik: kapalInfoSource.namaPemilik || '',
+          tandaSelar: kapalInfoSource.tandaSelar || '',
+          tandaPengenal: kapalInfoSource.tandaPengenal || '',
+          beratKotor: kapalInfoSource.beratKotor || '',
+          beratBersih: kapalInfoSource.beratBersih || '',
+          merekMesin: kapalInfoSource.merekMesin || '',
+          nomorSeriMesin: kapalInfoSource.nomorSeriMesin || '',
+          jenisAlatTangkap: kapalInfoSource.jenisAlatTangkap || '',
+          listPersiapan: kapalInfoSource.listPersiapan || [],
+          statusKerja: 'persiapan',
+          checklistStates: {},
+          checklistDates: {},
+          finishedChecklistStates: {},
+          isFinished: false,
+        };
+
+        const created = await kapalMasukAPI.create(token, createPayload);
+        if (!created?.success) throw new Error(created?.message || 'Gagal create kapal-masuk');
+
+        await loadData();
+
+        // setelah loadData, cari lagi record terbaru
+        kapalMasukRecord = kapalMasukList.find((k) => Number(k.kapalId) === kapalIdNum) || created.data;
+      }
+
+      if (!kapalMasukRecord) throw new Error('kapal-masuk record not found');
+
+      const recordIdNum = Number(kapalMasukRecord.id);
 
       const payload = {
-        ...fresh,
+        ...kapalMasukRecord,
         tanggalKeberangkatan: finishTanggalKeberangkatan,
         statusKerja: 'berlayar',
       };
 
-      const response = await kapalMasukAPI.update(token, finishKapal.id, payload);
+      const response = await kapalMasukAPI.update(token, recordIdNum, payload);
       if (!response.success) throw new Error(response.message || 'Update failed');
 
       setFinishModalOpen(false);
