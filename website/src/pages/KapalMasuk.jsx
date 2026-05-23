@@ -865,9 +865,31 @@ const KapalMasuk = () => {
                 className="w-full p-2 border rounded mb-4"
               />
               <div className="flex gap-2">
-                <button onClick={handleTambahKebutuhanConfirm} className="flex-1 bg-yellow-500 text-white p-2 rounded">
-                  Tambah
-                </button>
+                {(() => {
+                  const kapalId = selectedKapalForKebutuhan?.id;
+                  const kapalIdNum = Number(kapalId);
+                  const invalidId =
+                    kapalId === null ||
+                    kapalId === undefined ||
+                    kapalId === 'null' ||
+                    (typeof kapalId === 'string' && kapalId.trim() === '') ||
+                    Number.isNaN(kapalIdNum) ||
+                    kapalIdNum <= 0;
+
+                  return (
+                    <button
+                      onClick={handleTambahKebutuhanConfirm}
+                      disabled={invalidId}
+                      className={`flex-1 p-2 rounded ${
+                        invalidId
+                          ? 'bg-yellow-200 text-yellow-800 cursor-not-allowed'
+                          : 'bg-yellow-500 text-white hover:bg-yellow-600'
+                      }`}
+                    >
+                      Tambah
+                    </button>
+                  );
+                })()}
                 <button onClick={() => setShowKebutuhanModal(false)} className="flex-1 p-2 border rounded">
                   Batal
                 </button>
