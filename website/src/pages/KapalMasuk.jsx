@@ -233,26 +233,30 @@ const KapalMasuk = () => {
   );
 
   const handleTambahKebutuhanConfirm = useCallback(async () => {
-    if (!newKebutuhan.trim() || !selectedKapalForKebutuhan) return;
+    if (!newKebutuhan.trim()) return;
+    if (!selectedKapalForKebutuhan) return;
 
     const kapalId = selectedKapalForKebutuhan?.id;
 
     // defensif: tolak null, undefined, string "null", kosong, atau NaN
-    if (
+    const kapalIdNum = Number(kapalId);
+    const invalidId =
       kapalId === null ||
       kapalId === undefined ||
       kapalId === 'null' ||
       (typeof kapalId === 'string' && kapalId.trim() === '') ||
-      Number.isNaN(Number(kapalId))
-    ) {
+      Number.isNaN(kapalIdNum);
+
+    if (invalidId) {
+      // jangan blokir UI; fokus hanya mencegah request invalid
+      // modal akan tetap bisa ditutup user via tombol "Batal"
+      console.warn('[TambahKebutuhanConfirm] invalid kapalId:', kapalId);
       alert('Kapal tidak valid untuk tambah kebutuhan');
       return;
     }
 
-
-
     try {
-      const freshKapal = kapalMasukList.find((k) => k.id === selectedKapalForKebutuhan.id);
+      const freshKapal = kapalMasukList.find((k) => k.id === kapalIdNum);
 
       const currentStates =
         freshKapal?.checklistStates || selectedKapalForKebutuhan.checklistStates || {};
@@ -276,12 +280,8 @@ const KapalMasuk = () => {
         checklistDates: updatedChecklistDates,
       };
 
-      console.log('[TambahKebutuhanConfirm] selectedKapalForKebutuhan.id=', selectedKapalForKebutuhan?.id);
-      const response = await kapalMasukAPI.update(
-        token,
-        selectedKapalForKebutuhan.id,
-        updatePayload
-      );
+      console.log('[TambahKebutuhanConfirm] selectedKapalForKebutuhan.id=', kapalIdNum);
+      const response = await kapalMasukAPI.update(token, kapalIdNum, updatePayload);
 
       if (response.success) {
         loadData();
