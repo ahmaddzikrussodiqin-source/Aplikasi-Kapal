@@ -24,6 +24,7 @@ const KapalMasuk = () => {
   const [newKebutuhan, setNewKebutuhan] = useState('');
   const [showKebutuhanModal, setShowKebutuhanModal] = useState(false);
   const [selectedKapalForKebutuhan, setSelectedKapalForKebutuhan] = useState(null);
+  const [kebutuhanTargetValid, setKebutuhanTargetValid] = useState(false);
 
   const [formData, setFormData] = useState({
     kapalId: '',
@@ -221,20 +222,24 @@ const KapalMasuk = () => {
     }
   };
 
+  const isValidKapalId = useCallback((kapalId) => {
+    const kapalIdNum = Number(kapalId);
+    return !(
+      kapalId === null ||
+      kapalId === undefined ||
+      kapalId === '' ||
+      kapalId === 'null' ||
+      (typeof kapalId === 'string' && kapalId.trim() === '') ||
+      Number.isNaN(kapalIdNum) ||
+      kapalIdNum <= 0
+    );
+  }, []);
+
   const handleTambahKebutuhan = useCallback(
     (kapalId) => {
       const kapalIdNum = Number(kapalId);
 
-      // Guard: jangan buka modal jika id kapal tidak valid (mencegah warning & PUT /api/kapal-masuk/null)
-      const invalidId =
-        kapalId === null ||
-        kapalId === undefined ||
-        kapalId === '' ||
-        kapalId === 'null' ||
-        Number.isNaN(kapalIdNum) ||
-        kapalIdNum <= 0;
-
-      if (invalidId) {
+      if (!isValidKapalId(kapalId)) {
         console.warn('[TambahKebutuhan] invalid kapalId:', kapalId, 'kapalIdNum:', kapalIdNum);
         alert('Kapal tidak valid untuk tambah kebutuhan');
         return;
@@ -249,10 +254,24 @@ const KapalMasuk = () => {
 
       setSelectedKapalForKebutuhan({ ...currentKapal, id: kapalIdNum });
       setNewKebutuhan('');
+      setKebutuhanTargetValid(true);
       setShowKebutuhanModal(true);
     },
-    [kapalMasukList]
+    [kapalMasukList, isValidKapalId]
   );
+
+  useEffect(() => {
+    if (!showKebutuhanModal) return;
+
+    const valid = isValidKapalId(selectedKapalForKebutuhan?.id);
+    setKebutuhanTargetValid(valid);
+
+    if (!valid) {
+      setShowKebutuhanModal(false);
+      setSelectedKapalForKebutuhan(null);
+      setNewKebutuhan('');
+    }
+  }, [showKebutuhanModal, selectedKapalForKebutuhan, isValidKapalId]);
 
   const handleTambahKebutuhanConfirm = useCallback(async () => {
     if (!newKebutuhan.trim()) return;
@@ -261,16 +280,8 @@ const KapalMasuk = () => {
     const kapalId = selectedKapalForKebutuhan?.id;
 
     // defensif: tolak null/undefined/"null"/""/NaN sebelum PUT
-    const kapalIdNum = Number(kapalId);
-    const invalidId =
-      kapalId === null ||
-      kapalId === undefined ||
-      kapalId === 'null' ||
-      (typeof kapalId === 'string' && kapalId.trim() === '') ||
-      Number.isNaN(kapalIdNum) ||
-      kapalIdNum <= 0;
-
-    if (invalidId) {
+    if (!isValidKapalId(kapalId)) {
+      const kapalIdNum = Number(kapalId);
       console.warn('[TambahKebutuhanConfirm] invalid kapalId:', kapalId, 'kapalIdNum:', kapalIdNum);
       alert('Kapal tidak valid untuk tambah kebutuhan');
       return;
@@ -866,19 +877,13 @@ const KapalMasuk = () => {
               />
               <div className="flex gap-2">
                 {(() => {
-                  const kapalId = selectedKapalForKebutuhan?.id;
-                  const kapalIdNum = Number(kapalId);
-                  const invalidId =
-                    kapalId === null ||
-                    kapalId === undefined ||
-                    kapalId === 'null' ||
-                    (typeof kapalId === 'string' && kapalId.trim() === '') ||
-                    Number.isNaN(kapalIdNum) ||
-                    kapalIdNum <= 0;
-
+                  const invalidId = !kebutuhanTargetValid;
                   return (
                     <button
-                      onClick={handleTambahKebutuhanConfirm}
+                      onClick={() => {
+                        if (!kebutuhanTargetValid) return;
+                        handleTambahKebutuhanConfirm();
+                      }}
                       disabled={invalidId}
                       className={`flex-1 p-2 rounded ${
                         invalidId
