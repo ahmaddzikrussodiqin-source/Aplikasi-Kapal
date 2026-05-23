@@ -128,8 +128,27 @@ export const kapalAPI = {
   },
 };
 
+// Status Kerja Kapal (Persiapan / Berlayar / History) API
+export const statusKerjaKapalAPI = {
+  getStatusKerja: async (token) => {
+    const response = await fetch(`${API_BASE_URL}/api/status-kerja-kapal`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    return response.json();
+  },
+
+  menepi: async (token, kapalMasukId) => {
+    const response = await fetch(`${API_BASE_URL}/api/kapal-masuk/${kapalMasukId}/menepi`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    return response.json();
+  },
+};
+
 // Status Kerja Kapal (Ship Status) API
 export const kapalMasukAPI = {
+
   getAll: async (token) => {
     const response = await fetch(`${API_BASE_URL}/api/kapal-masuk`, {
       headers: { Authorization: `Bearer ${token}` },

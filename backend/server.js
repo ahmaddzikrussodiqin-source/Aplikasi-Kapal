@@ -470,6 +470,45 @@ async function initializeDatabase() {
             )
         `);
 
+        // History table: record terpisah untuk snapshot persiapan/berlayar saat menepi
+        console.log('🧾 Creating kapal_masuk_history table...');
+        await kapalMasukPool.query(`
+            CREATE TABLE IF NOT EXISTS kapal_masuk_schema.kapal_masuk_history (
+                id SERIAL PRIMARY KEY,
+                kapalMasukId INTEGER,
+
+                nama TEXT,
+                namaPemilik TEXT NOT NULL DEFAULT '',
+                tandaSelar TEXT NOT NULL DEFAULT '',
+                tandaPengenal TEXT NOT NULL DEFAULT '',
+                beratKotor TEXT NOT NULL DEFAULT '',
+                beratBersih TEXT NOT NULL DEFAULT '',
+                merekMesin TEXT NOT NULL DEFAULT '',
+                nomorSeriMesin TEXT NOT NULL DEFAULT '',
+                jenisAlatTangkap TEXT NOT NULL DEFAULT '',
+
+                tanggalInput TEXT,
+
+                -- Snapshot persiapan
+                tanggalKeberangkatan TEXT,
+                totalHariPersiapan INTEGER,
+                tanggalBerangkat TEXT,
+                durasiSelesaiPersiapan TEXT,
+
+                -- Snapshot berlayar/menepi
+                tanggalKembali TEXT,
+                durasiBerlayar TEXT,
+
+                listPersiapan TEXT NOT NULL DEFAULT '[]',
+                checklistStates TEXT NOT NULL DEFAULT '{}',
+                checklistDates TEXT NOT NULL DEFAULT '{}',
+
+                finishedAt TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        `);
+
+
 
         // Add missing columns if they don't exist
         const columnsToCheck = ['durasiBerlayar', 'status', 'checklistStates', 'checklistDates', 'newItemsAddedAfterFinish', 'finishedChecklistStates', 'finishedAt'];
@@ -1724,6 +1763,297 @@ async function autoFillKapalInfo(namaKapal, kapalMasukData) {
   
   return kapalMasukData;
 }
+
+// Status kerja kapal (Persiapan / Berlayar / History)
+app.get('/api/status-kerja-kapal', authenticateToken, async (req, res) => {
+    try {
+        // Ambil semua kapal dari kapal_info
+        const kapalInfoRes = await kapalPool.query(`
+            SELECT
+                ki.id AS kapalId,
+                ki.nama,
+                ki.namaPemilik,
+                ki.tandaSelar,
+                ki.tandaPengenal,
+                ki.beratKotor,
+                ki.beratBersih,
+                ki.merekMesin,
+                ki.nomorSeriMesin,
+                ki.jenisAlatTangkap
+            FROM kapal_info ki
+            ORDER BY ki.id DESC
+        `);
+
+        // Ambil kapal aktif dari kapal_masuk (persiapan/berlayar/menepi)
+        const kapalMasukRes = await kapalMasukPool.query(`
+            SELECT * FROM kapal_masuk_schema.kapal_masuk
+        `);
+
+        const parseJSONSafe = (v, fallback) => {
+            if (!v) return fallback;
+            try { return JSON.parse(v); } catch { return fallback; }
+        };
+
+        const toStatusText = (row) => (row?.status || row?.statusKerja || '').toLowerCase().trim();
+
+        const allInfo = kapalInfoRes.rows.map(r => ({
+            id: r.kapalId,
+            kapalId: r.kapalId,
+            nama: r.nama || '',
+            namaPemilik: r.namapemilik || '',
+            tandaSelar: r.tandaselar || '',
+            tandaPengenal: r.tandapengenal || '',
+            beratKotor: r.beratkotor || '',
+            beratBersih: r.beratbersih || '',
+            merekMesin: r.merekmesin || '',
+            nomorSeriMesin: r.nomorserimesin || '',
+            jenisAlatTangkap: r.jenisalattangkap || '',
+            listPersiapan: [],
+            checklistStates: {},
+            checklistDates: {},
+            statusKerja: 'persiapan',
+            status: 'persiapan',
+        }));
+
+        const activeByKapalId = new Map();
+        for (const row of kapalMasukRes.rows) {
+            const kapalId = row.kapalId ? Number(row.kapalId) : null;
+            if (!kapalId) continue;
+            activeByKapalId.set(kapalId, row);
+        }
+
+        const historyRes = await kapalMasukPool.query(`
+            SELECT * FROM kapal_masuk_schema.kapal_masuk_history
+        `);
+
+        const historyRows = historyRes.rows.map(h => ({
+            id: h.id,
+            kapalMasukId: h.kapalmasukid,
+            nama: h.nama || '',
+            namaPemilik: h.namapemilik || '',
+            tandaSelar: h.tandaselar || '',
+            tandaPengenal: h.tandapengenal || '',
+            beratKotor: h.beratkotor || '',
+            beratBersih: h.beratbersih || '',
+            merekMesin: h.merekmesin || '',
+            nomorSeriMesin: h.nomorserimesin || '',
+            jenisAlatTangkap: h.jenisalattangkap || '',
+            listPersiapan: parseJSONSafe(h.listpersiapan, []),
+            checklistStates: parseJSONSafe(h.checkliststates, {}),
+            checklistDates: parseJSONSafe(h.checklistdates, {}),
+            statusKerja: 'menepi',
+            status: 'menepi',
+            tanggalKeberangkatan: h.tanggalkeberangkatan || '',
+            totalHariPersiapan: h.totalharipersiapan || 0,
+            tanggalBerangkat: h.tanggalberangkat || '',
+            durasiSelesaiPersiapan: h.durasiselesaipersiapan || '',
+            tanggalKembali: h.tanggalkembali || '',
+            durasiBerlayar: h.durasiberlayar || '',
+            finishedAt: h.finishedat || '',
+        }));
+
+        // Tentukan kategori per kapal
+        const persiapan = [];
+        const berlayar = [];
+
+        const historyKapals = new Set(historyRows.map(h => h.kapalMasukId).filter(Boolean));
+
+        for (const info of allInfo) {
+            const activeRow = activeByKapalId.get(info.kapalId);
+
+            // Bila ada record aktif dan statusKerja berlayar -> masuk berlayar
+            if (activeRow) {
+                const s = toStatusText(activeRow);
+                const statusIsBerlayar = s.includes('berlayar') || s === 'sailing';
+                const statusIsMenepi = s.includes('menepi') || s === 'docked';
+
+                if (statusIsBerlayar) {
+                    persiapan.push(null);
+                    berlayar.push({
+                        id: activeRow.id,
+                        kapalId: info.kapalId,
+                        nama: info.nama,
+                        namaPemilik: info.namaPemilik,
+                        tandaSelar: info.tandaSelar,
+                        tandaPengenal: info.tandaPengenal,
+                        beratKotor: info.beratKotor,
+                        beratBersih: info.beratBersih,
+                        merekMesin: info.merekMesin,
+                        nomorSeriMesin: info.nomorSeriMesin,
+                        jenisAlatTangkap: info.jenisAlatTangkap,
+                        listPersiapan: parseListPersiapan(activeRow.listpersiapan || '[]'),
+                        checklistStates: parseJSONSafe(activeRow.checkliststates, {}),
+                        checklistDates: parseJSONSafe(activeRow.checklistdates, {}),
+                        statusKerja: activeRow.statuskerja || 'berlayar',
+                        status: activeRow.status || 'berlayar',
+                        tanggalKeberangkatan: activeRow.tanggalkeberangkatan || '',
+                        tanggalBerangkat: activeRow.tanggalberangkat || '',
+                        tanggalKembali: activeRow.tanggalkembali || '',
+                        durasiSelesaiPersiapan: activeRow.durasiselesaipersiapan || '',
+                        durasiBerlayar: activeRow.durasiberlayar || '',
+                        finishedAt: activeRow.finishedat || '',
+                        // untuk kompatibilitas existing UI
+                        safeTanggalBerangkat: null,
+                        safeTanggalKeberangkatan: null,
+                        safeTanggalKembali: null,
+                    });
+                    continue;
+                }
+
+                // Bila menepi, maka dia dianggap tidak masuk persiapan
+                if (statusIsMenepi) {
+                    // seharusnya sudah dipindah history, jadi tampil di history saja.
+                    continue;
+                }
+
+                // default: persiapan aktif
+                persiapan.push({
+                    id: activeRow.id,
+                    kapalId: info.kapalId,
+                    nama: info.nama,
+                    namaPemilik: info.namaPemilik,
+                    tandaSelar: info.tandaSelar,
+                    tandaPengenal: info.tandaPengenal,
+                    beratKotor: info.beratKotor,
+                    beratBersih: info.beratBersih,
+                    merekMesin: info.merekMesin,
+                    nomorSeriMesin: info.nomorSeriMesin,
+                    jenisAlatTangkap: info.jenisAlatTangkap,
+                    listPersiapan: parseListPersiapan(activeRow.listpersiapan || '[]'),
+                    checklistStates: parseJSONSafe(activeRow.checkliststates, {}),
+                    checklistDates: parseJSONSafe(activeRow.checklistdates, {}),
+                    statusKerja: activeRow.statuskerja || 'persiapan',
+                    status: activeRow.status || 'persiapan',
+                    tanggalKeberangkatan: activeRow.tanggalkeberangkatan || '',
+                    tanggalBerangkat: activeRow.tanggalberangkat || '',
+                    tanggalKembali: activeRow.tanggalkembali || '',
+                    durasiSelesaiPersiapan: activeRow.durasiselesaipersiapan || '',
+                    durasiBerlayar: activeRow.durasiberlayar || '',
+                });
+                continue;
+            }
+
+            // Bila belum ada kapal_masuk, default persiapan dari kapal_info
+            persiapan.push({
+                id: null,
+                kapalId: info.kapalId,
+                nama: info.nama,
+                namaPemilik: info.namaPemilik,
+                tandaSelar: info.tandaSelar,
+                tandaPengenal: info.tandaPengenal,
+                beratKotor: info.beratKotor,
+                beratBersih: info.beratBersih,
+                merekMesin: info.merekMesin,
+                nomorSeriMesin: info.nomorSeriMesin,
+                jenisAlatTangkap: info.jenisAlatTangkap,
+                listPersiapan: [],
+                checklistStates: {},
+                checklistDates: {},
+                statusKerja: 'persiapan',
+                status: 'persiapan',
+            });
+        }
+
+        // Pastikan jumlah persiapan + berlayar = total kapal_info
+        // (Menepi tidak dihitung di kedua tab)
+        const totalInfo = allInfo.length;
+        if (persiapan.length + berlayar.length !== totalInfo) {
+            console.warn('Mismatch persiapan+berlayar vs kapal_info:', {
+                totalInfo,
+                persiapan: persiapan.length,
+                berlayar: berlayar.length,
+                history: historyRows.length,
+            });
+        }
+
+        res.json({
+            success: true,
+            message: 'Status kerja kapal retrieved successfully',
+            data: {
+                persiapan,
+                berlayar,
+                history: historyRows,
+            },
+        });
+    } catch (error) {
+        console.error('GET /api/status-kerja-kapal error:', error);
+        res.status(500).json({ success: false, message: 'Failed to get status kerja kapal', error: error.message });
+    }
+});
+
+// Menepi: snapshot kapal aktif ke kapal_masuk_history lalu kapal kembali ke persiapan
+app.post('/api/kapal-masuk/:id/menepi', authenticateToken, async (req, res) => {
+    try {
+        const { id } = req.params;
+
+        // Ambil record kapal aktif
+        const currentRes = await kapalMasukPool.query(
+            `SELECT * FROM kapal_masuk_schema.kapal_masuk WHERE id = $1`,
+            [id]
+        );
+
+        if (currentRes.rows.length === 0) {
+            return res.status(404).json({ success: false, message: 'Kapal Masuk not found' });
+        }
+
+        const current = currentRes.rows[0];
+
+        // Snapshot ke history
+        // durasi dibaca dari field durasi* yang sudah ada (diisi saat finish/pengisian)
+        const insertRes = await kapalMasukPool.query(`
+            INSERT INTO kapal_masuk_schema.kapal_masuk_history (
+                kapalMasukId,
+                nama,
+                namaPemilik, tandaSelar, tandaPengenal,
+                beratKotor, beratBersih, merekMesin, nomorSeriMesin, jenisAlatTangkap,
+                tanggalInput,
+                tanggalKeberangkatan, totalHariPersiapan, tanggalBerangkat, durasiSelesaiPersiapan,
+                tanggalKembali, durasiBerlayar,
+                listPersiapan, checklistStates, checklistDates,
+                finishedAt
+            ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,
+                      $12,$13,$14,$15,
+                      $16,$17,
+                      $18,$19,$20,
+                      $21
+            ) RETURNING *
+        `, [
+            current.id,
+            current.nama,
+            current.namapemilik, current.tandaselar, current.tandapengenal,
+            current.beratkotor, current.beratbersih, current.merekmesin, current.nomorserimesin, current.jenisalattangkap,
+            current.tanggalinput,
+            current.tanggalkeberangkatan, current.totalharipersiapan, current.tanggalberangkat, current.durasiselesaipersiapan,
+            current.tanggalkembali, current.durasiberlayar,
+            JSON.stringify(current.listpersiapan || []),
+            JSON.stringify(current.checkliststates || {}),
+            JSON.stringify(current.checklistdates || {}),
+            current.finishedat || ''
+        ]);
+
+        if (!insertRes.rows || insertRes.rows.length === 0) {
+            throw new Error('Failed to insert history');
+        }
+
+        // Reset status kerja kapal aktif supaya kembali ke persiapan
+        const updateRes = await kapalMasukPool.query(`
+            UPDATE kapal_masuk_schema.kapal_masuk SET
+                statusKerja = 'persiapan',
+                status = '',
+                tanggalKembali = '',
+                durasiBerlayar = '',
+                tanggalKeberangkatan = COALESCE(tanggalKeberangkatan, ''),
+                // persiapan selesai tetap tersimpan di checklistStates
+                finishedAt = ''
+            WHERE id = $1
+        `, [id]);
+
+        return res.json({ success: true, message: 'Kapal menepi successfully', data: { historyId: insertRes.rows[0].id, updateRowCount: updateRes.rowCount } });
+    } catch (e) {
+        console.error('Menepi error:', e);
+        return res.status(500).json({ success: false, message: 'Failed to menepi', details: String(e.message || e) });
+    }
+});
 
 // Kapal Masuk routes (protected)
 app.get('/api/kapal-masuk', authenticateToken, async (req, res) => {

@@ -1,7 +1,8 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { kapalMasukAPI, kapalAPI } from '../services/api';
+import { kapalAPI } from '../services/api';
+import { kapalMasukAPI, statusKerjaKapalAPI } from '../services/api';
 import DatePicker from '../components/DatePicker';
 
 const KapalMasuk = () => {
@@ -183,10 +184,19 @@ const KapalMasuk = () => {
       setLoading(true);
       setError(null);
 
-      const [kapalMasukRes, kapalRes] = await Promise.all([
-        kapalMasukAPI.getAll(token),
-        kapalAPI.getAll(token),
+      const [kapalStatusRes] = await Promise.all([
+        statusKerjaKapalAPI.getStatusKerja(token),
       ]);
+
+      if (kapalStatusRes.success) {
+        setKapalMasukList(kapalStatusRes.data.persiapan.filter(Boolean).concat(kapalStatusRes.data.berlayar.filter(Boolean).map((b) => b)).concat([]));
+        // kapalList dipakai untuk select/edit/tambah, jadi pakai kapalAPI
+      } else {
+        setKapalMasukList([]);
+      }
+
+      const kapalRes = await kapalAPI.getAll(token);
+
 
       if (kapalMasukRes.success && Array.isArray(kapalMasukRes.data)) {
         const processedKapalMasuk = kapalMasukRes.data
