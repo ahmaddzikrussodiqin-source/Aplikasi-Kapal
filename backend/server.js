@@ -2280,7 +2280,23 @@ app.post('/api/kapal-masuk', authenticateToken, async (req, res) => {
 app.put('/api/kapal-masuk/:id', authenticateToken, async (req, res) => {
     try {
         const { id } = req.params;
+        // Guard: cegah invalid request PUT /api/kapal-masuk/null
+        if (id === 'null' || id === null || id === undefined || String(id).trim() === '') {
+            return res.status(400).json({
+                success: false,
+                message: 'Invalid kapal-masuk id'
+            });
+        }
+        const kapalMasukIdNum = Number(id);
+        if (Number.isNaN(kapalMasukIdNum)) {
+            return res.status(400).json({
+                success: false,
+                message: 'Invalid kapal-masuk id'
+            });
+        }
+
         let kapalMasukData = req.body || {};
+
 
         // Auto-fill from kapal_info if nama provided and pemilik missing
         if (kapalMasukData.nama) {
