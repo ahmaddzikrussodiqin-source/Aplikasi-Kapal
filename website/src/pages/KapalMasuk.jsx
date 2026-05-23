@@ -9,6 +9,8 @@ const KapalMasuk = () => {
   const { token, socket } = useAuth();
 
   const [kapalMasukList, setKapalMasukList] = useState([]);
+  const [persiapanList, setPersiapanList] = useState([]);
+  const [berlayarList, setBerlayarList] = useState([]);
   const [kapalList, setKapalList] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -190,20 +192,27 @@ const KapalMasuk = () => {
       ]);
 
       if (kapalStatusRes.success) {
-        const merged = [
-          ...(kapalStatusRes?.data?.persiapan || []).filter(Boolean),
-          ...(kapalStatusRes?.data?.berlayar || []).filter(Boolean),
-        ];
+        const rawPersiapan = (kapalStatusRes?.data?.persiapan || []).filter(Boolean);
+        const rawBerlayar = (kapalStatusRes?.data?.berlayar || []).filter(Boolean);
 
         // Filter agar tidak ada item dengan id invalid (null/0/NaN) masuk ke UI
-        const filtered = merged.filter((k) => {
-          const idNum = Number(k?.id);
-          return Number.isFinite(idNum) && idNum > 0;
-        });
+        const filterValid = (arr) =>
+          arr.filter((k) => {
+            const idNum = Number(k?.id);
+            return Number.isFinite(idNum) && idNum > 0;
+          });
 
-        setKapalMasukList(filtered);
-        // kapalList dipakai untuk select/edit/tambah, jadi pakai kapalAPI
+        const filteredPersiapan = filterValid(rawPersiapan);
+        const filteredBerlayar = filterValid(rawBerlayar);
+
+        setPersiapanList(filteredPersiapan);
+        setBerlayarList(filteredBerlayar);
+
+        // gabungan untuk kebutuhan checklist/finish/menepi
+        setKapalMasukList(filteredPersiapan.concat(filteredBerlayar));
       } else {
+        setPersiapanList([]);
+        setBerlayarList([]);
         setKapalMasukList([]);
       }
 
@@ -424,8 +433,12 @@ const KapalMasuk = () => {
     }
   };
 
-  const filteredKapalMasuk = kapalMasukList
-
+  const filteredKapalMasuk = (activeTab === 'persiapan'
+    ? persiapanList
+    : activeTab === 'berlayar'
+      ? berlayarList
+      : kapalMasukList
+  )
     .filter((kapal) => {
       const q = searchTerm.toLowerCase();
       return (
@@ -435,11 +448,9 @@ const KapalMasuk = () => {
       );
     })
     .filter((kapal) => {
-      if (activeTab === 'berlayar') return isBerlayar(kapal);
       if (activeTab === 'history') return isHistory(kapal);
-      // persiapan: selain berlayar dan selain history
-      return !isBerlayar(kapal) && !isHistory(kapal);
-
+      // untuk persiapan/berlayar sudah dipilih dari list sumbernya
+      return true;
     });
 
   const handleSubmit = async (e) => {
