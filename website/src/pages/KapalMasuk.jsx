@@ -561,53 +561,95 @@ const KapalMasuk = () => {
     setDeleteConfirmId(id);
   };
 
+  const isValidKapaiMasukRecordId = (id) => {
+    const n = Number(id);
+    return Number.isFinite(n) && n > 0;
+  };
+
   const handleChecklistToggle = useCallback(
     async (item, kapalId) => {
       try {
-        const kapal = kapalMasukList.find((k) => k.id === kapalId);
-        if (!kapal) return;
+        const kapalIdNum = Number(kapalId);
+        if (!Number.isFinite(kapalIdNum) || kapalIdNum <= 0) {
+          throw new Error('kapalId invalid');
+        }
 
-        const newStates = { ...kapal.checklistStates, [item]: !kapal.checklistStates?.[item] };
+        // Di map default dari kapal_info, `id` yang kita simpan biasanya adalah id kapal_info.
+        // Namun backend update PUT /api/kapal-masuk/:id membutuhkan id record kapal_masuk.
+        // Jadi: cari record kapal_masuk berdasarkan relasi kapalId.
+        const recordFromList = kapalMasukList.find((k) => Number(k.kapalId) === kapalIdNum);
+        const recordId = recordFromList?.id;
+
+        let kapalRecord = recordFromList;
+
+        // Jika record kapal_masuk belum ada, buat dulu (POST) agar id untuk PUT tersedia.
+        if (!kapalRecord || !isValidKapaiMasukRecordId(recordId)) {
+          const kapalInfoSource = kapalList.find((k) => Number(k.id) === kapalIdNum);
+          if (!kapalInfoSource) throw new Error('kapal info not found');
+
+          const createPayload = {
+            kapalId: kapalIdNum,
+            nama: kapalInfoSource.nama || '',
+            namaPemilik: kapalInfoSource.namaPemilik || '',
+            tandaSelar: kapalInfoSource.tandaSelar || '',
+            tandaPengenal: kapalInfoSource.tandaPengenal || '',
+            beratKotor: kapalInfoSource.beratKotor || '',
+            beratBersih: kapalInfoSource.beratBersih || '',
+            merekMesin: kapalInfoSource.merekMesin || '',
+            nomorSeriMesin: kapalInfoSource.nomorSeriMesin || '',
+            jenisAlatTangkap: kapalInfoSource.jenisAlatTangkap || '',
+            listPersiapan: kapalInfoSource.listPersiapan || [],
+            // status kerja default persiapan
+            statusKerja: 'persiapan',
+            checklistStates: {},
+            checklistDates: {},
+            finishedChecklistStates: {},
+            isFinished: false,
+          };
+
+          const created = await kapalMasukAPI.create(token, createPayload);
+          if (!created?.success) throw new Error(created?.message || 'Gagal create kapal-masuk');
+
+          await loadData();
+          // Setelah loadData, kita ambil lagi record terbaru
+          const refreshed = (Array.isArray(kapalMasukList) ? kapalMasukList : []).find(
+            (k) => Number(k.kapalId) === kapalIdNum
+          );
+          kapalRecord = refreshed || created.data || recordFromList;
+        }
+
+        if (!kapalRecord) return;
+
+        const newStates = { ...(kapalRecord.checklistStates || {}), [item]: !(kapalRecord.checklistStates?.[item]) };
         const isChecked = newStates[item];
 
-        const newDates = { ...kapal.checklistDates };
+        const newDates = { ...(kapalRecord.checklistDates || {}) };
         newDates[item] = isChecked ? new Date().toLocaleDateString('id-ID') : '';
 
+        // Optimistic update untuk record di kapalMasukList (yang punya id record kapal_masuk)
+        const recordIdNum = Number(kapalRecord.id);
         setKapalMasukList((prev) =>
-          prev.map((k) => (k.id === kapalId ? { ...k, checklistStates: newStates, checklistDates: newDates } : k))
+          (prev || []).map((k) =>
+            Number(k.id) === recordIdNum ? { ...k, checklistStates: newStates, checklistDates: newDates } : k
+          )
         );
 
-        // Kapal berlayar saat semua persiapan selesai.
-        // TANGGAL keberangkatan diisi MANUAL oleh user, jadi jangan otomatis.
-        // Backend memakai field: tanggalBerangkat / tanggalKeberangkatan (lihat mapping server.js)
-        const items = kapal.listPersiapan || [];
-        const statesAfter = newStates;
-        const allDone = items.length > 0 && items.every((item) => !!statesAfter?.[item]);
+        const items = kapalRecord.listPersiapan || [];
+        const allDone = items.length > 0 && items.every((it) => !!newStates?.[it]);
 
-        // Payload minimal: hindari mengirim ulang field lain yang berpotensi
-        // memicu filter status/tab ikut berubah.
         const payload = {
           checklistStates: newStates,
           checklistDates: newDates,
           ...(allDone
             ? {
-                statusKerja: kapal.statusKerja || kapal.status || 'berlayar',
+                statusKerja: kapalRecord.statusKerja || kapalRecord.status || 'berlayar',
               }
             : {}),
         };
 
-        // defensif: backend error jika kapalId null
-        if (kapalId === null || kapalId === undefined) {
-          throw new Error('kapalId is null');
-        }
-
-        const response = await kapalMasukAPI.update(token, kapalId, payload);
-
-
-
-
+        const response = await kapalMasukAPI.update(token, recordIdNum, payload);
         if (!response.success) {
-          loadData();
+          await loadData();
           throw new Error(response.message || 'Update failed');
         }
       } catch (e) {
@@ -616,7 +658,7 @@ const KapalMasuk = () => {
         alert('Gagal update checklist: ' + (e.message || 'Unknown error'));
       }
     },
-    [token, kapalMasukList]
+    [token, kapalMasukList, kapalList]
   );
 
   const confirmDelete = async () => {
