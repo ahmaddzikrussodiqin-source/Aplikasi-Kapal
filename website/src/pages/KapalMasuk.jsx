@@ -446,7 +446,13 @@ const KapalMasuk = () => {
             : {}),
         };
 
+        // defensif: backend error jika kapalId null
+        if (kapalId === null || kapalId === undefined) {
+          throw new Error('kapalId is null');
+        }
+
         const response = await kapalMasukAPI.update(token, kapalId, payload);
+
 
 
 
