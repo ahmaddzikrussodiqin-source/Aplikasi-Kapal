@@ -692,6 +692,66 @@ app.get('/debug/database', async (req, res) => {
     }
 });
 
+// Debug endpoint: cek kapal_masuk records berdasarkan kapalId (relasi ke kapal_info.id)
+app.get('/debug/kapal-masuk-by-kapalId', async (req, res) => {
+    try {
+        const kapalId = Number(req.query.kapalId);
+        if (!Number.isFinite(kapalId) || kapalId <= 0) {
+            return res.status(400).json({ success: false, message: 'Invalid kapalId' });
+        }
+
+        const rows = await kapalMasukPool.query(
+            `SELECT id, kapalId, nama, namaPemilik, statusKerja, tanggalKeberangkatan, tanggalBerangkat, tanggalKembali
+             FROM kapal_masuk_schema.kapal_masuk
+             WHERE kapalId = $1
+             ORDER BY id DESC
+             LIMIT 50`,
+            [kapalId]
+        );
+
+        return res.json({
+            success: true,
+            message: 'kapal_masuk records by kapalId',
+            data: rows.rows,
+            kapalId,
+            count: rows.rows.length,
+            timestamp: new Date().toISOString()
+        });
+    } catch (e) {
+        console.error('debug/kapal-masuk-by-kapalId error:', e);
+        return res.status(500).json({ success: false, message: 'Failed', error: String(e.message || e) });
+    }
+});
+
+// Debug endpoint: cek kapal_masuk record detail berdasarkan id (id table kapal_masuk)
+app.get('/debug/kapal-masuk-by-id', async (req, res) => {
+    try {
+        const id = Number(req.query.id);
+        if (!Number.isFinite(id) || id <= 0) {
+            return res.status(400).json({ success: false, message: 'Invalid id' });
+        }
+
+        const rows = await kapalMasukPool.query(
+            `SELECT *
+             FROM kapal_masuk_schema.kapal_masuk
+             WHERE id = $1`,
+            [id]
+        );
+
+        return res.json({
+            success: true,
+            message: 'kapal_masuk detail by id',
+            data: rows.rows[0] || null,
+            id,
+            found: rows.rows.length > 0,
+            timestamp: new Date().toISOString()
+        });
+    } catch (e) {
+        console.error('debug/kapal-masuk-by-id error:', e);
+        return res.status(500).json({ success: false, message: 'Failed', error: String(e.message || e) });
+    }
+});
+
 // Authentication routes
 app.post('/api/login', async (req, res) => {
     try {
