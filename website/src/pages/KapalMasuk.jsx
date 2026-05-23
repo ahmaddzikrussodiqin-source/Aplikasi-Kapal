@@ -190,7 +190,18 @@ const KapalMasuk = () => {
       ]);
 
       if (kapalStatusRes.success) {
-        setKapalMasukList(kapalStatusRes.data.persiapan.filter(Boolean).concat(kapalStatusRes.data.berlayar.filter(Boolean).map((b) => b)).concat([]));
+        const merged = [
+          ...(kapalStatusRes?.data?.persiapan || []).filter(Boolean),
+          ...(kapalStatusRes?.data?.berlayar || []).filter(Boolean),
+        ];
+
+        // Filter agar tidak ada item dengan id invalid (null/0/NaN) masuk ke UI
+        const filtered = merged.filter((k) => {
+          const idNum = Number(k?.id);
+          return Number.isFinite(idNum) && idNum > 0;
+        });
+
+        setKapalMasukList(filtered);
         // kapalList dipakai untuk select/edit/tambah, jadi pakai kapalAPI
       } else {
         setKapalMasukList([]);
@@ -705,7 +716,13 @@ const KapalMasuk = () => {
                         </svg>
                         Detail
                       </button>
-                      <button onClick={() => handleTambahKebutuhan(kapal.id)} className="bg-yellow-500 text-white px-3 py-2 rounded-lg hover:bg-yellow-600 text-sm">
+                      <button
+                        onClick={() => handleTambahKebutuhan(kapal.id)}
+                        disabled={!isValidKapalId(kapal.id)}
+                        className={`bg-yellow-500 text-white px-3 py-2 rounded-lg text-sm hover:bg-yellow-600 ${
+                          !isValidKapalId(kapal.id) ? 'opacity-50 cursor-not-allowed hover:bg-yellow-500' : ''
+                        }`}
+                      >
                         + Kebutuhan
                       </button>
                       <button onClick={() => handleEdit(kapal)} className="bg-blue-500 text-white px-3 py-2 rounded-lg hover:bg-blue-600 text-sm">
