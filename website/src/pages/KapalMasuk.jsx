@@ -274,35 +274,40 @@ const KapalMasuk = () => {
   }, [showKebutuhanModal, selectedKapalForKebutuhan, isValidKapalId]);
 
   const handleTambahKebutuhanConfirm = useCallback(async () => {
-    if (!newKebutuhan.trim()) return;
+    const kebutuhanTrim = newKebutuhan.trim();
+    if (!kebutuhanTrim) return;
     if (!selectedKapalForKebutuhan) return;
 
     const kapalId = selectedKapalForKebutuhan?.id;
 
-    // defensif: tolak null/undefined/"null"/""/NaN sebelum PUT
-    if (!isValidKapalId(kapalId)) {
+    // defensif: tolak null/undefined/"null"/""/NaN/<=0 sebelum PUT
+    if (!kebutuhanTargetValid || !isValidKapalId(kapalId)) {
       const kapalIdNum = Number(kapalId);
-      console.warn('[TambahKebutuhanConfirm] invalid kapalId:', kapalId, 'kapalIdNum:', kapalIdNum);
+      console.warn('[TambahKebutuhanConfirm] blocked invalid kapalId:', kapalId, 'kapalIdNum:', kapalIdNum);
       alert('Kapal tidak valid untuk tambah kebutuhan');
       return;
     }
 
+    const kapalIdNum = Number(kapalId);
+    if (!Number.isFinite(kapalIdNum) || kapalIdNum <= 0) return;
+
     try {
       const freshKapal = kapalMasukList.find((k) => Number(k.id) === kapalIdNum);
+      if (!freshKapal && !selectedKapalForKebutuhan) return;
 
       const currentStates =
         freshKapal?.checklistStates || selectedKapalForKebutuhan.checklistStates || {};
       const updatedChecklistStates = { ...currentStates };
-      updatedChecklistStates[newKebutuhan.trim()] = false;
+      updatedChecklistStates[kebutuhanTrim] = false;
 
       const currentDates =
         freshKapal?.checklistDates || selectedKapalForKebutuhan.checklistDates || {};
       const updatedChecklistDates = { ...currentDates };
-      updatedChecklistDates[newKebutuhan.trim()] = '';
+      updatedChecklistDates[kebutuhanTrim] = '';
 
       const updatedList = [
         ...(freshKapal?.listPersiapan || selectedKapalForKebutuhan.listPersiapan || []),
-        newKebutuhan.trim(),
+        kebutuhanTrim,
       ];
 
       const updatePayload = {
@@ -313,7 +318,7 @@ const KapalMasuk = () => {
         checklistDates: updatedChecklistDates,
       };
 
-      console.log('[TambahKebutuhanConfirm] selectedKapalForKebutuhan.id=', kapalIdNum);
+      console.log('[TambahKebutuhanConfirm] PUT kapal-masuk id=', kapalIdNum);
       const response = await kapalMasukAPI.update(token, kapalIdNum, updatePayload);
 
       if (response.success) {
@@ -321,11 +326,20 @@ const KapalMasuk = () => {
         setShowKebutuhanModal(false);
         setSelectedKapalForKebutuhan(null);
         setNewKebutuhan('');
+      } else {
+        alert(response.message || 'Gagal tambah kebutuhan');
       }
     } catch (e) {
       console.error('Error adding kebutuhan:', e);
     }
-  }, [kapalMasukList, token, newKebutuhan, selectedKapalForKebutuhan]);
+  }, [
+    kapalMasukList,
+    token,
+    newKebutuhan,
+    selectedKapalForKebutuhan,
+    kebutuhanTargetValid,
+    isValidKapalId,
+  ]);
 
   const toStatusText = (kapal) => (kapal?.status || kapal?.statusKerja || '');
 
@@ -877,11 +891,15 @@ const KapalMasuk = () => {
               />
               <div className="flex gap-2">
                 {(() => {
-                  const invalidId = !kebutuhanTargetValid;
+                  const invalidId = !kebutuhanTargetValid || !isValidKapalId(selectedKapalForKebutuhan?.id);
                   return (
                     <button
                       onClick={() => {
-                        if (!kebutuhanTargetValid) return;
+                        const kapalId = selectedKapalForKebutuhan?.id;
+                        if (invalidId) {
+                          console.warn('[TambahKebutuhan] blocked confirm click. kapalId:', kapalId);
+                          return;
+                        }
                         handleTambahKebutuhanConfirm();
                       }}
                       disabled={invalidId}
@@ -895,7 +913,15 @@ const KapalMasuk = () => {
                     </button>
                   );
                 })()}
-                <button onClick={() => setShowKebutuhanModal(false)} className="flex-1 p-2 border rounded">
+                <button
+                  onClick={() => {
+                    setShowKebutuhanModal(false);
+                    setSelectedKapalForKebutuhan(null);
+                    setNewKebutuhan('');
+                    setKebutuhanTargetValid(false);
+                  }}
+                  className="flex-1 p-2 border rounded"
+                >
                   Batal
                 </button>
               </div>
