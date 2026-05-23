@@ -251,15 +251,15 @@ const KapalMasuk = () => {
 
       // 3) Bangun default: semua kapal_info -> persiapan (berlayar kosong)
       // IMPORTANT:
-      // - id di UI ini harus id record kapal_masuk (untuk PUT /api/kapal-masuk/:id)
-      // - jika statusKerja response tidak mengirim id kapal_masuk untuk kapal ini,
-      //   kita set id=0 agar aksi (+Kebutuhan/checkbox/finish) tidak memanggil PUT
-      //   dengan id salah.
-      // Ini memastikan persiapan/belayar tidak kosong dan mencegah PUT 404.
+      // - UI butuh id valid agar tombol +Kebutuhan bisa ditekan.
+      // - id yang dipakai untuk PUT /api/kapal-masuk/:id HARUS id record kapal_masuk,
+      //   sehingga PUT/POST tetap dilakukan via lookup relasi kapalId (lihat handler).
+      // Karena itu: id UI kita set = id kapal_info (k.id) (valid).
       const semuaPersiapanDariKapalInfo = kapalInfoList.map((k) => ({
         // Map yang UI butuhkan
-        id: 0,
+        id: k.id,
         kapalId: k.id,
+
 
         nama: k.nama,
         namaPemilik: k.namaPemilik,
