@@ -192,6 +192,12 @@ const KapalMasuk = () => {
         statusKerjaKapalAPI.getStatusKerja(token),
       ]);
 
+      // IMPORTANT: kapal_masuk record id (untuk PUT) ada di tabel kapal_masuk.
+      // Jangan gunakan statusKerja endpoint sebagai sumber id PUT.
+      // Persiapan/Berlayar hanya butuh daftar kapal (kapal_info), sehingga id PUT
+      // harus dibuat via POST kapal_masuk saat aksi (+Kebutuhan/checklist/Finish).
+
+
       // Filter agar tidak ada item dengan id invalid (null/0/NaN) masuk ke UI
       // Backend bisa kirim field id sebagai `id` atau `kapalId`, jadi ambil keduanya.
       const getKapalMasukIdNum = (k) => {
