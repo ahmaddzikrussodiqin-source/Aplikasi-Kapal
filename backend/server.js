@@ -2840,27 +2840,39 @@ app.put('/api/kapal-masuk/by-kapal/:kapalId', authenticateToken, async (req, res
             WHERE table_schema = 'kapal_masuk_schema'
               AND table_name = 'kapal_masuk'
         `);
-        const cols2 = new Set(colCheck2.rows.map(r => String(r.column_name || '').toLowerCase()));
-        const kapalIdCol2 = cols2.has('kapalid') ? 'kapalid' : '"kapalId"';
-        const namaPemilikCol2 = cols2.has('namapemilik') ? 'namapemilik' : '"namaPemilik"';
-        const tandaSelarCol2 = cols2.has('tandaselar') ? 'tandaselar' : '"tandaSelar"';
-        const tandaPengenalCol2 = cols2.has('tandapengenal') ? 'tandapengenal' : '"tandaPengenal"';
-        const beratKotorCol2 = cols2.has('beratkotor') ? 'beratkotor' : '"beratKotor"';
-        const beratBersihCol2 = cols2.has('beratbersih') ? 'beratbersih' : '"beratBersih"';
-        const merekMesinCol2 = cols2.has('merekmesin') ? 'merekmesin' : '"merekMesin"';
-        const nomorSeriMesinCol2 = cols2.has('nomorserimesin') ? 'nomorserimesin' : '"nomorSeriMesin"';
-        const jenisAlatTangkapCol2 = cols2.has('jenisalattangkap') ? 'jenisalattangkap' : '"jenisAlatTangkap"';
-        const tanggalInputCol2 = cols2.has('tanggalinput') ? 'tanggalinput' : '"tanggalInput"';
-        const tanggalKeberangkatanCol2 = cols2.has('tanggalkeberangkatan') ? 'tanggalkeberangkatan' : '"tanggalKeberangkatan"';
-        const totalHariPersiapanCol2 = cols2.has('totalharipersiapan') ? 'totalharipersiapan' : '"totalHariPersiapan"';
-        const tanggalBerangkatCol2 = cols2.has('tanggalberangkat') ? 'tanggalberangkat' : '"tanggalBerangkat"';
-        const tanggalKembaliCol2 = cols2.has('tanggalkembali') ? 'tanggalkembali' : '"tanggalKembali"';
-        const listPersiapanCol2 = cols2.has('listpersiapan') ? 'listpersiapan' : '"listPersiapan"';
-        const isFinishedCol2 = cols2.has('isfinished') ? 'isfinished' : '"isFinished"';
-        const perkiraanKeberangkatanCol2 = cols2.has('perkiraankeberangkatan') ? 'perkiraankeberangkatan' : '"perkiraanKeberangkatan"';
-        const durasiSelesaiPersiapanCol2 = cols2.has('durasiselesaipersiapan') ? 'durasiselesaipersiapan' : '"durasiSelesaiPersiapan"';
-        const durasiBerlayarCol2 = cols2.has('durasiberlayar') ? 'durasiberlayar' : '"durasiBerlayar"';
-        const statusKerjaCol2 = cols2.has('statuskerja') ? 'statuskerja' : '"statusKerja"';
+        const cols2Raw = colCheck2.rows.map(r => String(r.column_name || ''));
+        const cols2LowerMap = new Map(cols2Raw.map(c => [c.toLowerCase(), c]));
+        const colSql = (name) => {
+            const real = cols2LowerMap.get(name.toLowerCase());
+            if (!real) return null;
+            return real === name ? name : `"${real}"`;
+        };
+
+        const kapalIdCol2 = colSql('kapalid') || colSql('kapalId');
+        const namaPemilikCol2 = colSql('namapemilik') || colSql('namaPemilik');
+        const tandaSelarCol2 = colSql('tandaselar') || colSql('tandaSelar');
+        const tandaPengenalCol2 = colSql('tandapengenal') || colSql('tandaPengenal');
+        const beratKotorCol2 = colSql('beratkotor') || colSql('beratKotor');
+        const beratBersihCol2 = colSql('beratbersih') || colSql('beratBersih');
+        const merekMesinCol2 = colSql('merekmesin') || colSql('merekMesin');
+        const nomorSeriMesinCol2 = colSql('nomorserimesin') || colSql('nomorSeriMesin');
+        const jenisAlatTangkapCol2 = colSql('jenisalattangkap') || colSql('jenisAlatTangkap');
+        const tanggalInputCol2 = colSql('tanggalinput') || colSql('tanggalInput');
+        const tanggalKeberangkatanCol2 = colSql('tanggalkeberangkatan') || colSql('tanggalKeberangkatan');
+        const totalHariPersiapanCol2 = colSql('totalharipersiapan') || colSql('totalHariPersiapan');
+        const tanggalBerangkatCol2 = colSql('tanggalberangkat') || colSql('tanggalBerangkat');
+        const tanggalKembaliCol2 = colSql('tanggalkembali') || colSql('tanggalKembali');
+        const listPersiapanCol2 = colSql('listpersiapan') || colSql('listPersiapan');
+        const isFinishedCol2 = colSql('isfinished') || colSql('isFinished');
+        const perkiraanKeberangkatanCol2 = colSql('perkiraankeberangkatan') || colSql('perkiraanKeberangkatan');
+        const durasiSelesaiPersiapanCol2 = colSql('durasiselesaipersiapan') || colSql('durasiSelesaiPersiapan');
+        const durasiBerlayarCol2 = colSql('durasiberlayar') || colSql('durasiBerlayar');
+        const statusKerjaCol2 = colSql('statuskerja') || colSql('statusKerja');
+        const checklistStatesCol2 = colSql('checkliststates') || colSql('checklistStates');
+        const checklistDatesCol2 = colSql('checklistdates') || colSql('checklistDates');
+        const newItemsCol2 = colSql('newitemsaddedafterfinish') || colSql('newItemsAddedAfterFinish');
+        const finishedChecklistCol2 = colSql('finishedcheckliststates') || colSql('finishedChecklistStates');
+        const finishedAtCol2 = colSql('finishedat') || colSql('finishedAt');
 
         const updated = await getKapalMasukPool().query(`
             UPDATE kapal_masuk_schema.kapal_masuk SET
@@ -2871,8 +2883,8 @@ app.put('/api/kapal-masuk/by-kapal/:kapalId', authenticateToken, async (req, res
                 ${totalHariPersiapanCol2} = $13, ${tanggalBerangkatCol2} = $14, ${tanggalKembaliCol2} = $15,
                 ${listPersiapanCol2} = $16, ${isFinishedCol2} = $17, ${perkiraanKeberangkatanCol2} = $18,
                 ${durasiSelesaiPersiapanCol2} = $19, ${durasiBerlayarCol2} = $20, ${statusKerjaCol2} = $21,
-                "checklistStates" = $22, "checklistDates" = $23, "newItemsAddedAfterFinish" = $24,
-                "finishedChecklistStates" = $25, "finishedAt" = $26
+                ${checklistStatesCol2} = $22, ${checklistDatesCol2} = $23, ${newItemsCol2} = $24,
+                ${finishedChecklistCol2} = $25, ${finishedAtCol2} = $26
             WHERE id = $27
             RETURNING *
         `, [
