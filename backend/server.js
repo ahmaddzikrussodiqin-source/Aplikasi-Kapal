@@ -2416,7 +2416,13 @@ app.put('/api/kapal-masuk/:id', authenticateToken, async (req, res) => {
         }
 
         // HARDEN / DEFAULT payload to avoid crashes when frontend sends partial data
+        const kapalIdNumFromBody = Number(kapalMasukData?.kapalId);
+        const normalizedKapalId = Number.isFinite(kapalIdNumFromBody) && kapalIdNumFromBody > 0
+            ? kapalIdNumFromBody
+            : null;
+
         const normalized = {
+            kapalId: normalizedKapalId,
             nama: kapalMasukData.nama ?? '',
             namaPemilik: kapalMasukData.namaPemilik ?? '',
             tandaSelar: kapalMasukData.tandaSelar ?? '',
@@ -2446,6 +2452,7 @@ app.put('/api/kapal-masuk/:id', authenticateToken, async (req, res) => {
         };
 
         console.log(`🔄 Updating kapal-masuk ${id}:`);
+        console.log('- normalized.kapalId:', normalized.kapalId);
         console.log('- listPersiapan length:', normalized.listPersiapan.length);
         console.log('- checklistStates keys:', Object.keys(normalized.checklistStates || {}));
         console.log('- checked count:', Object.values(normalized.checklistStates || {}).filter(Boolean).length);
@@ -2456,43 +2463,45 @@ app.put('/api/kapal-masuk/:id', authenticateToken, async (req, res) => {
 
         const result = await kapalMasukPool.query(`
             UPDATE kapal_masuk_schema.kapal_masuk SET
-                nama = $1, namaPemilik = $2, tandaSelar = $3, tandaPengenal = $4,
-                beratKotor = $5, beratBersih = $6, merekMesin = $7, nomorSeriMesin = $8,
-                jenisAlatTangkap = $9, tanggalInput = $10, tanggalKeberangkatan = $11,
-                totalHariPersiapan = $12, tanggalBerangkat = $13, tanggalKembali = $14,
-                listPersiapan = $15, isFinished = $16, perkiraanKeberangkatan = $17,
-                durasiSelesaiPersiapan = $18, durasiBerlayar = $19,
-                statusKerja = $20,
-                "checklistStates" = $21, "checklistDates" = $22, "newItemsAddedAfterFinish" = $23,
-                "finishedChecklistStates" = $24, "finishedAt" = $25
-            WHERE id = $26
+                kapalId = $1,
+                nama = $2, namaPemilik = $3, tandaSelar = $4, tandaPengenal = $5,
+                beratKotor = $6, beratBersih = $7, merekMesin = $8, nomorSeriMesin = $9,
+                jenisAlatTangkap = $10, tanggalInput = $11, tanggalKeberangkatan = $12,
+                totalHariPersiapan = $13, tanggalBerangkat = $14, tanggalKembali = $15,
+                listPersiapan = $16, isFinished = $17, perkiraanKeberangkatan = $18,
+                durasiSelesaiPersiapan = $19, durasiBerlayar = $20,
+                statusKerja = $21,
+                "checklistStates" = $22, "checklistDates" = $23, "newItemsAddedAfterFinish" = $24,
+                "finishedChecklistStates" = $25, "finishedAt" = $26
+            WHERE id = $27
         `, [
-            sanitizeTextField(normalized.nama),               // $1
-            sanitizeTextField(normalized.namaPemilik),      // $2
-            sanitizeTextField(normalized.tandaSelar),       // $3
-            sanitizeTextField(normalized.tandaPengenal),      // $4
-            sanitizeTextField(normalized.beratKotor),       // $5
-            sanitizeTextField(normalized.beratBersih),      // $6
-            sanitizeTextField(normalized.merekMesin),       // $7
-            sanitizeTextField(normalized.nomorSeriMesin),   // $8
-            sanitizeTextField(normalized.jenisAlatTangkap), // $9
-            sanitizeTextField(normalized.tanggalInput),     // $10
-            sanitizeTextField(normalized.tanggalKeberangkatan), // $11
-            normalized.totalHariPersiapan,                  // $12
-            sanitizeTextField(normalized.tanggalBerangkat), // $13
-            sanitizeTextField(normalized.tanggalKembali),   // $14
-            JSON.stringify(normalized.listPersiapan || []),// $15
-            normalized.isFinished ? 1 : 0,                 // $16
-            sanitizeTextField(normalized.perkiraanKeberangkatan), // $17
-            sanitizeTextField(normalized.durasiSelesaiPersiapan), // $18
-            sanitizeTextField(normalized.durasiBerlayar),  // $19
-            sanitizeTextField(normalized.statusKerja),    // $20
-            JSON.stringify(normalized.checklistStates || {}), // $21
-            JSON.stringify(normalized.checklistDates || {}),   // $22
-            JSON.stringify(normalized.newItemsAddedAfterFinish || []), // $23
-            JSON.stringify(normalized.finishedChecklistStates || {}), // $24
-            sanitizeTextField(normalized.finishedAt),     // $25
-            id                                               // $26
+            normalized.kapalId,                                // $1
+            sanitizeTextField(normalized.nama),               // $2
+            sanitizeTextField(normalized.namaPemilik),        // $3
+            sanitizeTextField(normalized.tandaSelar),         // $4
+            sanitizeTextField(normalized.tandaPengenal),      // $5
+            sanitizeTextField(normalized.beratKotor),         // $6
+            sanitizeTextField(normalized.beratBersih),        // $7
+            sanitizeTextField(normalized.merekMesin),         // $8
+            sanitizeTextField(normalized.nomorSeriMesin),     // $9
+            sanitizeTextField(normalized.jenisAlatTangkap),   // $10
+            sanitizeTextField(normalized.tanggalInput),       // $11
+            sanitizeTextField(normalized.tanggalKeberangkatan), // $12
+            normalized.totalHariPersiapan,                    // $13
+            sanitizeTextField(normalized.tanggalBerangkat),   // $14
+            sanitizeTextField(normalized.tanggalKembali),     // $15
+            JSON.stringify(normalized.listPersiapan || []),   // $16
+            normalized.isFinished ? 1 : 0,                    // $17
+            sanitizeTextField(normalized.perkiraanKeberangkatan), // $18
+            sanitizeTextField(normalized.durasiSelesaiPersiapan), // $19
+            sanitizeTextField(normalized.durasiBerlayar),     // $20
+            sanitizeTextField(normalized.statusKerja),        // $21
+            JSON.stringify(normalized.checklistStates || {}), // $22
+            JSON.stringify(normalized.checklistDates || {}),  // $23
+            JSON.stringify(normalized.newItemsAddedAfterFinish || []), // $24
+            JSON.stringify(normalized.finishedChecklistStates || {}), // $25
+            sanitizeTextField(normalized.finishedAt),         // $26
+            id                                                // $27
         ]);
 
 
@@ -2503,15 +2512,15 @@ app.put('/api/kapal-masuk/:id', authenticateToken, async (req, res) => {
                 SELECT id
                 FROM kapal_masuk_schema.kapal_masuk
                 WHERE (
-                    (kapalId IS NOT NULL AND kapalId = $1)
-                    OR (nama = $2 AND namaPemilik = $3)
-                    OR (nama = $2)
+                    ($1::int IS NOT NULL AND kapalId = $1)
+                    OR ($1::int IS NULL AND nama = $2 AND namaPemilik = $3)
+                    OR ($1::int IS NULL AND nama = $2)
                 )
                 AND LOWER(COALESCE(statusKerja, '')) IN ('persiapan', 'berlayar')
                 ORDER BY id DESC
                 LIMIT 1
             `, [
-                Number.isFinite(Number(kapalMasukData?.kapalId)) ? Number(kapalMasukData.kapalId) : -1,
+                normalized.kapalId,
                 sanitizeTextField(normalized.nama),
                 sanitizeTextField(normalized.namaPemilik)
             ]);
@@ -2526,17 +2535,19 @@ app.put('/api/kapal-masuk/:id', authenticateToken, async (req, res) => {
             const fallbackId = fallbackRes.rows[0].id;
             const fallbackUpdate = await kapalMasukPool.query(`
                 UPDATE kapal_masuk_schema.kapal_masuk SET
-                    nama = $1, namaPemilik = $2, tandaSelar = $3, tandaPengenal = $4,
-                    beratKotor = $5, beratBersih = $6, merekMesin = $7, nomorSeriMesin = $8,
-                    jenisAlatTangkap = $9, tanggalInput = $10, tanggalKeberangkatan = $11,
-                    totalHariPersiapan = $12, tanggalBerangkat = $13, tanggalKembali = $14,
-                    listPersiapan = $15, isFinished = $16, perkiraanKeberangkatan = $17,
-                    durasiSelesaiPersiapan = $18, durasiBerlayar = $19,
-                    statusKerja = $20,
-                    "checklistStates" = $21, "checklistDates" = $22, "newItemsAddedAfterFinish" = $23,
-                    "finishedChecklistStates" = $24, "finishedAt" = $25
-                WHERE id = $26
+                    kapalId = $1,
+                    nama = $2, namaPemilik = $3, tandaSelar = $4, tandaPengenal = $5,
+                    beratKotor = $6, beratBersih = $7, merekMesin = $8, nomorSeriMesin = $9,
+                    jenisAlatTangkap = $10, tanggalInput = $11, tanggalKeberangkatan = $12,
+                    totalHariPersiapan = $13, tanggalBerangkat = $14, tanggalKembali = $15,
+                    listPersiapan = $16, isFinished = $17, perkiraanKeberangkatan = $18,
+                    durasiSelesaiPersiapan = $19, durasiBerlayar = $20,
+                    statusKerja = $21,
+                    "checklistStates" = $22, "checklistDates" = $23, "newItemsAddedAfterFinish" = $24,
+                    "finishedChecklistStates" = $25, "finishedAt" = $26
+                WHERE id = $27
             `, [
+                normalized.kapalId,
                 sanitizeTextField(normalized.nama),
                 sanitizeTextField(normalized.namaPemilik),
                 sanitizeTextField(normalized.tandaSelar),
