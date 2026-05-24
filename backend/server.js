@@ -2169,6 +2169,7 @@ app.post('/api/kapal-masuk/:id/menepi', authenticateToken, async (req, res) => {
 
 // Helper: find or create active kapal_masuk row by kapalId (non-destruktif)
 async function findOrCreateActiveKapalMasukByKapalId(kapalId, seed = {}) {
+    console.log('SCHEMA_DYNAMIC_COLS_HELPER_V2');
     const kapalIdNum = Number(kapalId);
     if (!Number.isFinite(kapalIdNum) || kapalIdNum <= 0) {
         throw new Error('Invalid kapalId');
