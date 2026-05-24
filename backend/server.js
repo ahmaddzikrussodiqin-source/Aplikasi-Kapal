@@ -2174,11 +2174,39 @@ async function findOrCreateActiveKapalMasukByKapalId(kapalId, seed = {}) {
         throw new Error('Invalid kapalId');
     }
 
+    const colCheck = await kapalMasukPool.query(`
+        SELECT column_name
+        FROM information_schema.columns
+        WHERE table_schema = 'kapal_masuk_schema'
+          AND table_name = 'kapal_masuk'
+    `);
+    const cols = new Set(colCheck.rows.map(r => String(r.column_name || '').toLowerCase()));
+    const kapalIdCol = cols.has('kapalid') ? 'kapalid' : '"kapalId"';
+    const statusKerjaCol = cols.has('statuskerja') ? 'statuskerja' : '"statusKerja"';
+    const namaPemilikCol = cols.has('namapemilik') ? 'namapemilik' : '"namaPemilik"';
+    const tandaSelarCol = cols.has('tandaselar') ? 'tandaselar' : '"tandaSelar"';
+    const tandaPengenalCol = cols.has('tandapengenal') ? 'tandapengenal' : '"tandaPengenal"';
+    const beratKotorCol = cols.has('beratkotor') ? 'beratkotor' : '"beratKotor"';
+    const beratBersihCol = cols.has('beratbersih') ? 'beratbersih' : '"beratBersih"';
+    const merekMesinCol = cols.has('merekmesin') ? 'merekmesin' : '"merekMesin"';
+    const nomorSeriMesinCol = cols.has('nomorserimesin') ? 'nomorserimesin' : '"nomorSeriMesin"';
+    const jenisAlatTangkapCol = cols.has('jenisalattangkap') ? 'jenisalattangkap' : '"jenisAlatTangkap"';
+    const tanggalInputCol = cols.has('tanggalinput') ? 'tanggalinput' : '"tanggalInput"';
+    const tanggalKeberangkatanCol = cols.has('tanggalkeberangkatan') ? 'tanggalkeberangkatan' : '"tanggalKeberangkatan"';
+    const totalHariPersiapanCol = cols.has('totalharipersiapan') ? 'totalharipersiapan' : '"totalHariPersiapan"';
+    const tanggalBerangkatCol = cols.has('tanggalberangkat') ? 'tanggalberangkat' : '"tanggalBerangkat"';
+    const tanggalKembaliCol = cols.has('tanggalkembali') ? 'tanggalkembali' : '"tanggalKembali"';
+    const listPersiapanCol = cols.has('listpersiapan') ? 'listpersiapan' : '"listPersiapan"';
+    const isFinishedCol = cols.has('isfinished') ? 'isfinished' : '"isFinished"';
+    const perkiraanKeberangkatanCol = cols.has('perkiraankeberangkatan') ? 'perkiraankeberangkatan' : '"perkiraanKeberangkatan"';
+    const durasiSelesaiPersiapanCol = cols.has('durasiselesaipersiapan') ? 'durasiselesaipersiapan' : '"durasiSelesaiPersiapan"';
+    const durasiBerlayarCol = cols.has('durasiberlayar') ? 'durasiberlayar' : '"durasiBerlayar"';
+
     const existing = await kapalMasukPool.query(`
         SELECT *
         FROM kapal_masuk_schema.kapal_masuk
-        WHERE "kapalId" = $1
-          AND LOWER(COALESCE("statusKerja", 'persiapan')) IN ('persiapan', 'berlayar')
+        WHERE ${kapalIdCol} = $1
+          AND LOWER(COALESCE(${statusKerjaCol}, 'persiapan')) IN ('persiapan', 'berlayar')
         ORDER BY id DESC
         LIMIT 1
     `, [kapalIdNum]);
@@ -2198,11 +2226,11 @@ async function findOrCreateActiveKapalMasukByKapalId(kapalId, seed = {}) {
     const info = kapalInfo.rows[0] || {};
     const inserted = await kapalMasukPool.query(`
         INSERT INTO kapal_masuk_schema.kapal_masuk (
-            "kapalId", nama, "namaPemilik", "tandaSelar", "tandaPengenal", "beratKotor", "beratBersih",
-            "merekMesin", "nomorSeriMesin", "jenisAlatTangkap", "tanggalInput",
-            "tanggalKeberangkatan", "totalHariPersiapan", "tanggalBerangkat", "tanggalKembali",
-            "listPersiapan", "isFinished", "perkiraanKeberangkatan", "durasiSelesaiPersiapan", "durasiBerlayar",
-            status, "statusKerja", "checklistStates", "checklistDates", "newItemsAddedAfterFinish", "finishedChecklistStates", "finishedAt"
+            ${kapalIdCol}, nama, ${namaPemilikCol}, ${tandaSelarCol}, ${tandaPengenalCol}, ${beratKotorCol}, ${beratBersihCol},
+            ${merekMesinCol}, ${nomorSeriMesinCol}, ${jenisAlatTangkapCol}, ${tanggalInputCol},
+            ${tanggalKeberangkatanCol}, ${totalHariPersiapanCol}, ${tanggalBerangkatCol}, ${tanggalKembaliCol},
+            ${listPersiapanCol}, ${isFinishedCol}, ${perkiraanKeberangkatanCol}, ${durasiSelesaiPersiapanCol}, ${durasiBerlayarCol},
+            status, ${statusKerjaCol}, "checklistStates", "checklistDates", "newItemsAddedAfterFinish", "finishedChecklistStates", "finishedAt"
         ) VALUES (
             $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,
             $12,$13,$14,$15,
