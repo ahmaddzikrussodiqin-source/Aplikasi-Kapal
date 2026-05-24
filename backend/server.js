@@ -2623,8 +2623,9 @@ app.put('/api/kapal-masuk/:id', authenticateToken, async (req, res) => {
         console.log('- checklistStates keys:', Object.keys(normalized.checklistStates || {}));
         console.log('- checked count:', Object.values(normalized.checklistStates || {}).filter(Boolean).length);
         console.log('- normalized.statusKerja:', normalized.statusKerja);
-        console.log('- normalized.status (payload only):', normalized.status);
+console.log('- normalized.status (payload only):', normalized.status);
         console.log('- normalized.checklistDates keys:', Object.keys(normalized.checklistDates || {}));
+        console.log('- DEBUG kapalId for update:', normalized.kapalId);
 
 
         const result = await getKapalMasukPool().query(`
