@@ -2271,11 +2271,45 @@ async function findOrCreateActiveKapalMasukByKapalId(kapalId, seed = {}) {
     if (cols.has('durasiberlayar')) { insertCols.push('durasiberlayar'); insertVals.push(sanitizeTextField(seed.durasiBerlayar ?? '')); }
     if (cols.has('status')) { insertCols.push('status'); insertVals.push(sanitizeTextField(seed.status ?? '')); }
     if (cols.has('statuskerja')) { insertCols.push('statuskerja'); insertVals.push(sanitizeTextField(seed.statusKerja ?? 'persiapan')); }
-    if (cols.has('checkliststates')) { insertCols.push('checkliststates'); insertVals.push(JSON.stringify(seed.checklistStates && typeof seed.checklistStates === 'object' ? seed.checklistStates : {})); }
-    if (cols.has('checklistdates')) { insertCols.push('checklistdates'); insertVals.push(JSON.stringify(seed.checklistDates && typeof seed.checklistDates === 'object' ? seed.checklistDates : {})); }
-    if (cols.has('newitemsaddedafterfinish')) { insertCols.push('newitemsaddedafterfinish'); insertVals.push(JSON.stringify(Array.isArray(seed.newItemsAddedAfterFinish) ? seed.newItemsAddedAfterFinish : [])); }
-    if (cols.has('finishedcheckliststates')) { insertCols.push('finishedcheckliststates'); insertVals.push(JSON.stringify(seed.finishedChecklistStates && typeof seed.finishedChecklistStates === 'object' ? seed.finishedChecklistStates : {})); }
-    if (cols.has('finishedat')) { insertCols.push('finishedat'); insertVals.push(sanitizeTextField(seed.finishedAt ?? '')); }
+    if (cols.has('checkliststates')) {
+        insertCols.push('checkliststates');
+        insertVals.push(JSON.stringify(seed.checklistStates && typeof seed.checklistStates === 'object' ? seed.checklistStates : {}));
+    } else if (cols.has('checklistStates')) {
+        insertCols.push('"checklistStates"');
+        insertVals.push(JSON.stringify(seed.checklistStates && typeof seed.checklistStates === 'object' ? seed.checklistStates : {}));
+    }
+
+    if (cols.has('checklistdates')) {
+        insertCols.push('checklistdates');
+        insertVals.push(JSON.stringify(seed.checklistDates && typeof seed.checklistDates === 'object' ? seed.checklistDates : {}));
+    } else if (cols.has('checklistDates')) {
+        insertCols.push('"checklistDates"');
+        insertVals.push(JSON.stringify(seed.checklistDates && typeof seed.checklistDates === 'object' ? seed.checklistDates : {}));
+    }
+
+    if (cols.has('newitemsaddedafterfinish')) {
+        insertCols.push('newitemsaddedafterfinish');
+        insertVals.push(JSON.stringify(Array.isArray(seed.newItemsAddedAfterFinish) ? seed.newItemsAddedAfterFinish : []));
+    } else if (cols.has('newItemsAddedAfterFinish')) {
+        insertCols.push('"newItemsAddedAfterFinish"');
+        insertVals.push(JSON.stringify(Array.isArray(seed.newItemsAddedAfterFinish) ? seed.newItemsAddedAfterFinish : []));
+    }
+
+    if (cols.has('finishedcheckliststates')) {
+        insertCols.push('finishedcheckliststates');
+        insertVals.push(JSON.stringify(seed.finishedChecklistStates && typeof seed.finishedChecklistStates === 'object' ? seed.finishedChecklistStates : {}));
+    } else if (cols.has('finishedChecklistStates')) {
+        insertCols.push('"finishedChecklistStates"');
+        insertVals.push(JSON.stringify(seed.finishedChecklistStates && typeof seed.finishedChecklistStates === 'object' ? seed.finishedChecklistStates : {}));
+    }
+
+    if (cols.has('finishedat')) {
+        insertCols.push('finishedat');
+        insertVals.push(sanitizeTextField(seed.finishedAt ?? ''));
+    } else if (cols.has('finishedAt')) {
+        insertCols.push('"finishedAt"');
+        insertVals.push(sanitizeTextField(seed.finishedAt ?? ''));
+    }
 
     const placeholders = insertVals.map((_, i) => `$${i + 1}`).join(', ');
     const inserted = await kapalMasukPool.query(
