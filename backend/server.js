@@ -2169,7 +2169,6 @@ app.post('/api/kapal-masuk/:id/menepi', authenticateToken, async (req, res) => {
 
 // Helper: find or create active kapal_masuk row by kapalId (non-destruktif)
 async function findOrCreateActiveKapalMasukByKapalId(kapalId, seed = {}) {
-    console.log('SCHEMA_DYNAMIC_COLS_HELPER_V2');
     const kapalIdNum = Number(kapalId);
     if (!Number.isFinite(kapalIdNum) || kapalIdNum <= 0) {
         throw new Error('Invalid kapalId');
@@ -2221,14 +2220,9 @@ async function findOrCreateActiveKapalMasukByKapalId(kapalId, seed = {}) {
         `, [kapalIdNum]);
     } catch (e) {
         if (String(e.code) !== '42703') throw e;
-        existing = await kapalMasukPool.query(`
-            SELECT *
-            FROM kapal_masuk_schema.kapal_masuk
-            WHERE "kapalId" = $1
-              AND LOWER(COALESCE("statusKerja", 'persiapan')) IN ('persiapan', 'berlayar')
-            ORDER BY id DESC
-            LIMIT 1
-        `, [kapalIdNum]);
+        // Schema live terbukti tidak punya "kapalId"/"statusKerja" camelCase.
+        // Hindari fallback ke quoted camelCase agar tidak memicu 42703 berulang.
+        existing = { rows: [] };
     }
 
     if (existing.rows.length > 0) {
