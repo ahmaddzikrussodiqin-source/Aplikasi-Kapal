@@ -2240,11 +2240,11 @@ async function findOrCreateActiveKapalMasukByKapalId(kapalId, seed = {}) {
     const info = kapalInfo.rows[0] || {};
     const inserted = await kapalMasukPool.query(`
         INSERT INTO kapal_masuk_schema.kapal_masuk (
-            ${kapalIdCol}, nama, ${namaPemilikCol}, ${tandaSelarCol}, ${tandaPengenalCol}, ${beratKotorCol}, ${beratBersihCol},
-            ${merekMesinCol}, ${nomorSeriMesinCol}, ${jenisAlatTangkapCol}, ${tanggalInputCol},
-            ${tanggalKeberangkatanCol}, ${totalHariPersiapanCol}, ${tanggalBerangkatCol}, ${tanggalKembaliCol},
-            ${listPersiapanCol}, ${isFinishedCol}, ${perkiraanKeberangkatanCol}, ${durasiSelesaiPersiapanCol}, ${durasiBerlayarCol},
-            ${statusCol}, ${statusKerjaCol}, ${checklistStatesCol}, ${checklistDatesCol}, ${newItemsAddedAfterFinishCol}, ${finishedChecklistStatesCol}, ${finishedAtCol}
+            kapalid, nama, namapemilik, tandaselar, tandapengenal, beratkotor, beratbersih,
+            merekmesin, nomorserimesin, jenisalattangkap, tanggalinput,
+            tanggalkeberangkatan, totalharipersiapan, tanggalberangkat, tanggalkembali,
+            listpersiapan, isfinished, perkiraankeberangkatan, durasiselesaipersiapan, durasiberlayar,
+            status, statuskerja, checkliststates, checklistdates, newitemsaddedafterfinish, finishedcheckliststates, finishedat
         ) VALUES (
             $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,
             $12,$13,$14,$15,
