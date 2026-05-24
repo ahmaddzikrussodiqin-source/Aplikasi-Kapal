@@ -2177,8 +2177,8 @@ async function findOrCreateActiveKapalMasukByKapalId(kapalId, seed = {}) {
     const existing = await kapalMasukPool.query(`
         SELECT *
         FROM kapal_masuk_schema.kapal_masuk
-        WHERE kapalId = $1
-          AND LOWER(COALESCE(statusKerja, 'persiapan')) IN ('persiapan', 'berlayar')
+        WHERE "kapalId" = $1
+          AND LOWER(COALESCE("statusKerja", 'persiapan')) IN ('persiapan', 'berlayar')
         ORDER BY id DESC
         LIMIT 1
     `, [kapalIdNum]);
@@ -2539,14 +2539,14 @@ app.put('/api/kapal-masuk/:id', authenticateToken, async (req, res) => {
 
         const result = await kapalMasukPool.query(`
             UPDATE kapal_masuk_schema.kapal_masuk SET
-                kapalId = $1,
-                nama = $2, namaPemilik = $3, tandaSelar = $4, tandaPengenal = $5,
-                beratKotor = $6, beratBersih = $7, merekMesin = $8, nomorSeriMesin = $9,
-                jenisAlatTangkap = $10, tanggalInput = $11, tanggalKeberangkatan = $12,
-                totalHariPersiapan = $13, tanggalBerangkat = $14, tanggalKembali = $15,
-                listPersiapan = $16, isFinished = $17, perkiraanKeberangkatan = $18,
-                durasiSelesaiPersiapan = $19, durasiBerlayar = $20,
-                statusKerja = $21,
+                "kapalId" = $1,
+                nama = $2, "namaPemilik" = $3, "tandaSelar" = $4, "tandaPengenal" = $5,
+                "beratKotor" = $6, "beratBersih" = $7, "merekMesin" = $8, "nomorSeriMesin" = $9,
+                "jenisAlatTangkap" = $10, "tanggalInput" = $11, "tanggalKeberangkatan" = $12,
+                "totalHariPersiapan" = $13, "tanggalBerangkat" = $14, "tanggalKembali" = $15,
+                "listPersiapan" = $16, "isFinished" = $17, "perkiraanKeberangkatan" = $18,
+                "durasiSelesaiPersiapan" = $19, "durasiBerlayar" = $20,
+                "statusKerja" = $21,
                 "checklistStates" = $22, "checklistDates" = $23, "newItemsAddedAfterFinish" = $24,
                 "finishedChecklistStates" = $25, "finishedAt" = $26
             WHERE id = $27
@@ -2746,13 +2746,13 @@ app.put('/api/kapal-masuk/by-kapal/:kapalId', authenticateToken, async (req, res
 
         const updated = await kapalMasukPool.query(`
             UPDATE kapal_masuk_schema.kapal_masuk SET
-                kapalId = $1,
-                nama = $2, namaPemilik = $3, tandaSelar = $4, tandaPengenal = $5,
-                beratKotor = $6, beratBersih = $7, merekMesin = $8, nomorSeriMesin = $9,
-                jenisAlatTangkap = $10, tanggalInput = $11, tanggalKeberangkatan = $12,
-                totalHariPersiapan = $13, tanggalBerangkat = $14, tanggalKembali = $15,
-                listPersiapan = $16, isFinished = $17, perkiraanKeberangkatan = $18,
-                durasiSelesaiPersiapan = $19, durasiBerlayar = $20, statusKerja = $21,
+                "kapalId" = $1,
+                nama = $2, "namaPemilik" = $3, "tandaSelar" = $4, "tandaPengenal" = $5,
+                "beratKotor" = $6, "beratBersih" = $7, "merekMesin" = $8, "nomorSeriMesin" = $9,
+                "jenisAlatTangkap" = $10, "tanggalInput" = $11, "tanggalKeberangkatan" = $12,
+                "totalHariPersiapan" = $13, "tanggalBerangkat" = $14, "tanggalKembali" = $15,
+                "listPersiapan" = $16, "isFinished" = $17, "perkiraanKeberangkatan" = $18,
+                "durasiSelesaiPersiapan" = $19, "durasiBerlayar" = $20, "statusKerja" = $21,
                 "checklistStates" = $22, "checklistDates" = $23, "newItemsAddedAfterFinish" = $24,
                 "finishedChecklistStates" = $25, "finishedAt" = $26
             WHERE id = $27
