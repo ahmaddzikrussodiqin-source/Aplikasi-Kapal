@@ -2772,15 +2772,43 @@ app.put('/api/kapal-masuk/by-kapal/:kapalId', authenticateToken, async (req, res
             finishedAt: kapalMasukData.finishedAt ?? activeRow.finishedat ?? ''
         };
 
+        const colCheck2 = await kapalMasukPool.query(`
+            SELECT column_name
+            FROM information_schema.columns
+            WHERE table_schema = 'kapal_masuk_schema'
+              AND table_name = 'kapal_masuk'
+        `);
+        const cols2 = new Set(colCheck2.rows.map(r => String(r.column_name || '').toLowerCase()));
+        const kapalIdCol2 = cols2.has('kapalid') ? 'kapalid' : '"kapalId"';
+        const namaPemilikCol2 = cols2.has('namapemilik') ? 'namapemilik' : '"namaPemilik"';
+        const tandaSelarCol2 = cols2.has('tandaselar') ? 'tandaselar' : '"tandaSelar"';
+        const tandaPengenalCol2 = cols2.has('tandapengenal') ? 'tandapengenal' : '"tandaPengenal"';
+        const beratKotorCol2 = cols2.has('beratkotor') ? 'beratkotor' : '"beratKotor"';
+        const beratBersihCol2 = cols2.has('beratbersih') ? 'beratbersih' : '"beratBersih"';
+        const merekMesinCol2 = cols2.has('merekmesin') ? 'merekmesin' : '"merekMesin"';
+        const nomorSeriMesinCol2 = cols2.has('nomorserimesin') ? 'nomorserimesin' : '"nomorSeriMesin"';
+        const jenisAlatTangkapCol2 = cols2.has('jenisalattangkap') ? 'jenisalattangkap' : '"jenisAlatTangkap"';
+        const tanggalInputCol2 = cols2.has('tanggalinput') ? 'tanggalinput' : '"tanggalInput"';
+        const tanggalKeberangkatanCol2 = cols2.has('tanggalkeberangkatan') ? 'tanggalkeberangkatan' : '"tanggalKeberangkatan"';
+        const totalHariPersiapanCol2 = cols2.has('totalharipersiapan') ? 'totalharipersiapan' : '"totalHariPersiapan"';
+        const tanggalBerangkatCol2 = cols2.has('tanggalberangkat') ? 'tanggalberangkat' : '"tanggalBerangkat"';
+        const tanggalKembaliCol2 = cols2.has('tanggalkembali') ? 'tanggalkembali' : '"tanggalKembali"';
+        const listPersiapanCol2 = cols2.has('listpersiapan') ? 'listpersiapan' : '"listPersiapan"';
+        const isFinishedCol2 = cols2.has('isfinished') ? 'isfinished' : '"isFinished"';
+        const perkiraanKeberangkatanCol2 = cols2.has('perkiraankeberangkatan') ? 'perkiraankeberangkatan' : '"perkiraanKeberangkatan"';
+        const durasiSelesaiPersiapanCol2 = cols2.has('durasiselesaipersiapan') ? 'durasiselesaipersiapan' : '"durasiSelesaiPersiapan"';
+        const durasiBerlayarCol2 = cols2.has('durasiberlayar') ? 'durasiberlayar' : '"durasiBerlayar"';
+        const statusKerjaCol2 = cols2.has('statuskerja') ? 'statuskerja' : '"statusKerja"';
+
         const updated = await kapalMasukPool.query(`
             UPDATE kapal_masuk_schema.kapal_masuk SET
-                "kapalId" = $1,
-                nama = $2, "namaPemilik" = $3, "tandaSelar" = $4, "tandaPengenal" = $5,
-                "beratKotor" = $6, "beratBersih" = $7, "merekMesin" = $8, "nomorSeriMesin" = $9,
-                "jenisAlatTangkap" = $10, "tanggalInput" = $11, "tanggalKeberangkatan" = $12,
-                "totalHariPersiapan" = $13, "tanggalBerangkat" = $14, "tanggalKembali" = $15,
-                "listPersiapan" = $16, "isFinished" = $17, "perkiraanKeberangkatan" = $18,
-                "durasiSelesaiPersiapan" = $19, "durasiBerlayar" = $20, "statusKerja" = $21,
+                ${kapalIdCol2} = $1,
+                nama = $2, ${namaPemilikCol2} = $3, ${tandaSelarCol2} = $4, ${tandaPengenalCol2} = $5,
+                ${beratKotorCol2} = $6, ${beratBersihCol2} = $7, ${merekMesinCol2} = $8, ${nomorSeriMesinCol2} = $9,
+                ${jenisAlatTangkapCol2} = $10, ${tanggalInputCol2} = $11, ${tanggalKeberangkatanCol2} = $12,
+                ${totalHariPersiapanCol2} = $13, ${tanggalBerangkatCol2} = $14, ${tanggalKembaliCol2} = $15,
+                ${listPersiapanCol2} = $16, ${isFinishedCol2} = $17, ${perkiraanKeberangkatanCol2} = $18,
+                ${durasiSelesaiPersiapanCol2} = $19, ${durasiBerlayarCol2} = $20, ${statusKerjaCol2} = $21,
                 "checklistStates" = $22, "checklistDates" = $23, "newItemsAddedAfterFinish" = $24,
                 "finishedChecklistStates" = $25, "finishedAt" = $26
             WHERE id = $27
