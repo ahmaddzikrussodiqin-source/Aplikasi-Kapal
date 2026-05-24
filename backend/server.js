@@ -55,7 +55,7 @@ if (process.env.DATABASE_URL_DOKUMEN) {
     console.log('⚠️  DATABASE_URL_DOKUMEN not set - Dokumen functionality will be disabled');
 }
 
-// Kapal Masuk database pool
+// Kapal Masuk database pool (legacy)
 const kapalMasukPool = new Pool({
     connectionString: process.env.DATABASE_URL_KAPAL_MASUK,
     ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
@@ -65,6 +65,22 @@ const kapalMasukPool = new Pool({
     max: 20,
     allowExitOnIdle: true
 });
+
+// Kapal Masuk V2 database pool (new standardized schema)
+// If DATABASE_URL_KAPAL_MASUK_V2 is not set, fallback to legacy DB URL.
+const kapalMasukPoolV2 = new Pool({
+    connectionString: process.env.DATABASE_URL_KAPAL_MASUK_V2 || process.env.DATABASE_URL_KAPAL_MASUK,
+    ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
+    connectionTimeoutMillis: 10000,
+    query_timeout: 10000,
+    idleTimeoutMillis: 30000,
+    max: 20,
+    allowExitOnIdle: true
+});
+
+function getKapalMasukPool() {
+    return kapalMasukPoolV2 || kapalMasukPool;
+}
 
 // Ensure dokumen table exists in kapalPool (fallback database)
 async function ensureDokumenTable() {
@@ -210,7 +226,7 @@ io.on('connection', (socket) => {
         const { kapalId, item, checked, date } = data;
         try {
             // Get current checklist data
-            const currentResult = await kapalMasukPool.query(`
+            const currentResult = await getKapalMasukPool().query(`
                 SELECT "checklistStates", "checklistDates" FROM kapal_masuk_schema.kapal_masuk WHERE id = $1
             `, [kapalId]);
 
@@ -231,7 +247,7 @@ io.on('connection', (socket) => {
             }
 
             // Update database
-            await kapalMasukPool.query(`
+            await getKapalMasukPool().query(`
                 UPDATE kapal_masuk_schema.kapal_masuk SET
                     "checklistStates" = $1, "checklistDates" = $2
                 WHERE id = $3
@@ -436,12 +452,12 @@ async function initializeDatabase() {
 
         // Initialize Kapal Masuk database
         console.log('📝 Creating kapal_masuk table...');
-        await kapalMasukPool.query(`
+        await getKapalMasukPool().query(`
             CREATE SCHEMA IF NOT EXISTS kapal_masuk_schema
         `);
 
         // CREATE TABLE dalam 1 query utuh (menghindari syntax error saat deploy)
-        await kapalMasukPool.query(`
+        await getKapalMasukPool().query(`
             CREATE TABLE IF NOT EXISTS kapal_masuk_schema.kapal_masuk (
                 id SERIAL PRIMARY KEY,
                 nama TEXT,
@@ -472,7 +488,7 @@ async function initializeDatabase() {
 
         // History table: record terpisah untuk snapshot persiapan/berlayar saat menepi
         console.log('🧾 Creating kapal_masuk_history table...');
-        await kapalMasukPool.query(`
+        await getKapalMasukPool().query(`
             CREATE TABLE IF NOT EXISTS kapal_masuk_schema.kapal_masuk_history (
                 id SERIAL PRIMARY KEY,
                 kapalMasukId INTEGER,
@@ -514,7 +530,7 @@ async function initializeDatabase() {
         const columnsToCheck = ['durasiBerlayar', 'status', 'checklistStates', 'checklistDates', 'newItemsAddedAfterFinish', 'finishedChecklistStates', 'finishedAt'];
         for (const col of columnsToCheck) {
             try {
-                const columnCheck = await kapalMasukPool.query(`
+                const columnCheck = await getKapalMasukPool().query(`
                     SELECT column_name
                     FROM information_schema.columns
                     WHERE table_schema = 'kapal_masuk_schema'
@@ -524,7 +540,7 @@ async function initializeDatabase() {
 
                 if (columnCheck.rows.length === 0) {
                     const defaultValue = col === 'newItemsAddedAfterFinish' ? "'[]'" : "'{}'";
-                    await kapalMasukPool.query(`ALTER TABLE kapal_masuk_schema.kapal_masuk ADD COLUMN "${col}" TEXT NOT NULL DEFAULT ${defaultValue}`);
+                    await getKapalMasukPool().query(`ALTER TABLE kapal_masuk_schema.kapal_masuk ADD COLUMN "${col}" TEXT NOT NULL DEFAULT ${defaultValue}`);
                     console.log(`✅ Added missing column ${col}`);
                 } else {
                     console.log(`Column ${col} already exists`);
@@ -660,7 +676,7 @@ app.get('/debug/database', async (req, res) => {
         // Check kapal masuk database
         let kapalMasukData = [];
         try {
-            const kapalMasukResult = await kapalMasukPool.query('SELECT id, nama FROM kapal_masuk_schema.kapal_masuk ORDER BY id DESC LIMIT 5');
+            const kapalMasukResult = await getKapalMasukPool().query('SELECT id, nama FROM kapal_masuk_schema.kapal_masuk ORDER BY id DESC LIMIT 5');
             kapalMasukData = kapalMasukResult.rows;
             console.log('Kapal Masuk in database:', kapalMasukData.length);
         } catch (kapalMasukError) {
@@ -700,7 +716,7 @@ app.get('/debug/kapal-masuk-by-kapalId', async (req, res) => {
             return res.status(400).json({ success: false, message: 'Invalid kapalId' });
         }
 
-        const rows = await kapalMasukPool.query(
+        const rows = await getKapalMasukPool().query(
             `SELECT id, kapalId, nama, namaPemilik, statusKerja, tanggalKeberangkatan, tanggalBerangkat, tanggalKembali
              FROM kapal_masuk_schema.kapal_masuk
              WHERE kapalId = $1
@@ -731,7 +747,7 @@ app.get('/debug/kapal-masuk-by-id', async (req, res) => {
             return res.status(400).json({ success: false, message: 'Invalid id' });
         }
 
-        const rows = await kapalMasukPool.query(
+        const rows = await getKapalMasukPool().query(
             `SELECT *
              FROM kapal_masuk_schema.kapal_masuk
              WHERE id = $1`,
@@ -1845,7 +1861,7 @@ app.get('/api/status-kerja-kapal', authenticateToken, async (req, res) => {
         `);
 
         // Ambil kapal aktif dari kapal_masuk (persiapan/berlayar/menepi)
-        const kapalMasukRes = await kapalMasukPool.query(`
+        const kapalMasukRes = await getKapalMasukPool().query(`
             SELECT * FROM kapal_masuk_schema.kapal_masuk
         `);
 
@@ -1882,7 +1898,7 @@ app.get('/api/status-kerja-kapal', authenticateToken, async (req, res) => {
             activeByKapalId.set(kapalId, row);
         }
 
-        const historyRes = await kapalMasukPool.query(`
+        const historyRes = await getKapalMasukPool().query(`
             SELECT * FROM kapal_masuk_schema.kapal_masuk_history
         `);
 
@@ -2047,7 +2063,7 @@ app.post('/api/kapal-masuk/:id/menepi', authenticateToken, async (req, res) => {
         const { id } = req.params;
 
         // Ambil record kapal aktif
-        const currentRes = await kapalMasukPool.query(
+        const currentRes = await getKapalMasukPool().query(
             `SELECT * FROM kapal_masuk_schema.kapal_masuk WHERE id = $1`,
             [id]
         );
@@ -2059,7 +2075,7 @@ app.post('/api/kapal-masuk/:id/menepi', authenticateToken, async (req, res) => {
         const current = currentRes.rows[0];
 
         // Snapshot ke history
-        const insertRes = await kapalMasukPool.query(`
+        const insertRes = await getKapalMasukPool().query(`
             INSERT INTO kapal_masuk_schema.kapal_masuk_history (
                 kapalMasukId,
                 nama,
@@ -2095,7 +2111,7 @@ app.post('/api/kapal-masuk/:id/menepi', authenticateToken, async (req, res) => {
         }
 
         // Buat TRIP baru (reset persiapan) agar kapal berkelanjutan sampai menjadi history
-        const newTripRes = await kapalMasukPool.query(`
+        const newTripRes = await getKapalMasukPool().query(`
             INSERT INTO kapal_masuk_schema.kapal_masuk (
                 nama,
                 namaPemilik, tandaSelar, tandaPengenal,
@@ -2147,7 +2163,7 @@ app.post('/api/kapal-masuk/:id/menepi', authenticateToken, async (req, res) => {
         }
 
         // Tandai record lama sebagai menepi agar riwayat tetap ada dan tidak hilang untuk UI yang masih memegang id lama
-        await kapalMasukPool.query(`
+        await getKapalMasukPool().query(`
             UPDATE kapal_masuk_schema.kapal_masuk
             SET statusKerja = 'menepi', status = 'menepi'
             WHERE id = $1
@@ -2174,7 +2190,7 @@ async function findOrCreateActiveKapalMasukByKapalId(kapalId, seed = {}) {
         throw new Error('Invalid kapalId');
     }
 
-    const colCheck = await kapalMasukPool.query(`
+    const colCheck = await getKapalMasukPool().query(`
         SELECT column_name
         FROM information_schema.columns
         WHERE table_schema = 'kapal_masuk_schema'
@@ -2210,7 +2226,7 @@ async function findOrCreateActiveKapalMasukByKapalId(kapalId, seed = {}) {
 
     let existing;
     try {
-        existing = await kapalMasukPool.query(`
+        existing = await getKapalMasukPool().query(`
             SELECT *
             FROM kapal_masuk_schema.kapal_masuk
             WHERE kapalid = $1
@@ -2313,7 +2329,7 @@ async function findOrCreateActiveKapalMasukByKapalId(kapalId, seed = {}) {
 
     const placeholders = insertVals.map((_, i) => `$${i + 1}`).join(', ');
     try {
-        const inserted = await kapalMasukPool.query(
+        const inserted = await getKapalMasukPool().query(
             `INSERT INTO kapal_masuk_schema.kapal_masuk (${insertCols.join(', ')}) VALUES (${placeholders}) RETURNING *`,
             insertVals
         );
@@ -2322,7 +2338,7 @@ async function findOrCreateActiveKapalMasukByKapalId(kapalId, seed = {}) {
         // Fallback terakhir untuk schema yang benar-benar kolom lama (quoted camelCase only)
         if (String(insertErr.code) !== '42703') throw insertErr;
 
-        const legacyInserted = await kapalMasukPool.query(`
+        const legacyInserted = await getKapalMasukPool().query(`
             INSERT INTO kapal_masuk_schema.kapal_masuk (
                 "kapalId", nama, "namaPemilik", "tandaSelar", "tandaPengenal", "beratKotor", "beratBersih",
                 "merekMesin", "nomorSeriMesin", "jenisAlatTangkap", "tanggalInput",
@@ -2380,7 +2396,7 @@ app.get('/api/kapal-masuk', authenticateToken, async (req, res) => {
             throw new Error('kapalMasukPool not initialized');
         }
         
-const result = await kapalMasukPool.query('SELECT * FROM kapal_masuk_schema.kapal_masuk ORDER BY id DESC');
+const result = await getKapalMasukPool().query('SELECT * FROM kapal_masuk_schema.kapal_masuk ORDER BY id DESC');
         const kapalMasuk = result.rows;
         console.log(`📊 Found ${kapalMasuk.length} kapal-masuk records`);
 
@@ -2468,7 +2484,7 @@ app.get('/api/kapal-masuk/:id', authenticateToken, async (req, res) => {
             throw new Error('kapalMasukPool not initialized');
         }
         
-        const result = await kapalMasukPool.query('SELECT * FROM kapal_masuk_schema.kapal_masuk WHERE id = $1', [id]);
+        const result = await getKapalMasukPool().query('SELECT * FROM kapal_masuk_schema.kapal_masuk WHERE id = $1', [id]);
         const kapalMasuk = result.rows[0];
 
         if (!kapalMasuk) {
@@ -2545,7 +2561,7 @@ app.post('/api/kapal-masuk', authenticateToken, async (req, res) => {
           kapalMasukData = await autoFillKapalInfo(kapalMasukData.nama, kapalMasukData);
         }
         
-        const result = await kapalMasukPool.query(`
+        const result = await getKapalMasukPool().query(`
             INSERT INTO kapal_masuk_schema.kapal_masuk (
                 nama, namaPemilik, tandaSelar, tandaPengenal, beratKotor, beratBersih,
                 merekMesin, nomorSeriMesin, jenisAlatTangkap, tanggalInput,
@@ -2664,7 +2680,7 @@ app.put('/api/kapal-masuk/:id', authenticateToken, async (req, res) => {
         console.log('- normalized.checklistDates keys:', Object.keys(normalized.checklistDates || {}));
 
 
-        const result = await kapalMasukPool.query(`
+        const result = await getKapalMasukPool().query(`
             UPDATE kapal_masuk_schema.kapal_masuk SET
                 "kapalId" = $1,
                 nama = $2, "namaPemilik" = $3, "tandaSelar" = $4, "tandaPengenal" = $5,
@@ -2711,7 +2727,7 @@ app.put('/api/kapal-masuk/:id', authenticateToken, async (req, res) => {
         if (result.rowCount === 0) {
             // Fallback untuk kasus UI masih pegang id lama setelah menepi:
             // cari record terbaru kapal yang sama berdasarkan nama + pemilik dengan status persiapan/berlayar
-            const fallbackRes = await kapalMasukPool.query(`
+            const fallbackRes = await getKapalMasukPool().query(`
                 SELECT id
                 FROM kapal_masuk_schema.kapal_masuk
                 WHERE (
@@ -2736,7 +2752,7 @@ app.put('/api/kapal-masuk/:id', authenticateToken, async (req, res) => {
             }
 
             const fallbackId = fallbackRes.rows[0].id;
-            const fallbackUpdate = await kapalMasukPool.query(`
+            const fallbackUpdate = await getKapalMasukPool().query(`
                 UPDATE kapal_masuk_schema.kapal_masuk SET
                     "kapalId" = $1,
                     nama = $2, "namaPemilik" = $3, "tandaSelar" = $4, "tandaPengenal" = $5,
@@ -2871,7 +2887,7 @@ app.put('/api/kapal-masuk/by-kapal/:kapalId', authenticateToken, async (req, res
             finishedAt: kapalMasukData.finishedAt ?? activeRow.finishedat ?? ''
         };
 
-        const colCheck2 = await kapalMasukPool.query(`
+        const colCheck2 = await getKapalMasukPool().query(`
             SELECT column_name
             FROM information_schema.columns
             WHERE table_schema = 'kapal_masuk_schema'
@@ -2899,7 +2915,7 @@ app.put('/api/kapal-masuk/by-kapal/:kapalId', authenticateToken, async (req, res
         const durasiBerlayarCol2 = cols2.has('durasiberlayar') ? 'durasiberlayar' : '"durasiBerlayar"';
         const statusKerjaCol2 = cols2.has('statuskerja') ? 'statuskerja' : '"statusKerja"';
 
-        const updated = await kapalMasukPool.query(`
+        const updated = await getKapalMasukPool().query(`
             UPDATE kapal_masuk_schema.kapal_masuk SET
                 ${kapalIdCol2} = $1,
                 nama = $2, ${namaPemilikCol2} = $3, ${tandaSelarCol2} = $4, ${tandaPengenalCol2} = $5,
@@ -2962,7 +2978,7 @@ app.put('/api/kapal-masuk/by-kapal/:kapalId', authenticateToken, async (req, res
 app.delete('/api/kapal-masuk/:id', authenticateToken, async (req, res) => {
     try {
         const { id } = req.params;
-        const result = await kapalMasukPool.query('DELETE FROM kapal_masuk_schema.kapal_masuk WHERE id = $1', [id]);
+        const result = await getKapalMasukPool().query('DELETE FROM kapal_masuk_schema.kapal_masuk WHERE id = $1', [id]);
 
         if (result.rowCount === 0) {
             return res.status(404).json({
@@ -3015,18 +3031,18 @@ app.post('/api/admin/migrate-manual', authenticateToken, async (req, res) => {
   try {
     console.log('🔧 Running manual input migration...');
     
-    const beforeCount = await kapalMasukPool.query(`
+    const beforeCount = await getKapalMasukPool().query(`
       SELECT COUNT(*) as count FROM kapal_masuk_schema.kapal_masuk 
       WHERE "isManualInput" IS NULL OR "isManualInput" = false
     `);
     
-    const result = await kapalMasukPool.query(`
+    const result = await getKapalMasukPool().query(`
       UPDATE kapal_masuk_schema.kapal_masuk 
       SET "isManualInput" = true 
       WHERE "isManualInput" IS NULL OR "isManualInput" = false
     `);
     
-    const afterCount = await kapalMasukPool.query(`
+    const afterCount = await getKapalMasukPool().query(`
       SELECT COUNT(*) as manual_count FROM kapal_masuk_schema.kapal_masuk WHERE "isManualInput" = true
     `);
     
@@ -3052,7 +3068,7 @@ app.post('/api/admin/backfill-pemilik', authenticateToken, async (req, res) => {
   try {
     console.log('🔧 Running pemilik backfill for all kapal_masuk...');
     
-    const result = await kapalMasukPool.query('SELECT id, nama FROM kapal_masuk_schema.kapal_masuk WHERE (namaPemilik = $1 OR namaPemilik IS NULL OR namaPemilik = \'\')', ['']);
+    const result = await getKapalMasukPool().query('SELECT id, nama FROM kapal_masuk_schema.kapal_masuk WHERE (namaPemilik = $1 OR namaPemilik IS NULL OR namaPemilik = \'\')', ['']);
     const nullRecords = result.rows;
     
     let fixes = 0;
@@ -3062,7 +3078,7 @@ app.post('/api/admin/backfill-pemilik', authenticateToken, async (req, res) => {
       const filledData = await autoFillKapalInfo(record.nama, tempData);
       
       if (filledData.namaPemilik !== '') {
-        await kapalMasukPool.query(`
+        await getKapalMasukPool().query(`
           UPDATE kapal_masuk_schema.kapal_masuk 
           SET namaPemilik = $1, tandaSelar = $2, tandaPengenal = $3, beratKotor = $4, beratBersih = $5,
               merekMesin = $6, nomorSeriMesin = $7, jenisAlatTangkap = $8
@@ -3158,7 +3174,7 @@ app.get('/api/backup', authenticateToken, async (req, res) => {
 
         // Kapal Masuk database
         try {
-            const kapalMasukResult = await kapalMasukPool.query('SELECT * FROM kapal_masuk_schema.kapal_masuk ORDER BY id DESC');
+            const kapalMasukResult = await getKapalMasukPool().query('SELECT * FROM kapal_masuk_schema.kapal_masuk ORDER BY id DESC');
             backupData.databases.kapal_masuk = kapalMasukResult.rows;
             fs.writeFileSync(path.join(dataDir, 'kapal_masuk.json'), JSON.stringify(kapalMasukResult.rows, null, 2));
             console.log(`✅ Exported ${kapalMasukResult.rows.length} kapal masuk records`);
