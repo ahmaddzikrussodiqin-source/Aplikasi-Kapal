@@ -2196,33 +2196,8 @@ async function findOrCreateActiveKapalMasukByKapalId(kapalId, seed = {}) {
         WHERE table_schema = 'kapal_masuk_schema'
           AND table_name = 'kapal_masuk'
     `);
-    const cols = new Set(colCheck.rows.map(r => String(r.column_name || '').toLowerCase()));
-    const kapalIdCol = cols.has('kapalid') ? 'kapalid' : '"kapalId"';
-    const statusCol = cols.has('status') ? 'status' : '"status"';
-    const statusKerjaCol = cols.has('statuskerja') ? 'statuskerja' : '"statusKerja"';
-    const checklistStatesCol = cols.has('checkliststates') ? 'checkliststates' : '"checklistStates"';
-    const checklistDatesCol = cols.has('checklistdates') ? 'checklistdates' : '"checklistDates"';
-    const newItemsAddedAfterFinishCol = cols.has('newitemsaddedafterfinish') ? 'newitemsaddedafterfinish' : '"newItemsAddedAfterFinish"';
-    const finishedChecklistStatesCol = cols.has('finishedcheckliststates') ? 'finishedcheckliststates' : '"finishedChecklistStates"';
-    const finishedAtCol = cols.has('finishedat') ? 'finishedat' : '"finishedAt"';
-    const namaPemilikCol = cols.has('namapemilik') ? 'namapemilik' : '"namaPemilik"';
-    const tandaSelarCol = cols.has('tandaselar') ? 'tandaselar' : '"tandaSelar"';
-    const tandaPengenalCol = cols.has('tandapengenal') ? 'tandapengenal' : '"tandaPengenal"';
-    const beratKotorCol = cols.has('beratkotor') ? 'beratkotor' : '"beratKotor"';
-    const beratBersihCol = cols.has('beratbersih') ? 'beratbersih' : '"beratBersih"';
-    const merekMesinCol = cols.has('merekmesin') ? 'merekmesin' : '"merekMesin"';
-    const nomorSeriMesinCol = cols.has('nomorserimesin') ? 'nomorserimesin' : '"nomorSeriMesin"';
-    const jenisAlatTangkapCol = cols.has('jenisalattangkap') ? 'jenisalattangkap' : '"jenisAlatTangkap"';
-    const tanggalInputCol = cols.has('tanggalinput') ? 'tanggalinput' : '"tanggalInput"';
-    const tanggalKeberangkatanCol = cols.has('tanggalkeberangkatan') ? 'tanggalkeberangkatan' : '"tanggalKeberangkatan"';
-    const totalHariPersiapanCol = cols.has('totalharipersiapan') ? 'totalharipersiapan' : '"totalHariPersiapan"';
-    const tanggalBerangkatCol = cols.has('tanggalberangkat') ? 'tanggalberangkat' : '"tanggalBerangkat"';
-    const tanggalKembaliCol = cols.has('tanggalkembali') ? 'tanggalkembali' : '"tanggalKembali"';
-    const listPersiapanCol = cols.has('listpersiapan') ? 'listpersiapan' : '"listPersiapan"';
-    const isFinishedCol = cols.has('isfinished') ? 'isfinished' : '"isFinished"';
-    const perkiraanKeberangkatanCol = cols.has('perkiraankeberangkatan') ? 'perkiraankeberangkatan' : '"perkiraanKeberangkatan"';
-    const durasiSelesaiPersiapanCol = cols.has('durasiselesaipersiapan') ? 'durasiselesaipersiapan' : '"durasiSelesaiPersiapan"';
-    const durasiBerlayarCol = cols.has('durasiberlayar') ? 'durasiberlayar' : '"durasiBerlayar"';
+    const cols = new Set(colCheck.rows.map(r => String(r.column_name || '')));
+    const colsLower = new Set(Array.from(cols).map(c => c.toLowerCase()));
 
     let existing;
     try {
@@ -2259,73 +2234,45 @@ async function findOrCreateActiveKapalMasukByKapalId(kapalId, seed = {}) {
     const insertCols = ['nama'];
     const insertVals = [sanitizeTextField(seed.nama ?? info.nama ?? '')];
 
-    if (cols.has('kapalid')) {
-        insertCols.push('kapalid');
-        insertVals.push(kapalIdNum);
-    } else if (cols.has('kapalId')) {
-        insertCols.push('"kapalId"');
+    if (colsLower.has('kapalid')) {
+        const real = Array.from(cols).find(c => c.toLowerCase() === 'kapalid');
+        insertCols.push(real === 'kapalId' ? '"kapalId"' : real);
         insertVals.push(kapalIdNum);
     }
 
-    if (cols.has('namapemilik')) { insertCols.push('namapemilik'); insertVals.push(sanitizeTextField(seed.namaPemilik ?? info.namapemilik ?? '')); }
-    if (cols.has('tandaselar')) { insertCols.push('tandaselar'); insertVals.push(sanitizeTextField(seed.tandaSelar ?? info.tandaselar ?? '')); }
-    if (cols.has('tandapengenal')) { insertCols.push('tandapengenal'); insertVals.push(sanitizeTextField(seed.tandaPengenal ?? info.tandapengenal ?? '')); }
-    if (cols.has('beratkotor')) { insertCols.push('beratkotor'); insertVals.push(sanitizeTextField(seed.beratKotor ?? info.beratkotor ?? '')); }
-    if (cols.has('beratbersih')) { insertCols.push('beratbersih'); insertVals.push(sanitizeTextField(seed.beratBersih ?? info.beratbersih ?? '')); }
-    if (cols.has('merekmesin')) { insertCols.push('merekmesin'); insertVals.push(sanitizeTextField(seed.merekMesin ?? info.merekmesin ?? '')); }
-    if (cols.has('nomorserimesin')) { insertCols.push('nomorserimesin'); insertVals.push(sanitizeTextField(seed.nomorSeriMesin ?? info.nomorserimesin ?? '')); }
-    if (cols.has('jenisalattangkap')) { insertCols.push('jenisalattangkap'); insertVals.push(sanitizeTextField(seed.jenisAlatTangkap ?? info.jenisalattangkap ?? '')); }
-    if (cols.has('tanggalinput')) { insertCols.push('tanggalinput'); insertVals.push(sanitizeTextField(seed.tanggalInput ?? info.tanggalinput ?? '')); }
-    if (cols.has('tanggalkeberangkatan')) { insertCols.push('tanggalkeberangkatan'); insertVals.push(sanitizeTextField(seed.tanggalKeberangkatan ?? '')); }
-    if (cols.has('totalharipersiapan')) { insertCols.push('totalharipersiapan'); insertVals.push(Number(seed.totalHariPersiapan ?? 0) || 0); }
-    if (cols.has('tanggalberangkat')) { insertCols.push('tanggalberangkat'); insertVals.push(sanitizeTextField(seed.tanggalBerangkat ?? '')); }
-    if (cols.has('tanggalkembali')) { insertCols.push('tanggalkembali'); insertVals.push(sanitizeTextField(seed.tanggalKembali ?? '')); }
-    if (cols.has('listpersiapan')) { insertCols.push('listpersiapan'); insertVals.push(JSON.stringify(Array.isArray(seed.listPersiapan) ? seed.listPersiapan : [])); }
-    if (cols.has('isfinished')) { insertCols.push('isfinished'); insertVals.push(seed.isFinished ? 1 : 0); }
-    if (cols.has('perkiraankeberangkatan')) { insertCols.push('perkiraankeberangkatan'); insertVals.push(sanitizeTextField(seed.perkiraanKeberangkatan ?? '')); }
-    if (cols.has('durasiselesaipersiapan')) { insertCols.push('durasiselesaipersiapan'); insertVals.push(sanitizeTextField(seed.durasiSelesaiPersiapan ?? '')); }
-    if (cols.has('durasiberlayar')) { insertCols.push('durasiberlayar'); insertVals.push(sanitizeTextField(seed.durasiBerlayar ?? '')); }
-    if (cols.has('status')) { insertCols.push('status'); insertVals.push(sanitizeTextField(seed.status ?? '')); }
-    if (cols.has('statuskerja')) { insertCols.push('statuskerja'); insertVals.push(sanitizeTextField(seed.statusKerja ?? 'persiapan')); }
-    if (cols.has('checkliststates')) {
-        insertCols.push('checkliststates');
-        insertVals.push(JSON.stringify(seed.checklistStates && typeof seed.checklistStates === 'object' ? seed.checklistStates : {}));
-    } else if (cols.has('checklistStates')) {
-        insertCols.push('"checklistStates"');
-        insertVals.push(JSON.stringify(seed.checklistStates && typeof seed.checklistStates === 'object' ? seed.checklistStates : {}));
-    }
+    const addIfCol = (logicalName, value, quotedPreferred = null) => {
+        if (!colsLower.has(logicalName.toLowerCase())) return;
+        const real = Array.from(cols).find(c => c.toLowerCase() === logicalName.toLowerCase());
+        const colSql = quotedPreferred && real === quotedPreferred ? `"${quotedPreferred}"` : (real.includes(' ') ? `"${real}"` : real);
+        insertCols.push(colSql);
+        insertVals.push(value);
+    };
 
-    if (cols.has('checklistdates')) {
-        insertCols.push('checklistdates');
-        insertVals.push(JSON.stringify(seed.checklistDates && typeof seed.checklistDates === 'object' ? seed.checklistDates : {}));
-    } else if (cols.has('checklistDates')) {
-        insertCols.push('"checklistDates"');
-        insertVals.push(JSON.stringify(seed.checklistDates && typeof seed.checklistDates === 'object' ? seed.checklistDates : {}));
-    }
-
-    if (cols.has('newitemsaddedafterfinish')) {
-        insertCols.push('newitemsaddedafterfinish');
-        insertVals.push(JSON.stringify(Array.isArray(seed.newItemsAddedAfterFinish) ? seed.newItemsAddedAfterFinish : []));
-    } else if (cols.has('newItemsAddedAfterFinish')) {
-        insertCols.push('"newItemsAddedAfterFinish"');
-        insertVals.push(JSON.stringify(Array.isArray(seed.newItemsAddedAfterFinish) ? seed.newItemsAddedAfterFinish : []));
-    }
-
-    if (cols.has('finishedcheckliststates')) {
-        insertCols.push('finishedcheckliststates');
-        insertVals.push(JSON.stringify(seed.finishedChecklistStates && typeof seed.finishedChecklistStates === 'object' ? seed.finishedChecklistStates : {}));
-    } else if (cols.has('finishedChecklistStates')) {
-        insertCols.push('"finishedChecklistStates"');
-        insertVals.push(JSON.stringify(seed.finishedChecklistStates && typeof seed.finishedChecklistStates === 'object' ? seed.finishedChecklistStates : {}));
-    }
-
-    if (cols.has('finishedat')) {
-        insertCols.push('finishedat');
-        insertVals.push(sanitizeTextField(seed.finishedAt ?? ''));
-    } else if (cols.has('finishedAt')) {
-        insertCols.push('"finishedAt"');
-        insertVals.push(sanitizeTextField(seed.finishedAt ?? ''));
-    }
+    addIfCol('namaPemilik', sanitizeTextField(seed.namaPemilik ?? info.namapemilik ?? ''), 'namaPemilik');
+    addIfCol('tandaSelar', sanitizeTextField(seed.tandaSelar ?? info.tandaselar ?? ''), 'tandaSelar');
+    addIfCol('tandaPengenal', sanitizeTextField(seed.tandaPengenal ?? info.tandapengenal ?? ''), 'tandaPengenal');
+    addIfCol('beratKotor', sanitizeTextField(seed.beratKotor ?? info.beratkotor ?? ''), 'beratKotor');
+    addIfCol('beratBersih', sanitizeTextField(seed.beratBersih ?? info.beratbersih ?? ''), 'beratBersih');
+    addIfCol('merekMesin', sanitizeTextField(seed.merekMesin ?? info.merekmesin ?? ''), 'merekMesin');
+    addIfCol('nomorSeriMesin', sanitizeTextField(seed.nomorSeriMesin ?? info.nomorserimesin ?? ''), 'nomorSeriMesin');
+    addIfCol('jenisAlatTangkap', sanitizeTextField(seed.jenisAlatTangkap ?? info.jenisalattangkap ?? ''), 'jenisAlatTangkap');
+    addIfCol('tanggalInput', sanitizeTextField(seed.tanggalInput ?? info.tanggalinput ?? ''), 'tanggalInput');
+    addIfCol('tanggalKeberangkatan', sanitizeTextField(seed.tanggalKeberangkatan ?? ''), 'tanggalKeberangkatan');
+    addIfCol('totalHariPersiapan', Number(seed.totalHariPersiapan ?? 0) || 0, 'totalHariPersiapan');
+    addIfCol('tanggalBerangkat', sanitizeTextField(seed.tanggalBerangkat ?? ''), 'tanggalBerangkat');
+    addIfCol('tanggalKembali', sanitizeTextField(seed.tanggalKembali ?? ''), 'tanggalKembali');
+    addIfCol('listPersiapan', JSON.stringify(Array.isArray(seed.listPersiapan) ? seed.listPersiapan : []), 'listPersiapan');
+    addIfCol('isFinished', seed.isFinished ? 1 : 0, 'isFinished');
+    addIfCol('perkiraanKeberangkatan', sanitizeTextField(seed.perkiraanKeberangkatan ?? ''), 'perkiraanKeberangkatan');
+    addIfCol('durasiSelesaiPersiapan', sanitizeTextField(seed.durasiSelesaiPersiapan ?? ''), 'durasiSelesaiPersiapan');
+    addIfCol('durasiBerlayar', sanitizeTextField(seed.durasiBerlayar ?? ''), 'durasiBerlayar');
+    addIfCol('status', sanitizeTextField(seed.status ?? ''), 'status');
+    addIfCol('statusKerja', sanitizeTextField(seed.statusKerja ?? 'persiapan'), 'statusKerja');
+    addIfCol('checklistStates', JSON.stringify(seed.checklistStates && typeof seed.checklistStates === 'object' ? seed.checklistStates : {}), 'checklistStates');
+    addIfCol('checklistDates', JSON.stringify(seed.checklistDates && typeof seed.checklistDates === 'object' ? seed.checklistDates : {}), 'checklistDates');
+    addIfCol('newItemsAddedAfterFinish', JSON.stringify(Array.isArray(seed.newItemsAddedAfterFinish) ? seed.newItemsAddedAfterFinish : []), 'newItemsAddedAfterFinish');
+    addIfCol('finishedChecklistStates', JSON.stringify(seed.finishedChecklistStates && typeof seed.finishedChecklistStates === 'object' ? seed.finishedChecklistStates : {}), 'finishedChecklistStates');
+    addIfCol('finishedAt', sanitizeTextField(seed.finishedAt ?? ''), 'finishedAt');
 
     const placeholders = insertVals.map((_, i) => `$${i + 1}`).join(', ');
     try {
