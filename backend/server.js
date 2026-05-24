@@ -2183,7 +2183,13 @@ async function findOrCreateActiveKapalMasukByKapalId(kapalId, seed = {}) {
     `);
     const cols = new Set(colCheck.rows.map(r => String(r.column_name || '').toLowerCase()));
     const kapalIdCol = cols.has('kapalid') ? 'kapalid' : '"kapalId"';
+    const statusCol = cols.has('status') ? 'status' : '"status"';
     const statusKerjaCol = cols.has('statuskerja') ? 'statuskerja' : '"statusKerja"';
+    const checklistStatesCol = cols.has('checkliststates') ? 'checkliststates' : '"checklistStates"';
+    const checklistDatesCol = cols.has('checklistdates') ? 'checklistdates' : '"checklistDates"';
+    const newItemsAddedAfterFinishCol = cols.has('newitemsaddedafterfinish') ? 'newitemsaddedafterfinish' : '"newItemsAddedAfterFinish"';
+    const finishedChecklistStatesCol = cols.has('finishedcheckliststates') ? 'finishedcheckliststates' : '"finishedChecklistStates"';
+    const finishedAtCol = cols.has('finishedat') ? 'finishedat' : '"finishedAt"';
     const namaPemilikCol = cols.has('namapemilik') ? 'namapemilik' : '"namaPemilik"';
     const tandaSelarCol = cols.has('tandaselar') ? 'tandaselar' : '"tandaSelar"';
     const tandaPengenalCol = cols.has('tandapengenal') ? 'tandapengenal' : '"tandaPengenal"';
@@ -2231,7 +2237,7 @@ async function findOrCreateActiveKapalMasukByKapalId(kapalId, seed = {}) {
             ${merekMesinCol}, ${nomorSeriMesinCol}, ${jenisAlatTangkapCol}, ${tanggalInputCol},
             ${tanggalKeberangkatanCol}, ${totalHariPersiapanCol}, ${tanggalBerangkatCol}, ${tanggalKembaliCol},
             ${listPersiapanCol}, ${isFinishedCol}, ${perkiraanKeberangkatanCol}, ${durasiSelesaiPersiapanCol}, ${durasiBerlayarCol},
-            status, ${statusKerjaCol}, "checklistStates", "checklistDates", "newItemsAddedAfterFinish", "finishedChecklistStates", "finishedAt"
+            ${statusCol}, ${statusKerjaCol}, ${checklistStatesCol}, ${checklistDatesCol}, ${newItemsAddedAfterFinishCol}, ${finishedChecklistStatesCol}, ${finishedAtCol}
         ) VALUES (
             $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,
             $12,$13,$14,$15,
