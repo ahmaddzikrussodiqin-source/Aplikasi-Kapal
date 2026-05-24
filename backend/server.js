@@ -2497,9 +2497,82 @@ app.put('/api/kapal-masuk/:id', authenticateToken, async (req, res) => {
 
 
         if (result.rowCount === 0) {
-            return res.status(404).json({
-                success: false,
-                message: 'Kapal Masuk not found'
+            // Fallback untuk kasus UI masih pegang id lama setelah menepi:
+            // cari record terbaru kapal yang sama berdasarkan nama + pemilik dengan status persiapan/berlayar
+            const fallbackRes = await kapalMasukPool.query(`
+                SELECT id
+                FROM kapal_masuk_schema.kapal_masuk
+                WHERE nama = $1
+                  AND namaPemilik = $2
+                  AND LOWER(COALESCE(statusKerja, '')) IN ('persiapan', 'berlayar')
+                ORDER BY id DESC
+                LIMIT 1
+            `, [
+                sanitizeTextField(normalized.nama),
+                sanitizeTextField(normalized.namaPemilik)
+            ]);
+
+            if (fallbackRes.rows.length === 0) {
+                return res.status(404).json({
+                    success: false,
+                    message: 'Kapal Masuk not found'
+                });
+            }
+
+            const fallbackId = fallbackRes.rows[0].id;
+            const fallbackUpdate = await kapalMasukPool.query(`
+                UPDATE kapal_masuk_schema.kapal_masuk SET
+                    nama = $1, namaPemilik = $2, tandaSelar = $3, tandaPengenal = $4,
+                    beratKotor = $5, beratBersih = $6, merekMesin = $7, nomorSeriMesin = $8,
+                    jenisAlatTangkap = $9, tanggalInput = $10, tanggalKeberangkatan = $11,
+                    totalHariPersiapan = $12, tanggalBerangkat = $13, tanggalKembali = $14,
+                    listPersiapan = $15, isFinished = $16, perkiraanKeberangkatan = $17,
+                    durasiSelesaiPersiapan = $18, durasiBerlayar = $19,
+                    statusKerja = $20,
+                    "checklistStates" = $21, "checklistDates" = $22, "newItemsAddedAfterFinish" = $23,
+                    "finishedChecklistStates" = $24, "finishedAt" = $25
+                WHERE id = $26
+            `, [
+                sanitizeTextField(normalized.nama),
+                sanitizeTextField(normalized.namaPemilik),
+                sanitizeTextField(normalized.tandaSelar),
+                sanitizeTextField(normalized.tandaPengenal),
+                sanitizeTextField(normalized.beratKotor),
+                sanitizeTextField(normalized.beratBersih),
+                sanitizeTextField(normalized.merekMesin),
+                sanitizeTextField(normalized.nomorSeriMesin),
+                sanitizeTextField(normalized.jenisAlatTangkap),
+                sanitizeTextField(normalized.tanggalInput),
+                sanitizeTextField(normalized.tanggalKeberangkatan),
+                normalized.totalHariPersiapan,
+                sanitizeTextField(normalized.tanggalBerangkat),
+                sanitizeTextField(normalized.tanggalKembali),
+                JSON.stringify(normalized.listPersiapan || []),
+                normalized.isFinished ? 1 : 0,
+                sanitizeTextField(normalized.perkiraanKeberangkatan),
+                sanitizeTextField(normalized.durasiSelesaiPersiapan),
+                sanitizeTextField(normalized.durasiBerlayar),
+                sanitizeTextField(normalized.statusKerja),
+                JSON.stringify(normalized.checklistStates || {}),
+                JSON.stringify(normalized.checklistDates || {}),
+                JSON.stringify(normalized.newItemsAddedAfterFinish || []),
+                JSON.stringify(normalized.finishedChecklistStates || {}),
+                sanitizeTextField(normalized.finishedAt),
+                fallbackId
+            ]);
+
+            if (fallbackUpdate.rowCount === 0) {
+                return res.status(404).json({
+                    success: false,
+                    message: 'Kapal Masuk not found'
+                });
+            }
+
+            console.log(`✅ Update kapal-masuk fallback from ${id} to ${fallbackId} completed successfully`);
+            return res.json({
+                success: true,
+                message: 'Kapal Masuk updated successfully',
+                data: { redirectedToId: fallbackId }
             });
         }
 
