@@ -2209,14 +2209,27 @@ async function findOrCreateActiveKapalMasukByKapalId(kapalId, seed = {}) {
     const durasiSelesaiPersiapanCol = cols.has('durasiselesaipersiapan') ? 'durasiselesaipersiapan' : '"durasiSelesaiPersiapan"';
     const durasiBerlayarCol = cols.has('durasiberlayar') ? 'durasiberlayar' : '"durasiBerlayar"';
 
-    const existing = await kapalMasukPool.query(`
-        SELECT *
-        FROM kapal_masuk_schema.kapal_masuk
-        WHERE ${kapalIdCol} = $1
-          AND LOWER(COALESCE(${statusKerjaCol}, 'persiapan')) IN ('persiapan', 'berlayar')
-        ORDER BY id DESC
-        LIMIT 1
-    `, [kapalIdNum]);
+    let existing;
+    try {
+        existing = await kapalMasukPool.query(`
+            SELECT *
+            FROM kapal_masuk_schema.kapal_masuk
+            WHERE kapalid = $1
+              AND LOWER(COALESCE(statuskerja, 'persiapan')) IN ('persiapan', 'berlayar')
+            ORDER BY id DESC
+            LIMIT 1
+        `, [kapalIdNum]);
+    } catch (e) {
+        if (String(e.code) !== '42703') throw e;
+        existing = await kapalMasukPool.query(`
+            SELECT *
+            FROM kapal_masuk_schema.kapal_masuk
+            WHERE "kapalId" = $1
+              AND LOWER(COALESCE("statusKerja", 'persiapan')) IN ('persiapan', 'berlayar')
+            ORDER BY id DESC
+            LIMIT 1
+        `, [kapalIdNum]);
+    }
 
     if (existing.rows.length > 0) {
         return existing.rows[0];
