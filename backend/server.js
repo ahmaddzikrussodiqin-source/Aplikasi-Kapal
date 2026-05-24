@@ -2502,12 +2502,16 @@ app.put('/api/kapal-masuk/:id', authenticateToken, async (req, res) => {
             const fallbackRes = await kapalMasukPool.query(`
                 SELECT id
                 FROM kapal_masuk_schema.kapal_masuk
-                WHERE nama = $1
-                  AND namaPemilik = $2
-                  AND LOWER(COALESCE(statusKerja, '')) IN ('persiapan', 'berlayar')
+                WHERE (
+                    (kapalId IS NOT NULL AND kapalId = $1)
+                    OR (nama = $2 AND namaPemilik = $3)
+                    OR (nama = $2)
+                )
+                AND LOWER(COALESCE(statusKerja, '')) IN ('persiapan', 'berlayar')
                 ORDER BY id DESC
                 LIMIT 1
             `, [
+                Number.isFinite(Number(kapalMasukData?.kapalId)) ? Number(kapalMasukData.kapalId) : -1,
                 sanitizeTextField(normalized.nama),
                 sanitizeTextField(normalized.namaPemilik)
             ]);
