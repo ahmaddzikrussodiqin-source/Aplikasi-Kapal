@@ -2059,7 +2059,6 @@ app.post('/api/kapal-masuk/:id/menepi', authenticateToken, async (req, res) => {
         const current = currentRes.rows[0];
 
         // Snapshot ke history
-        // durasi dibaca dari field durasi* yang sudah ada (diisi saat finish/pengisian)
         const insertRes = await kapalMasukPool.query(`
             INSERT INTO kapal_masuk_schema.kapal_masuk_history (
                 kapalMasukId,
@@ -2095,20 +2094,71 @@ app.post('/api/kapal-masuk/:id/menepi', authenticateToken, async (req, res) => {
             throw new Error('Failed to insert history');
         }
 
-        // Reset status kerja kapal aktif supaya kembali ke persiapan
-        const updateRes = await kapalMasukPool.query(`
-            UPDATE kapal_masuk_schema.kapal_masuk SET
-                statusKerja = 'persiapan',
-                status = '',
-                tanggalKembali = '',
-                durasiBerlayar = '',
-                tanggalKeberangkatan = COALESCE(tanggalKeberangkatan, ''),
-                // persiapan selesai tetap tersimpan di checklistStates
-                finishedAt = ''
-            WHERE id = $1
+        // Buat TRIP baru (reset persiapan) agar kapal berkelanjutan sampai menjadi history
+        const newTripRes = await kapalMasukPool.query(`
+            INSERT INTO kapal_masuk_schema.kapal_masuk (
+                nama,
+                namaPemilik, tandaSelar, tandaPengenal,
+                beratKotor, beratBersih, merekMesin, nomorSeriMesin, jenisAlatTangkap,
+                tanggalInput,
+                tanggalKeberangkatan, totalHariPersiapan, tanggalBerangkat, tanggalKembali,
+                listPersiapan,
+                isFinished,
+                perkiraanKeberangkatan,
+                durasiSelesaiPersiapan,
+                durasiBerlayar,
+                status,
+                statusKerja,
+                "checklistStates",
+                "checklistDates",
+                "newItemsAddedAfterFinish",
+                "finishedChecklistStates",
+                "finishedAt"
+            ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,
+                      '', NULL, '', '',
+                      '[]',
+                      0,
+                      '',
+                      '',
+                      '',
+                      '',
+                      'persiapan',
+                      $12,
+                      $13,
+                      $14,
+                      $15,
+                      ''
+            ) RETURNING *
+        `, [
+            current.nama,
+            current.namapemilik, current.tandaselar, current.tandapengenal,
+            current.beratkotor, current.beratbersih, current.merekmesin, current.nomorserimesin, current.jenisalattangkap,
+            current.tanggalinput,
+            current.tanggalkeberangkatan,
+            JSON.stringify({}),
+            JSON.stringify({}),
+            JSON.stringify([]),
+            JSON.stringify({})
+        ]);
+
+        const newActive = newTripRes.rows?.[0];
+        if (!newActive) {
+            throw new Error('Failed to create new trip record');
+        }
+
+        // Hapus record aktif lama supaya tidak muncul kembali di tab Persiapan/Berlayar
+        await kapalMasukPool.query(`
+            DELETE FROM kapal_masuk_schema.kapal_masuk WHERE id = $1
         `, [id]);
 
-        return res.json({ success: true, message: 'Kapal menepi successfully', data: { historyId: insertRes.rows[0].id, updateRowCount: updateRes.rowCount } });
+        return res.json({
+            success: true,
+            message: 'Kapal menepi successfully (trip reset created)',
+            data: {
+                historyId: insertRes.rows[0].id,
+                newActiveId: newActive.id,
+            }
+        });
     } catch (e) {
         console.error('Menepi error:', e);
         return res.status(500).json({ success: false, message: 'Failed to menepi', details: String(e.message || e) });
