@@ -187,6 +187,18 @@ export const kapalMasukAPI = {
     return response.json();
   },
 
+  updateByKapalId: async (token, kapalId, kapalMasuk) => {
+    const response = await fetch(`${API_BASE_URL}/api/kapal-masuk/by-kapal/${kapalId}`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify(kapalMasuk),
+    });
+    return response.json();
+  },
+
   delete: async (token, id) => {
     const response = await fetch(`${API_BASE_URL}/api/kapal-masuk/${id}`, {
       method: 'DELETE',

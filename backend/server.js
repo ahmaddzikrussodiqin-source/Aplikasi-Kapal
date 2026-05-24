@@ -2685,6 +2685,125 @@ app.put('/api/kapal-masuk/:id', authenticateToken, async (req, res) => {
 
 });
 
+app.put('/api/kapal-masuk/by-kapal/:kapalId', authenticateToken, async (req, res) => {
+    try {
+        const kapalIdNum = Number(req.params.kapalId);
+        if (!Number.isFinite(kapalIdNum) || kapalIdNum <= 0) {
+            return res.status(400).json({
+                success: false,
+                message: 'Invalid kapalId'
+            });
+        }
+
+        const payload = req.body || {};
+        let kapalMasukData = payload;
+        if (kapalMasukData.nama) {
+            kapalMasukData = await autoFillKapalInfo(kapalMasukData.nama, kapalMasukData);
+        }
+
+        const activeRow = await findOrCreateActiveKapalMasukByKapalId(kapalIdNum, kapalMasukData);
+
+        const normalized = {
+            kapalId: kapalIdNum,
+            nama: kapalMasukData.nama ?? activeRow.nama ?? '',
+            namaPemilik: kapalMasukData.namaPemilik ?? activeRow.namapemilik ?? '',
+            tandaSelar: kapalMasukData.tandaSelar ?? activeRow.tandaselar ?? '',
+            tandaPengenal: kapalMasukData.tandaPengenal ?? activeRow.tandapengenal ?? '',
+            beratKotor: kapalMasukData.beratKotor ?? activeRow.beratkotor ?? '',
+            beratBersih: kapalMasukData.beratBersih ?? activeRow.beratbersih ?? '',
+            merekMesin: kapalMasukData.merekMesin ?? activeRow.merekmesin ?? '',
+            nomorSeriMesin: kapalMasukData.nomorSeriMesin ?? activeRow.nomorserimesin ?? '',
+            jenisAlatTangkap: kapalMasukData.jenisAlatTangkap ?? activeRow.jenisalattangkap ?? '',
+            tanggalInput: kapalMasukData.tanggalInput ?? activeRow.tanggalinput ?? '',
+            tanggalKeberangkatan: kapalMasukData.tanggalKeberangkatan ?? activeRow.tanggalkeberangkatan ?? '',
+            totalHariPersiapan: kapalMasukData.totalHariPersiapan ?? activeRow.totalharipersiapan ?? 0,
+            tanggalBerangkat: kapalMasukData.tanggalBerangkat ?? activeRow.tanggalberangkat ?? '',
+            tanggalKembali: kapalMasukData.tanggalKembali ?? activeRow.tanggalkembali ?? '',
+            listPersiapan: Array.isArray(kapalMasukData.listPersiapan)
+                ? kapalMasukData.listPersiapan
+                : parseListPersiapan(kapalMasukData.listPersiapan ?? activeRow.listpersiapan ?? '[]'),
+            isFinished: typeof kapalMasukData.isFinished === 'boolean'
+                ? kapalMasukData.isFinished
+                : Boolean(activeRow.isfinished),
+            perkiraanKeberangkatan: kapalMasukData.perkiraanKeberangkatan ?? activeRow.perkiraankeberangkatan ?? '',
+            durasiSelesaiPersiapan: kapalMasukData.durasiSelesaiPersiapan ?? activeRow.durasiselesaipersiapan ?? '',
+            durasiBerlayar: kapalMasukData.durasiBerlayar ?? activeRow.durasiberlayar ?? '',
+            statusKerja: kapalMasukData.statusKerja ?? kapalMasukData.status ?? activeRow.statuskerja ?? 'persiapan',
+            checklistStates: kapalMasukData.checklistStates && typeof kapalMasukData.checklistStates === 'object'
+                ? kapalMasukData.checklistStates
+                : (activeRow.checkliststates ? JSON.parse(activeRow.checkliststates || '{}') : {}),
+            checklistDates: kapalMasukData.checklistDates && typeof kapalMasukData.checklistDates === 'object'
+                ? kapalMasukData.checklistDates
+                : (activeRow.checklistdates ? JSON.parse(activeRow.checklistdates || '{}') : {}),
+            newItemsAddedAfterFinish: Array.isArray(kapalMasukData.newItemsAddedAfterFinish)
+                ? kapalMasukData.newItemsAddedAfterFinish
+                : (activeRow.newitemsaddedafterfinish ? JSON.parse(activeRow.newitemsaddedafterfinish || '[]') : []),
+            finishedChecklistStates: kapalMasukData.finishedChecklistStates && typeof kapalMasukData.finishedChecklistStates === 'object'
+                ? kapalMasukData.finishedChecklistStates
+                : (activeRow.finishedcheckliststates ? JSON.parse(activeRow.finishedcheckliststates || '{}') : {}),
+            finishedAt: kapalMasukData.finishedAt ?? activeRow.finishedat ?? ''
+        };
+
+        const updated = await kapalMasukPool.query(`
+            UPDATE kapal_masuk_schema.kapal_masuk SET
+                kapalId = $1,
+                nama = $2, namaPemilik = $3, tandaSelar = $4, tandaPengenal = $5,
+                beratKotor = $6, beratBersih = $7, merekMesin = $8, nomorSeriMesin = $9,
+                jenisAlatTangkap = $10, tanggalInput = $11, tanggalKeberangkatan = $12,
+                totalHariPersiapan = $13, tanggalBerangkat = $14, tanggalKembali = $15,
+                listPersiapan = $16, isFinished = $17, perkiraanKeberangkatan = $18,
+                durasiSelesaiPersiapan = $19, durasiBerlayar = $20, statusKerja = $21,
+                "checklistStates" = $22, "checklistDates" = $23, "newItemsAddedAfterFinish" = $24,
+                "finishedChecklistStates" = $25, "finishedAt" = $26
+            WHERE id = $27
+            RETURNING *
+        `, [
+            normalized.kapalId,
+            sanitizeTextField(normalized.nama),
+            sanitizeTextField(normalized.namaPemilik),
+            sanitizeTextField(normalized.tandaSelar),
+            sanitizeTextField(normalized.tandaPengenal),
+            sanitizeTextField(normalized.beratKotor),
+            sanitizeTextField(normalized.beratBersih),
+            sanitizeTextField(normalized.merekMesin),
+            sanitizeTextField(normalized.nomorSeriMesin),
+            sanitizeTextField(normalized.jenisAlatTangkap),
+            sanitizeTextField(normalized.tanggalInput),
+            sanitizeTextField(normalized.tanggalKeberangkatan),
+            Number(normalized.totalHariPersiapan) || 0,
+            sanitizeTextField(normalized.tanggalBerangkat),
+            sanitizeTextField(normalized.tanggalKembali),
+            JSON.stringify(normalized.listPersiapan || []),
+            normalized.isFinished ? 1 : 0,
+            sanitizeTextField(normalized.perkiraanKeberangkatan),
+            sanitizeTextField(normalized.durasiSelesaiPersiapan),
+            sanitizeTextField(normalized.durasiBerlayar),
+            sanitizeTextField(normalized.statusKerja),
+            JSON.stringify(normalized.checklistStates || {}),
+            JSON.stringify(normalized.checklistDates || {}),
+            JSON.stringify(normalized.newItemsAddedAfterFinish || []),
+            JSON.stringify(normalized.finishedChecklistStates || {}),
+            sanitizeTextField(normalized.finishedAt),
+            activeRow.id
+        ]);
+
+        return res.json({
+            success: true,
+            message: 'Kapal Masuk updated successfully',
+            data: {
+                id: updated.rows?.[0]?.id || activeRow.id,
+                kapalId: kapalIdNum
+            }
+        });
+    } catch (error) {
+        console.error('❌ Update by kapalId error:', error);
+        return res.status(500).json({
+            success: false,
+            message: 'Failed to update kapal masuk'
+        });
+    }
+});
+
 app.delete('/api/kapal-masuk/:id', authenticateToken, async (req, res) => {
     try {
         const { id } = req.params;

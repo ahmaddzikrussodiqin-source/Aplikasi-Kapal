@@ -465,7 +465,7 @@ const KapalMasuk = () => {
 
       console.log('[TambahKebutuhanConfirm] PUT kapal-masuk record id=', recordIdNum);
 
-      const response = await kapalMasukAPI.update(token, recordIdNum, updatePayload);
+      const response = await kapalMasukAPI.updateByKapalId(token, kapalIdNum, updatePayload);
 
       if (response.success) {
         loadData();
