@@ -2146,9 +2146,11 @@ app.post('/api/kapal-masuk/:id/menepi', authenticateToken, async (req, res) => {
             throw new Error('Failed to create new trip record');
         }
 
-        // Hapus record aktif lama supaya tidak muncul kembali di tab Persiapan/Berlayar
+        // Tandai record lama sebagai menepi agar riwayat tetap ada dan tidak hilang untuk UI yang masih memegang id lama
         await kapalMasukPool.query(`
-            DELETE FROM kapal_masuk_schema.kapal_masuk WHERE id = $1
+            UPDATE kapal_masuk_schema.kapal_masuk
+            SET statusKerja = 'menepi', status = 'menepi'
+            WHERE id = $1
         `, [id]);
 
         return res.json({
