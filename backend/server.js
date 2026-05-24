@@ -2312,12 +2312,62 @@ async function findOrCreateActiveKapalMasukByKapalId(kapalId, seed = {}) {
     }
 
     const placeholders = insertVals.map((_, i) => `$${i + 1}`).join(', ');
-    const inserted = await kapalMasukPool.query(
-        `INSERT INTO kapal_masuk_schema.kapal_masuk (${insertCols.join(', ')}) VALUES (${placeholders}) RETURNING *`,
-        insertVals
-    );
+    try {
+        const inserted = await kapalMasukPool.query(
+            `INSERT INTO kapal_masuk_schema.kapal_masuk (${insertCols.join(', ')}) VALUES (${placeholders}) RETURNING *`,
+            insertVals
+        );
+        return inserted.rows[0];
+    } catch (insertErr) {
+        // Fallback terakhir untuk schema yang benar-benar kolom lama (quoted camelCase only)
+        if (String(insertErr.code) !== '42703') throw insertErr;
 
-    return inserted.rows[0];
+        const legacyInserted = await kapalMasukPool.query(`
+            INSERT INTO kapal_masuk_schema.kapal_masuk (
+                "kapalId", nama, "namaPemilik", "tandaSelar", "tandaPengenal", "beratKotor", "beratBersih",
+                "merekMesin", "nomorSeriMesin", "jenisAlatTangkap", "tanggalInput",
+                "tanggalKeberangkatan", "totalHariPersiapan", "tanggalBerangkat", "tanggalKembali",
+                "listPersiapan", "isFinished", "perkiraanKeberangkatan", "durasiSelesaiPersiapan", "durasiBerlayar",
+                status, "statusKerja", "checklistStates", "checklistDates", "newItemsAddedAfterFinish", "finishedChecklistStates", "finishedAt"
+            ) VALUES (
+                $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,
+                $12,$13,$14,$15,
+                $16,$17,$18,$19,$20,
+                $21,$22,$23,$24,$25,$26,$27
+            )
+            RETURNING *
+        `, [
+            kapalIdNum,
+            sanitizeTextField(seed.nama ?? info.nama ?? ''),
+            sanitizeTextField(seed.namaPemilik ?? info.namapemilik ?? ''),
+            sanitizeTextField(seed.tandaSelar ?? info.tandaselar ?? ''),
+            sanitizeTextField(seed.tandaPengenal ?? info.tandapengenal ?? ''),
+            sanitizeTextField(seed.beratKotor ?? info.beratkotor ?? ''),
+            sanitizeTextField(seed.beratBersih ?? info.beratbersih ?? ''),
+            sanitizeTextField(seed.merekMesin ?? info.merekmesin ?? ''),
+            sanitizeTextField(seed.nomorSeriMesin ?? info.nomorserimesin ?? ''),
+            sanitizeTextField(seed.jenisAlatTangkap ?? info.jenisalattangkap ?? ''),
+            sanitizeTextField(seed.tanggalInput ?? info.tanggalinput ?? ''),
+            sanitizeTextField(seed.tanggalKeberangkatan ?? ''),
+            Number(seed.totalHariPersiapan ?? 0) || 0,
+            sanitizeTextField(seed.tanggalBerangkat ?? ''),
+            sanitizeTextField(seed.tanggalKembali ?? ''),
+            JSON.stringify(Array.isArray(seed.listPersiapan) ? seed.listPersiapan : []),
+            seed.isFinished ? 1 : 0,
+            sanitizeTextField(seed.perkiraanKeberangkatan ?? ''),
+            sanitizeTextField(seed.durasiSelesaiPersiapan ?? ''),
+            sanitizeTextField(seed.durasiBerlayar ?? ''),
+            sanitizeTextField(seed.status ?? ''),
+            sanitizeTextField(seed.statusKerja ?? 'persiapan'),
+            JSON.stringify(seed.checklistStates && typeof seed.checklistStates === 'object' ? seed.checklistStates : {}),
+            JSON.stringify(seed.checklistDates && typeof seed.checklistDates === 'object' ? seed.checklistDates : {}),
+            JSON.stringify(Array.isArray(seed.newItemsAddedAfterFinish) ? seed.newItemsAddedAfterFinish : []),
+            JSON.stringify(seed.finishedChecklistStates && typeof seed.finishedChecklistStates === 'object' ? seed.finishedChecklistStates : {}),
+            sanitizeTextField(seed.finishedAt ?? '')
+        ]);
+
+        return legacyInserted.rows[0];
+    }
 }
 
 // Kapal Masuk routes (protected)
