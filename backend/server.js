@@ -82,6 +82,23 @@ function getKapalMasukPool() {
     return kapalMasukPoolV2 || kapalMasukPool;
 }
 
+// ============================================================
+// Status Kerja Kapal - New Database (separate from kapal_masuk)
+// ============================================================
+const statusKerjaPool = new Pool({
+    connectionString: process.env.DATABASE_URL_STATUS_KERJA || process.env.DATABASE_URL_KAPAL_MASUK,
+    ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
+    connectionTimeoutMillis: 10000,
+    query_timeout: 10000,
+    idleTimeoutMillis: 30000,
+    max: 20,
+    allowExitOnIdle: true
+});
+
+function getStatusKerjaPool() {
+    return statusKerjaPool;
+}
+
 // Ensure dokumen table exists in kapalPool (fallback database)
 async function ensureDokumenTable() {
     try {
@@ -153,6 +170,140 @@ async function ensureDokumenTable() {
 }
 
 ensureDokumenTable();
+
+// Initialize Status Kerja database tables (separate from kapal_masuk)
+async function initializeStatusKerjaDatabase() {
+    try {
+        console.log('🔄 Initializing Status Kerja database...');
+        
+        // Create schema
+        console.log('📝 Creating status_kerja_schema...');
+        await statusKerjaPool.query(`
+            CREATE SCHEMA IF NOT EXISTS status_kerja_schema
+        `);
+        
+        // Create main status kerja table
+        console.log('📝 Creating status_kerja_kapal table...');
+        await statusKerjaPool.query(`
+            CREATE TABLE IF NOT EXISTS status_kerja_schema.status_kerja_kapal (
+                id SERIAL PRIMARY KEY,
+                kapalId INTEGER NOT NULL,
+                nama TEXT NOT NULL DEFAULT '',
+                namaPemilik TEXT NOT NULL DEFAULT '',
+                tandaSelar TEXT NOT NULL DEFAULT '',
+                tandaPengenal TEXT NOT NULL DEFAULT '',
+                beratKotor TEXT NOT NULL DEFAULT '',
+                beratBersih TEXT NOT NULL DEFAULT '',
+                merekMesin TEXT NOT NULL DEFAULT '',
+                nomorSeriMesin TEXT NOT NULL DEFAULT '',
+                jenisAlatTangkap TEXT NOT NULL DEFAULT '',
+                
+                -- Status kerja tracking
+                statusKerja TEXT NOT NULL DEFAULT 'persiapan',
+                status TEXT NOT NULL DEFAULT 'persiapan',
+                
+                -- Dates
+                tanggalInput TEXT,
+                tanggalKeberangkatan TEXT,
+                totalHariPersiapan INTEGER DEFAULT 0,
+                tanggalBerangkat TEXT,
+                tanggalKembali TEXT,
+                
+                -- Persiapan tracking
+                listPersiapan TEXT NOT NULL DEFAULT '[]',
+                checklistStates TEXT NOT NULL DEFAULT '{}',
+                checklistDates TEXT NOT NULL DEFAULT '{}',
+                
+                -- Additional tracking
+                isFinished INTEGER NOT NULL DEFAULT 0,
+                perkiraanKeberangkatan TEXT,
+                durasiSelesaiPersiapan TEXT,
+                durasiBerlayar TEXT,
+                
+                -- For audit trail
+                finishedChecklistStates TEXT NOT NULL DEFAULT '{}',
+                finishedAt TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                
+                -- Unique constraint
+                UNIQUE(kapalId)
+            )
+        `);
+        
+        // Create history table for audit trail
+        console.log('📝 Creating status_kerja_history table...');
+        await statusKerjaPool.query(`
+            CREATE TABLE IF NOT EXISTS status_kerja_schema.status_kerja_history (
+                id SERIAL PRIMARY KEY,
+                statusKerjaId INTEGER NOT NULL,
+                kapalId INTEGER NOT NULL,
+                nama TEXT NOT NULL DEFAULT '',
+                namaPemilik TEXT NOT NULL DEFAULT '',
+                tandaSelar TEXT NOT NULL DEFAULT '',
+                tandaPengenal TEXT NOT NULL DEFAULT '',
+                
+                statusKerja TEXT NOT NULL DEFAULT 'menepi',
+                status TEXT NOT NULL DEFAULT 'menepi',
+                
+                tanggalKeberanglement TEXT,
+                totalHariPersiapan INTEGER DEFAULT 0,
+                tanggalBerangkat TEXT,
+                durasiSelesaiPersiapan TEXT,
+                
+                tanggalKembali TEXT,
+                durasiBerlayar TEXT,
+                
+                listPersiapan TEXT NOT NULL DEFAULT '[]',
+                checklistStates TEXT NOT NULL DEFAULT '{}',
+                checklistDates TEXT NOT NULL DEFAULT '{}',
+                
+                finishedAt TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        `);
+        
+        // Add missing columns if they don't exist
+        const columnsToCheck = [
+            'finishedChecklistStates', 
+            'finishedAt',
+            'newItemsAddedAfterFinish',
+            'tanggalInput'
+        ];
+        
+        for (const col of columnsToCheck) {
+            try {
+                const columnCheck = await statusKerjaPool.query(`
+                    SELECT column_name
+                    FROM information_schema.columns
+                    WHERE table_schema = 'status_kerja_schema'
+                    AND table_name = 'status_kerja_kapal'
+                    AND column_name = $1
+                `, [col]);
+                
+                if (columnCheck.rows.length === 0) {
+                    const defaultValue = col === 'newItemsAddedAfterFinish' ? "'[]'" : 
+                                  col === 'finishedChecklistStates' ? "'{}'" : 
+                                  col === 'checklistStates' ? "'{}'" :
+                                  col === 'checklistDates' ? "'{}'" : "''";
+                    await statusKerjaPool.query(
+                        `ALTER TABLE status_kerja_schema.status_kerja_kapal ADD COLUMN "${col}" TEXT NOT NULL DEFAULT ${defaultValue}`
+                    );
+                    console.log(`✅ Added missing column ${col} to status_kerja_kapal`);
+                }
+            } catch (alterError) {
+                console.log(`Migration note for ${col}:`, alterError.message);
+            }
+        }
+        
+        console.log('✅ Status Kerja database tables created successfully');
+    } catch (error) {
+        console.error('❌ Error initializing Status Kerja database:', error);
+    }
+}
+
+// Initialize Status Kerja database
+initializeStatusKerjaDatabase();
 
 console.log('✅ All database pools created');
 
@@ -561,7 +712,8 @@ async function initializeDatabase() {
 const connectPromises = [
     usersPool.connect(),
     kapalPool.connect(),
-    kapalMasukPool.connect()
+    kapalMasukPool.connect(),
+    statusKerjaPool.connect()
 ];
 
 if (dokumenPool) {
@@ -1860,9 +2012,9 @@ app.get('/api/status-kerja-kapal', authenticateToken, async (req, res) => {
             ORDER BY ki.id DESC
         `);
 
-        // Ambil kapal aktif dari kapal_masuk (persiapan/berlayar/menepi)
-        const kapalMasukRes = await getKapalMasukPool().query(`
-            SELECT * FROM kapal_masuk_schema.kapal_masuk
+// Ambil kapal aktif dari status_kerja_schema (persiapan/berlayar/menepi) - NEW DATABASE
+        const kapalMasukRes = await getStatusKerjaPool().query(`
+            SELECT * FROM status_kerja_schema.status_kerja_kapal
         `);
 
         const parseJSONSafe = (v, fallback) => {
@@ -1898,8 +2050,8 @@ app.get('/api/status-kerja-kapal', authenticateToken, async (req, res) => {
             activeByKapalId.set(kapalId, row);
         }
 
-        const historyRes = await getKapalMasukPool().query(`
-            SELECT * FROM kapal_masuk_schema.kapal_masuk_history
+const historyRes = await getStatusKerjaPool().query(`
+            SELECT * FROM status_kerja_schema.status_kerja_history
         `);
 
         const historyRows = historyRes.rows.map(h => ({
@@ -2275,9 +2427,10 @@ async function findOrCreateActiveKapalMasukByKapalId(kapalId, seed = {}) {
     addIfCol('finishedAt', sanitizeTextField(seed.finishedAt ?? ''), 'finishedAt');
 
     const placeholders = insertVals.map((_, i) => `$${i + 1}`).join(', ');
-    try {
-        const inserted = await getKapalMasukPool().query(
-            `INSERT INTO kapal_masuk_schema.kapal_masuk (${insertCols.join(', ')}) VALUES (${placeholders}) RETURNING *`,
+try {
+        // Gunakan status_kerja_schema untuk Status Kerja Kapal (database baru)
+        const inserted = await getStatusKerjaPool().query(
+            `INSERT INTO status_kerja_schema.status_kerja_kapal (${insertCols.join(', ')}) VALUES (${placeholders}) RETURNING *`,
             insertVals
         );
         return inserted.rows[0];
@@ -2285,8 +2438,9 @@ async function findOrCreateActiveKapalMasukByKapalId(kapalId, seed = {}) {
         // Fallback terakhir untuk schema yang benar-benar kolom lama (quoted camelCase only)
         if (String(insertErr.code) !== '42703') throw insertErr;
 
-        const legacyInserted = await getKapalMasukPool().query(`
-            INSERT INTO kapal_masuk_schema.kapal_masuk (
+// Fallback: gunakan status_kerja_schema
+        const legacyInserted = await getStatusKerjaPool().query(`
+            INSERT INTO status_kerja_schema.status_kerja_kapal (
                 "kapalId", nama, "namaPemilik", "tandaSelar", "tandaPengenal", "beratKotor", "beratBersih",
                 "merekMesin", "nomorSeriMesin", "jenisAlatTangkap", "tanggalInput",
                 "tanggalKeberangkatan", "totalHariPersiapan", "tanggalBerangkat", "tanggalKembali",
@@ -2343,9 +2497,10 @@ app.get('/api/kapal-masuk', authenticateToken, async (req, res) => {
             throw new Error('kapalMasukPool not initialized');
         }
         
-const result = await getKapalMasukPool().query('SELECT * FROM kapal_masuk_schema.kapal_masuk ORDER BY id DESC');
+// Gunakan status_kerja_schema (database baru untuk Status Kerja Kapal)
+        const result = await getStatusKerjaPool().query('SELECT * FROM status_kerja_schema.status_kerja_kapal ORDER BY id DESC');
         const kapalMasuk = result.rows;
-        console.log(`📊 Found ${kapalMasuk.length} kapal-masuk records`);
+        console.log(`📊 Found ${kapalMasuk.length} status-kerja-kapal records (NEW DATABASE)`);
 
         // Safe parsing with detailed logging
         const parsedKapalMasuk = kapalMasuk.map((k, index) => {
@@ -2431,13 +2586,14 @@ app.get('/api/kapal-masuk/:id', authenticateToken, async (req, res) => {
             throw new Error('kapalMasukPool not initialized');
         }
         
-        const result = await getKapalMasukPool().query('SELECT * FROM kapal_masuk_schema.kapal_masuk WHERE id = $1', [id]);
+// Gunakan status_kerja_schema (database baru untuk Status Kerja Kapal)
+        const result = await getStatusKerjaPool().query('SELECT * FROM status_kerja_schema.status_kerja_kapal WHERE id = $1', [id]);
         const kapalMasuk = result.rows[0];
 
         if (!kapalMasuk) {
             return res.status(404).json({
                 success: false,
-                message: 'Kapal Masuk not found'
+                message: 'Status Kerja Kapal not found'
             });
         }
 
@@ -2938,18 +3094,19 @@ app.put('/api/kapal-masuk/by-kapal/:kapalId', authenticateToken, async (req, res
 app.delete('/api/kapal-masuk/:id', authenticateToken, async (req, res) => {
     try {
         const { id } = req.params;
-        const result = await getKapalMasukPool().query('DELETE FROM kapal_masuk_schema.kapal_masuk WHERE id = $1', [id]);
+// Gunakan status_kerja_schema (database baru untuk Status Kerja Kapal)
+        const result = await getStatusKerjaPool().query('DELETE FROM status_kerja_schema.status_kerja_kapal WHERE id = $1', [id]);
 
         if (result.rowCount === 0) {
             return res.status(404).json({
                 success: false,
-                message: 'Kapal Masuk not found'
+                message: 'Status Kerja Kapal not found'
             });
         }
 
         res.json({
             success: true,
-            message: 'Kapal Masuk deleted successfully'
+            message: 'Status Kerja Kapal deleted successfully (NEW DATABASE)'
         });
     } catch (error) {
         console.error('Delete kapal masuk error:', error);
