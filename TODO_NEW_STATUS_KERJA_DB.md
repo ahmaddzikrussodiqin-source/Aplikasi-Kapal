@@ -50,8 +50,8 @@
 - [x] 2. Create tables in server.js
 - [x] 3. Update API endpoints to use new schema
 - [x] 4. Backend changes complete
-- [ ] 5. Deploy to Railway
-- [ ] 6. Test website functionality
+- [x] 5. Deploy to Railway (DATABASE_URL provided)
+- [x] 6. Test website functionality
 
 ## Ringkasan Perubahan
 
