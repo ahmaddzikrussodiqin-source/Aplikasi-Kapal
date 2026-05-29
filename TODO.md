@@ -1,21 +1,26 @@
-# TODO: Hilangkan Informasi Kapal kecuali Nama Pemilik di Status Kerja Kapal
+# TODO - Status Kerja Kapal New Database Implementation
 
-**Status**: Planning complete, implementation in progress  
-**Target**: Android ProfileActivity + dialogs, Website KapalMasuk - show ONLY nama kapal + nama pemilik + status/dates/checklist  
+## Task Summary
+- Hilangkan penggunaan database Kapal-masuk (`kapal_masuk_schema.kapal_masuk`)
+- Buat database baru untuk Status Kerja Kapal
 
-## Steps to Complete:
-- [x] 1. Understand files via search_files/read_file  
-- [x] 2. Create detailed edit plan & get user approval  
-- [x] 3. Create this TODO.md  
-- [ ] 4. Read KapalMasukAdapter.kt  
-- [ ] 5. Edit dialog_view_kapal.xml (remove ship details TextViews except owner/status)  
-- [ ] 6. Edit ProfileActivity.kt (remove setText for removed fields)  
-- [ ] 7. Edit item_kapal_masuk.xml (hide tv_nama_kapal, promote owner)  
-- [ ] 8. Edit KapalMasuk.jsx (remove detail grids/modals ship specs)  
-- [ ] 9. Edit KapalMasukAdapter.kt if binds extra fields  
-- [ ] 10. Test Android: Run app → ProfileActivity → tap item → dialog shows only name/owner/status  
-- [ ] 11. Test Website: `cd Aplikasi-Kapal/website && npm run dev` → /kapal-masuk → cards/modals clean  
-- [ ] 12. Update TODO.md → attempt_completion  
+## Implementation Plan
 
-**Notes**: User confirmed "ya, hanya informasi nama kapal dan pemilik kapal" → Keep nama + namaPemilik, remove all other ship specs (tanda selar, berat, mesin, alat tangkap).
+### Step 1: Update deploy.sh
+- Remove explicit migration script calls (not needed)
+- Add logic to detect Railway or local database
+- Let server initialize schemas on startup
 
+### Step 2: Update server.js 
+- Check existing table columns before queries
+- Add missing column "kapalId" to status_kerja_kapal if needed
+
+### Step 3: Deploy and Test
+- Deploy to Railway
+- Test website functionality
+
+## Progress Log
+- [x] 1. Backend server.js updated to use getStatusKerjaPool()
+- [x] 2. deploy.sh updated
+- [ ] 3. Deploy to Railway
+- [ ] 4. Test website functionality

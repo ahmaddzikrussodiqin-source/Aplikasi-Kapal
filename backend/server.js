@@ -19,7 +19,7 @@ console.log('🔧 Setting up separate database pools...');
 
 // Users database pool
 const usersPool = new Pool({
-    connectionString: process.env.DATABASE_URL_USERS,
+    connectionString: process.env.DATABASE_URL_USERS || process.env.DATABASE_URL,
     ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
     connectionTimeoutMillis: 10000,
     query_timeout: 10000,
@@ -30,7 +30,7 @@ const usersPool = new Pool({
 
 // Kapal database pool
 const kapalPool = new Pool({
-    connectionString: process.env.DATABASE_URL_KAPAL,
+    connectionString: process.env.DATABASE_URL_KAPAL || process.env.DATABASE_URL,
     ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
     connectionTimeoutMillis: 10000,
     query_timeout: 10000,
@@ -57,7 +57,7 @@ if (process.env.DATABASE_URL_DOKUMEN) {
 
 // Kapal Masuk database pool (legacy)
 const kapalMasukPool = new Pool({
-    connectionString: process.env.DATABASE_URL_KAPAL_MASUK,
+    connectionString: process.env.DATABASE_URL_KAPAL_MASUK || process.env.DATABASE_URL,
     ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
     connectionTimeoutMillis: 10000,
     query_timeout: 10000,
@@ -86,7 +86,7 @@ function getKapalMasukPool() {
 // Status Kerja Kapal - New Database (separate from kapal_masuk)
 // ============================================================
 const statusKerjaPool = new Pool({
-    connectionString: process.env.DATABASE_URL_STATUS_KERJA || process.env.DATABASE_URL_KAPAL_MASUK,
+    connectionString: process.env.DATABASE_URL_STATUS_KERJA || process.env.DATABASE_URL_KAPAL_MASUK || process.env.DATABASE_URL,
     ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
     connectionTimeoutMillis: 10000,
     query_timeout: 10000,
@@ -263,7 +263,7 @@ async function initializeStatusKerjaDatabase() {
             )
         `);
         
-        // Add missing columns if they don't exist
+// Add missing columns if they don't exist
         const columnsToCheck = [
             'finishedChecklistStates', 
             'finishedAt',
@@ -282,10 +282,11 @@ async function initializeStatusKerjaDatabase() {
                 `, [col]);
                 
                 if (columnCheck.rows.length === 0) {
-                    const defaultValue = col === 'newItemsAddedAfterFinish' ? "'[]'" : 
+const defaultValue = col === 'newItemsAddedAfterFinish' ? "'[]'" : 
                                   col === 'finishedChecklistStates' ? "'{}'" : 
                                   col === 'checklistStates' ? "'{}'" :
-                                  col === 'checklistDates' ? "'{}'" : "''";
+                                  col === 'checklistDates' ? "'{}'" :
+                                  col === 'kapalId' ? "NULL" : "''";
                     await statusKerjaPool.query(
                         `ALTER TABLE status_kerja_schema.status_kerja_kapal ADD COLUMN "${col}" TEXT NOT NULL DEFAULT ${defaultValue}`
                     );
