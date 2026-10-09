@@ -2015,7 +2015,9 @@ app.get('/api/status-kerja-kapal', authenticateToken, async (req, res) => {
 
 // Ambil kapal aktif dari status_kerja_schema (persiapan/berlayar/menepi) - NEW DATABASE
         const kapalMasukRes = await getStatusKerjaPool().query(`
-            SELECT * FROM status_kerja_schema.status_kerja_kapal
+            SELECT *
+            FROM status_kerja_schema.status_kerja_kapal
+            ORDER BY id DESC
         `);
 
         const parseJSONSafe = (v, fallback) => {
@@ -2051,7 +2053,7 @@ app.get('/api/status-kerja-kapal', authenticateToken, async (req, res) => {
         for (const row of kapalMasukRes.rows) {
             const rawKapalId = readStatusColumn(row, 'kapalId');
             const kapalId = rawKapalId ? Number(rawKapalId) : null;
-            if (!kapalId) continue;
+            if (!kapalId || activeByKapalId.has(kapalId)) continue;
             activeByKapalId.set(kapalId, row);
         }
 
@@ -3047,6 +3049,13 @@ app.put('/api/kapal-masuk/by-kapal/:kapalId', authenticateToken, async (req, res
             sanitizeTextField(normalized.finishedAt),
             activeRow.id
         ]);
+
+        if (updated.rowCount === 0) {
+            return res.status(404).json({
+                success: false,
+                message: 'Status Kerja Kapal not found for kapalId'
+            });
+        }
 
         return res.json({
             success: true,
