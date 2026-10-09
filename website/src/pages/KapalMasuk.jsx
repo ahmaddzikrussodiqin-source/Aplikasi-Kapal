@@ -451,14 +451,9 @@ const KapalMasuk = () => {
       const currentDates = kapalMasukRecord.checklistDates || {};
       const updatedChecklistDates = { ...currentDates, [kebutuhanTrim]: '' };
 
-      const updatedList = [
-        ...(kapalMasukRecord.listPersiapan || []),
-        kebutuhanTrim,
-      ];
-
       const updatePayload = {
         ...kapalMasukRecord,
-        listPersiapan: updatedList,
+        addKebutuhan: kebutuhanTrim,
         checklistStates: updatedChecklistStates,
         checklistDates: updatedChecklistDates,
       };
@@ -468,13 +463,16 @@ const KapalMasuk = () => {
       const response = await kapalMasukAPI.updateByKapalId(token, kapalIdNum, updatePayload);
 
       if (response.success) {
-        const savedList = Array.isArray(response.data?.listPersiapan)
-          ? response.data.listPersiapan
-          : updatedList;
+        const savedList = response.data?.listPersiapan;
+        if (!Array.isArray(savedList) || !savedList.includes(kebutuhanTrim)) {
+          throw new Error('Kebutuhan belum terkonfirmasi tersimpan. Muat ulang data dan coba lagi.');
+        }
+        const savedChecklistStates = response.data?.checklistStates || updatedChecklistStates;
+        const savedChecklistDates = response.data?.checklistDates || updatedChecklistDates;
         const updateVessel = (list) =>
           list.map((kapal) =>
             Number(kapal.kapalId ?? kapal.id) === kapalIdNum
-              ? { ...kapal, listPersiapan: savedList, checklistStates: updatedChecklistStates, checklistDates: updatedChecklistDates }
+              ? { ...kapal, listPersiapan: savedList, checklistStates: savedChecklistStates, checklistDates: savedChecklistDates }
               : kapal
           );
 

@@ -2967,6 +2967,31 @@ app.put('/api/kapal-masuk/by-kapal/:kapalId', authenticateToken, async (req, res
             finishedAt: kapalMasukData.finishedAt ?? activeRow.finishedat ?? ''
         };
 
+        const addKebutuhan = String(kapalMasukData.addKebutuhan || '').trim();
+        if (addKebutuhan) {
+            const readActiveField = (field) => activeRow?.[field] ?? activeRow?.[field.toLowerCase()];
+            const parseJsonField = (value, fallback) => {
+                if (value && typeof value === 'object') return value;
+                try {
+                    return JSON.parse(value || '');
+                } catch {
+                    return fallback;
+                }
+            };
+            const currentList = parseListPersiapan(readActiveField('listPersiapan') || '[]');
+            normalized.listPersiapan = currentList.includes(addKebutuhan)
+                ? currentList
+                : [...currentList, addKebutuhan];
+            normalized.checklistStates = {
+                ...parseJsonField(readActiveField('checklistStates'), {}),
+                [addKebutuhan]: false,
+            };
+            normalized.checklistDates = {
+                ...parseJsonField(readActiveField('checklistDates'), {}),
+                [addKebutuhan]: '',
+            };
+        }
+
         const colCheck2 = await getStatusKerjaPool().query(`
             SELECT column_name
             FROM information_schema.columns
@@ -3065,7 +3090,9 @@ app.put('/api/kapal-masuk/by-kapal/:kapalId', authenticateToken, async (req, res
                 kapalId: kapalIdNum,
                 listPersiapan: parseListPersiapan(
                     updated.rows?.[0]?.listPersiapan ?? updated.rows?.[0]?.listpersiapan ?? '[]'
-                )
+                ),
+                checklistStates: updated.rows?.[0]?.checklistStates ?? updated.rows?.[0]?.checkliststates ?? normalized.checklistStates,
+                checklistDates: updated.rows?.[0]?.checklistDates ?? updated.rows?.[0]?.checklistdates ?? normalized.checklistDates
             }
         });
     } catch (error) {
