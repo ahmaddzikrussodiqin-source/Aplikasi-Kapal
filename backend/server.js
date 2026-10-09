@@ -3053,7 +3053,10 @@ app.put('/api/kapal-masuk/by-kapal/:kapalId', authenticateToken, async (req, res
             message: 'Kapal Masuk updated successfully',
             data: {
                 id: updated.rows?.[0]?.id || activeRow.id,
-                kapalId: kapalIdNum
+                kapalId: kapalIdNum,
+                listPersiapan: parseListPersiapan(
+                    updated.rows?.[0]?.listPersiapan ?? updated.rows?.[0]?.listpersiapan ?? '[]'
+                )
             }
         });
     } catch (error) {

@@ -468,7 +468,20 @@ const KapalMasuk = () => {
       const response = await kapalMasukAPI.updateByKapalId(token, kapalIdNum, updatePayload);
 
       if (response.success) {
-        loadData();
+        const savedList = Array.isArray(response.data?.listPersiapan)
+          ? response.data.listPersiapan
+          : updatedList;
+        const updateVessel = (list) =>
+          list.map((kapal) =>
+            Number(kapal.kapalId ?? kapal.id) === kapalIdNum
+              ? { ...kapal, listPersiapan: savedList, checklistStates: updatedChecklistStates, checklistDates: updatedChecklistDates }
+              : kapal
+          );
+
+        setKapalMasukList(updateVessel);
+        setPersiapanList(updateVessel);
+        setBerlayarList(updateVessel);
+        await loadData();
         setShowKebutuhanModal(false);
         setSelectedKapalForKebutuhan(null);
         setNewKebutuhan('');
