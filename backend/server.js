@@ -2990,6 +2990,11 @@ app.put('/api/kapal-masuk/by-kapal/:kapalId', authenticateToken, async (req, res
                 ...parseJsonField(readActiveField('checklistDates'), {}),
                 [addKebutuhan]: '',
             };
+            console.info('[Kebutuhan] update request', {
+                kapalId: kapalIdNum,
+                recordId: activeRow.id,
+                listCount: normalized.listPersiapan.length,
+            });
         }
 
         const colCheck2 = await getStatusKerjaPool().query(`
@@ -3031,6 +3036,54 @@ app.put('/api/kapal-masuk/by-kapal/:kapalId', authenticateToken, async (req, res
         const newItemsCol2 = colSql('newitemsaddedafterfinish') || colSql('newItemsAddedAfterFinish');
         const finishedChecklistCol2 = colSql('finishedcheckliststates') || colSql('finishedChecklistStates');
         const finishedAtCol2 = colSql('finishedat') || colSql('finishedAt');
+
+        if (addKebutuhan) {
+            const needsUpdate = await getStatusKerjaPool().query(`
+                UPDATE status_kerja_schema.status_kerja_kapal
+                SET ${listPersiapanCol2} = $1,
+                    ${checklistStatesCol2} = $2,
+                    ${checklistDatesCol2} = $3
+                WHERE id = $4
+                RETURNING *
+            `, [
+                JSON.stringify(normalized.listPersiapan),
+                JSON.stringify(normalized.checklistStates),
+                JSON.stringify(normalized.checklistDates),
+                activeRow.id,
+            ]);
+
+            if (needsUpdate.rowCount === 0) {
+                return res.status(404).json({
+                    success: false,
+                    message: 'Status Kerja Kapal not found for kapalId',
+                });
+            }
+
+            const savedRow = needsUpdate.rows[0];
+            const readSavedField = (field) => {
+                const actualColumn = cols2LowerMap.get(field.toLowerCase());
+                return savedRow?.[actualColumn] ?? savedRow?.[actualColumn?.toLowerCase()];
+            };
+            const savedList = parseListPersiapan(readSavedField('listPersiapan') || '[]');
+            console.info('[Kebutuhan] update persisted', {
+                kapalId: kapalIdNum,
+                recordId: activeRow.id,
+                listCount: savedList.length,
+                itemPresent: savedList.includes(addKebutuhan),
+            });
+
+            return res.json({
+                success: true,
+                message: 'Kebutuhan kapal berhasil disimpan',
+                data: {
+                    id: savedRow.id,
+                    kapalId: kapalIdNum,
+                    listPersiapan: savedList,
+                    checklistStates: parseJsonField(readSavedField('checklistStates'), {}),
+                    checklistDates: parseJsonField(readSavedField('checklistDates'), {}),
+                },
+            });
+        }
 
         const updated = await getStatusKerjaPool().query(`
             UPDATE status_kerja_schema.status_kerja_kapal SET
