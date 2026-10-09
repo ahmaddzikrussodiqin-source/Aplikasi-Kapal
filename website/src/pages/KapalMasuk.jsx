@@ -628,6 +628,7 @@ const KapalMasuk = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
+      const isCreating = !editingKapal;
       const payload = {
         ...formData,
         kapalId: parseInt(formData.kapalId),
@@ -641,7 +642,8 @@ const KapalMasuk = () => {
         setShowModal(false);
         setEditingKapal(null);
         setFormData({ kapalId: '', nama: '', tanggalKembali: '', status: '', listPersiapan: [] });
-        loadData();
+        if (isCreating) setActiveTab('persiapan');
+        await loadData();
       }
     } catch (e) {
       console.error('Error saving kapal masuk:', e);

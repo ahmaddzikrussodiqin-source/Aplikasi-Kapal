@@ -2343,31 +2343,32 @@ async function findOrCreateActiveKapalMasukByKapalId(kapalId, seed = {}) {
         throw new Error('Invalid kapalId');
     }
 
-    const colCheck = await getKapalMasukPool().query(`
+    const colCheck = await getStatusKerjaPool().query(`
         SELECT column_name
         FROM information_schema.columns
-        WHERE table_schema = 'kapal_masuk_schema'
-          AND table_name = 'kapal_masuk'
+        WHERE table_schema = 'status_kerja_schema'
+          AND table_name = 'status_kerja_kapal'
     `);
     const cols = new Set(colCheck.rows.map(r => String(r.column_name || '')));
     const colsLower = new Set(Array.from(cols).map(c => c.toLowerCase()));
 
-    let existing;
-    try {
-        existing = await getKapalMasukPool().query(`
-            SELECT *
-            FROM kapal_masuk_schema.kapal_masuk
-            WHERE kapalid = $1
-              AND LOWER(COALESCE(statuskerja, 'persiapan')) IN ('persiapan', 'berlayar')
-            ORDER BY id DESC
-            LIMIT 1
-        `, [kapalIdNum]);
-    } catch (e) {
-        if (String(e.code) !== '42703') throw e;
-        // Schema live terbukti tidak punya "kapalId"/"statusKerja" camelCase.
-        // Hindari fallback ke quoted camelCase agar tidak memicu 42703 berulang.
-        existing = { rows: [] };
-    }
+    const quoteIdentifier = (identifier) => `"${identifier.replace(/"/g, '""')}"`;
+    const kapalIdColumn = Array.from(cols).find(c => c.toLowerCase() === 'kapalid');
+    if (!kapalIdColumn) throw new Error('status_kerja_kapal is missing kapalId');
+
+    const statusColumn = Array.from(cols).find(c => c.toLowerCase() === 'statuskerja')
+        || Array.from(cols).find(c => c.toLowerCase() === 'status');
+    const activeStatusFilter = statusColumn
+        ? `AND LOWER(COALESCE(${quoteIdentifier(statusColumn)}, 'persiapan')) IN ('persiapan', 'berlayar')`
+        : '';
+    const existing = await getStatusKerjaPool().query(`
+        SELECT *
+        FROM status_kerja_schema.status_kerja_kapal
+        WHERE ${quoteIdentifier(kapalIdColumn)} = $1
+          ${activeStatusFilter}
+        ORDER BY id DESC
+        LIMIT 1
+    `, [kapalIdNum]);
 
     if (existing.rows.length > 0) {
         return existing.rows[0];
@@ -2658,50 +2659,18 @@ finishedChecklistStates: safeParse(kapalMasuk.finishedcheckliststates || kapalMa
 
 app.post('/api/kapal-masuk', authenticateToken, async (req, res) => {
     try {
-        let kapalMasukData = req.body;
-        
-        // Auto-fill from kapal_info if nama provided and pemilik missing
-        if (kapalMasukData.nama) {
-          kapalMasukData = await autoFillKapalInfo(kapalMasukData.nama, kapalMasukData);
+        const kapalMasukData = req.body || {};
+        const kapalIdNum = Number(kapalMasukData.kapalId);
+        if (!Number.isFinite(kapalIdNum) || kapalIdNum <= 0) {
+            return res.status(400).json({ success: false, message: 'Invalid kapalId' });
         }
-        
-        const result = await getKapalMasukPool().query(`
-            INSERT INTO kapal_masuk_schema.kapal_masuk (
-                nama, namaPemilik, tandaSelar, tandaPengenal, beratKotor, beratBersih,
-                merekMesin, nomorSeriMesin, jenisAlatTangkap, tanggalInput,
-                tanggalKeberangkatan, totalHariPersiapan, tanggalBerangkat, tanggalKembali,
-                listPersiapan, isFinished, perkiraanKeberangkatan, durasiSelesaiPersiapan,
-                durasiBerlayar, status, statusKerja, "checklistStates", "checklistDates",
-                "newItemsAddedAfterFinish", "finishedChecklistStates", "finishedAt"
-            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26)
-            RETURNING *
-        `, [
-            sanitizeTextField(kapalMasukData.nama), sanitizeTextField(kapalMasukData.namaPemilik), sanitizeTextField(kapalMasukData.tandaSelar), sanitizeTextField(kapalMasukData.tandaPengenal),
-            sanitizeTextField(kapalMasukData.beratKotor), sanitizeTextField(kapalMasukData.beratBersih), sanitizeTextField(kapalMasukData.merekMesin), sanitizeTextField(kapalMasukData.nomorSeriMesin),
-            sanitizeTextField(kapalMasukData.jenisAlatTangkap), sanitizeTextField(kapalMasukData.tanggalInput), sanitizeTextField(kapalMasukData.tanggalKeberangkatan),
-            kapalMasukData.totalHariPersiapan, sanitizeTextField(kapalMasukData.tanggalBerangkat), sanitizeTextField(kapalMasukData.tanggalKembali),
-            JSON.stringify(kapalMasukData.listPersiapan || []), kapalMasukData.isFinished ? 1 : 0,
-            sanitizeTextField(kapalMasukData.perkiraanKeberangkatan), sanitizeTextField(kapalMasukData.durasiSelesaiPersiapan),
-            sanitizeTextField(kapalMasukData.durasiBerlayar), sanitizeTextField(kapalMasukData.status) || '',
-            sanitizeTextField(kapalMasukData.statusKerja) || 'persiapan',
-            JSON.stringify(kapalMasukData.checklistStates || {}), JSON.stringify(kapalMasukData.checklistDates || {}),
-            JSON.stringify(kapalMasukData.newItemsAddedAfterFinish || []),
-            JSON.stringify(kapalMasukData.finishedChecklistStates || {}), sanitizeTextField(kapalMasukData.finishedAt)
-        ]);
 
-        const kapalMasuk = result.rows[0];
-
-        // Parse JSON strings back to arrays
-        const parsedKapalMasuk = {
-            ...kapalMasuk,
-            listPersiapan: parseListPersiapan(kapalMasuk.listpersiapan),
-            isFinished: Boolean(kapalMasuk.isfinished)
-        };
+        const kapalMasuk = await findOrCreateActiveKapalMasukByKapalId(kapalIdNum, kapalMasukData);
 
         res.status(201).json({
             success: true,
             message: 'Kapal Masuk created successfully',
-            data: parsedKapalMasuk
+            data: kapalMasuk
         });
     } catch (error) {
         console.error('Create kapal masuk error:', error);
