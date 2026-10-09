@@ -2967,17 +2967,18 @@ app.put('/api/kapal-masuk/by-kapal/:kapalId', authenticateToken, async (req, res
             finishedAt: kapalMasukData.finishedAt ?? activeRow.finishedat ?? ''
         };
 
+        const parseJsonField = (value, fallback) => {
+            if (value && typeof value === 'object') return value;
+            try {
+                return JSON.parse(value || '');
+            } catch {
+                return fallback;
+            }
+        };
+
         const addKebutuhan = String(kapalMasukData.addKebutuhan || '').trim();
         if (addKebutuhan) {
             const readActiveField = (field) => activeRow?.[field] ?? activeRow?.[field.toLowerCase()];
-            const parseJsonField = (value, fallback) => {
-                if (value && typeof value === 'object') return value;
-                try {
-                    return JSON.parse(value || '');
-                } catch {
-                    return fallback;
-                }
-            };
             const currentList = parseListPersiapan(readActiveField('listPersiapan') || '[]');
             normalized.listPersiapan = currentList.includes(addKebutuhan)
                 ? currentList
