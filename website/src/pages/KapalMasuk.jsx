@@ -518,7 +518,7 @@ const KapalMasuk = () => {
   };
 
 
-  const [activeTab, setActiveTab] = useState('berlayar'); // 'berlayar' | 'persiapan' | 'history'
+  const [activeTab, setActiveTab] = useState('persiapan'); // 'berlayar' | 'persiapan' | 'history'
 
   const [finishModalOpen, setFinishModalOpen] = useState(false);
   const [finishKapal, setFinishKapal] = useState(null);
