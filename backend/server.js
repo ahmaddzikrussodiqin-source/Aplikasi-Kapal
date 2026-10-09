@@ -2961,11 +2961,11 @@ app.put('/api/kapal-masuk/by-kapal/:kapalId', authenticateToken, async (req, res
             finishedAt: kapalMasukData.finishedAt ?? activeRow.finishedat ?? ''
         };
 
-        const colCheck2 = await getKapalMasukPool().query(`
+        const colCheck2 = await getStatusKerjaPool().query(`
             SELECT column_name
             FROM information_schema.columns
-            WHERE table_schema = 'kapal_masuk_schema'
-              AND table_name = 'kapal_masuk'
+            WHERE table_schema = 'status_kerja_schema'
+              AND table_name = 'status_kerja_kapal'
         `);
         const cols2Raw = colCheck2.rows.map(r => String(r.column_name || ''));
         const cols2LowerMap = new Map(cols2Raw.map(c => [c.toLowerCase(), c]));
@@ -3001,8 +3001,8 @@ app.put('/api/kapal-masuk/by-kapal/:kapalId', authenticateToken, async (req, res
         const finishedChecklistCol2 = colSql('finishedcheckliststates') || colSql('finishedChecklistStates');
         const finishedAtCol2 = colSql('finishedat') || colSql('finishedAt');
 
-        const updated = await getKapalMasukPool().query(`
-            UPDATE kapal_masuk_schema.kapal_masuk SET
+        const updated = await getStatusKerjaPool().query(`
+            UPDATE status_kerja_schema.status_kerja_kapal SET
                 ${kapalIdCol2} = $1,
                 nama = $2, ${namaPemilikCol2} = $3, ${tandaSelarCol2} = $4, ${tandaPengenalCol2} = $5,
                 ${beratKotorCol2} = $6, ${beratBersihCol2} = $7, ${merekMesinCol2} = $8, ${nomorSeriMesinCol2} = $9,
