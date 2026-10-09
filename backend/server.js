@@ -2023,7 +2023,10 @@ app.get('/api/status-kerja-kapal', authenticateToken, async (req, res) => {
             try { return JSON.parse(v); } catch { return fallback; }
         };
 
-        const toStatusText = (row) => (row?.status || row?.statusKerja || '').toLowerCase().trim();
+        const readStatusColumn = (row, column) => row?.[column] ?? row?.[column.toLowerCase()];
+        const toStatusText = (row) => (
+            readStatusColumn(row, 'status') || readStatusColumn(row, 'statusKerja') || ''
+        ).toLowerCase().trim();
 
         const allInfo = kapalInfoRes.rows.map(r => ({
             id: r.kapalId,
@@ -2046,7 +2049,8 @@ app.get('/api/status-kerja-kapal', authenticateToken, async (req, res) => {
 
         const activeByKapalId = new Map();
         for (const row of kapalMasukRes.rows) {
-            const kapalId = row.kapalId ? Number(row.kapalId) : null;
+            const rawKapalId = readStatusColumn(row, 'kapalId');
+            const kapalId = rawKapalId ? Number(rawKapalId) : null;
             if (!kapalId) continue;
             activeByKapalId.set(kapalId, row);
         }
@@ -2110,17 +2114,17 @@ const historyRes = await getStatusKerjaPool().query(`
                         merekMesin: info.merekMesin,
                         nomorSeriMesin: info.nomorSeriMesin,
                         jenisAlatTangkap: info.jenisAlatTangkap,
-                        listPersiapan: parseListPersiapan(activeRow.listpersiapan || '[]'),
-                        checklistStates: parseJSONSafe(activeRow.checkliststates, {}),
-                        checklistDates: parseJSONSafe(activeRow.checklistdates, {}),
-                        statusKerja: activeRow.statuskerja || 'berlayar',
-                        status: activeRow.status || 'berlayar',
-                        tanggalKeberangkatan: activeRow.tanggalkeberangkatan || '',
-                        tanggalBerangkat: activeRow.tanggalberangkat || '',
-                        tanggalKembali: activeRow.tanggalkembali || '',
-                        durasiSelesaiPersiapan: activeRow.durasiselesaipersiapan || '',
-                        durasiBerlayar: activeRow.durasiberlayar || '',
-                        finishedAt: activeRow.finishedat || '',
+                        listPersiapan: parseListPersiapan(readStatusColumn(activeRow, 'listPersiapan') || '[]'),
+                        checklistStates: parseJSONSafe(readStatusColumn(activeRow, 'checklistStates'), {}),
+                        checklistDates: parseJSONSafe(readStatusColumn(activeRow, 'checklistDates'), {}),
+                        statusKerja: readStatusColumn(activeRow, 'statusKerja') || 'berlayar',
+                        status: readStatusColumn(activeRow, 'status') || 'berlayar',
+                        tanggalKeberangkatan: readStatusColumn(activeRow, 'tanggalKeberangkatan') || '',
+                        tanggalBerangkat: readStatusColumn(activeRow, 'tanggalBerangkat') || '',
+                        tanggalKembali: readStatusColumn(activeRow, 'tanggalKembali') || '',
+                        durasiSelesaiPersiapan: readStatusColumn(activeRow, 'durasiSelesaiPersiapan') || '',
+                        durasiBerlayar: readStatusColumn(activeRow, 'durasiBerlayar') || '',
+                        finishedAt: readStatusColumn(activeRow, 'finishedAt') || '',
                         // untuk kompatibilitas existing UI
                         safeTanggalBerangkat: null,
                         safeTanggalKeberangkatan: null,
@@ -2148,16 +2152,16 @@ const historyRes = await getStatusKerjaPool().query(`
                     merekMesin: info.merekMesin,
                     nomorSeriMesin: info.nomorSeriMesin,
                     jenisAlatTangkap: info.jenisAlatTangkap,
-                    listPersiapan: parseListPersiapan(activeRow.listpersiapan || '[]'),
-                    checklistStates: parseJSONSafe(activeRow.checkliststates, {}),
-                    checklistDates: parseJSONSafe(activeRow.checklistdates, {}),
-                    statusKerja: activeRow.statuskerja || 'persiapan',
-                    status: activeRow.status || 'persiapan',
-                    tanggalKeberangkatan: activeRow.tanggalkeberangkatan || '',
-                    tanggalBerangkat: activeRow.tanggalberangkat || '',
-                    tanggalKembali: activeRow.tanggalkembali || '',
-                    durasiSelesaiPersiapan: activeRow.durasiselesaipersiapan || '',
-                    durasiBerlayar: activeRow.durasiberlayar || '',
+                    listPersiapan: parseListPersiapan(readStatusColumn(activeRow, 'listPersiapan') || '[]'),
+                    checklistStates: parseJSONSafe(readStatusColumn(activeRow, 'checklistStates'), {}),
+                    checklistDates: parseJSONSafe(readStatusColumn(activeRow, 'checklistDates'), {}),
+                    statusKerja: readStatusColumn(activeRow, 'statusKerja') || 'persiapan',
+                    status: readStatusColumn(activeRow, 'status') || 'persiapan',
+                    tanggalKeberangkatan: readStatusColumn(activeRow, 'tanggalKeberangkatan') || '',
+                    tanggalBerangkat: readStatusColumn(activeRow, 'tanggalBerangkat') || '',
+                    tanggalKembali: readStatusColumn(activeRow, 'tanggalKembali') || '',
+                    durasiSelesaiPersiapan: readStatusColumn(activeRow, 'durasiSelesaiPersiapan') || '',
+                    durasiBerlayar: readStatusColumn(activeRow, 'durasiBerlayar') || '',
                 });
                 continue;
             }
