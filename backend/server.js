@@ -2102,8 +2102,8 @@ const historyRes = await getStatusKerjaPool().query(`
             if (activeRow) {
                 const s = toStatusText(activeRow);
                 const statusSaysBerlayar = s.includes('berlayar') || s === 'sailing';
-                // Finish selalu mengisi tanggal keberangkatan; tanpa itu kapal belum selesai persiapan.
-                const hasFinished = String(readStatusColumn(activeRow, 'tanggalKeberangkatan') || '').trim() !== '';
+                // Hanya aksi Finish yang mengisi finishedAt; tanpa itu kapal tetap di persiapan.
+                const hasFinished = String(readStatusColumn(activeRow, 'finishedAt') || '').trim() !== '';
                 const statusIsBerlayar = statusSaysBerlayar && hasFinished;
                 const statusIsMenepi = s.includes('menepi') || s === 'docked';
 
@@ -3147,6 +3147,13 @@ app.put('/api/kapal-masuk/by-kapal/:kapalId', authenticateToken, async (req, res
                 addSet(field, patchFields[field]);
                 // Endpoint daftar membaca kolom status lebih dulu, jadi keduanya harus ikut berubah.
                 if (field === 'statusKerja') addSet('status', patchFields[field]);
+            }
+
+            // finishedAt hanya diisi oleh Finish (berlayar + tanggal keberangkatan), bukan oleh Edit.
+            if (patchFields.statusKerja !== undefined) {
+                const isGoingBerlayar = String(patchFields.statusKerja).toLowerCase().includes('berlayar');
+                if (!isGoingBerlayar) addSet('finishedAt', '');
+                else if (String(patchFields.tanggalKeberangkatan || '').trim()) addSet('finishedAt', new Date().toISOString());
             }
 
             if (sets.length === 0) {

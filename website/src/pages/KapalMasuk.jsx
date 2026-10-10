@@ -64,6 +64,14 @@ const KapalMasuk = () => {
     }
   };
 
+  // Durasi hari antara keberangkatan dan berlabuh (atau hari ini bila masih berlayar).
+  const hitungDurasiBerlayar = (kapal) => {
+    const start = safeDateParse(kapal?.tanggalKeberangkatan);
+    if (!start) return null;
+    const end = safeDateParse(kapal?.tanggalKembali) || new Date();
+    return Math.max(0, Math.floor((end - start) / 86400000));
+  };
+
   const safeProcessKapal = (kapal) => ({
     ...kapal,
     checklistStates: kapal.checklistStates || {},
@@ -920,7 +928,19 @@ const KapalMasuk = () => {
                             {getStatusBadge(kapal.status || kapal.statusKerja).icon}
                             <span className="ml-1">{getStatusBadge(kapal.status || kapal.statusKerja).text}</span>
                           </div>
-                          <p className="text-gray-500">Kembali: {kapal.tanggalKembali || 'Belum ditentukan'}</p>
+                          {activeTab === 'persiapan' ? (
+                            <p className="text-gray-500">Kembali: {kapal.tanggalKembali || 'Belum ditentukan'}</p>
+                          ) : (
+                            <>
+                              <p className="text-gray-500">Berangkat: {kapal.tanggalKeberangkatan || '-'}</p>
+                              {activeTab === 'history' && (
+                                <p className="text-gray-500">Berlabuh: {kapal.tanggalKembali || '-'}</p>
+                              )}
+                              <p className="text-gray-700 font-medium">
+                                Durasi berlayar: {hitungDurasiBerlayar(kapal) ?? '-'} hari
+                              </p>
+                            </>
+                          )}
                           <p className="text-gray-500 text-sm">Pemilik: {kapal.namaPemilik || '-'}</p>
                         </div>
                       </div>
@@ -1101,10 +1121,20 @@ const KapalMasuk = () => {
                         {selectedKapalMasuk.status || selectedKapalMasuk.statusKerja || 'Persiapan'}
                       </p>
                     </div>
-                    <div>
-                      <span className="text-sm text-gray-500 block">Kembali</span>
-                      <p className="text-xl font-semibold">{selectedKapalMasuk.tanggalKembali || 'Belum ditentukan'}</p>
-                    </div>
+                    {activeTab === 'persiapan' ? (
+                      <div>
+                        <span className="text-sm text-gray-500 block">Kembali</span>
+                        <p className="text-xl font-semibold">{selectedKapalMasuk.tanggalKembali || 'Belum ditentukan'}</p>
+                      </div>
+                    ) : (
+                      <div>
+                        <span className="text-sm text-gray-500 block">Berangkat / Berlabuh / Durasi</span>
+                        <p className="text-base font-semibold">
+                          {selectedKapalMasuk.tanggalKeberangkatan || '-'} / {selectedKapalMasuk.tanggalKembali || '-'} /{' '}
+                          {hitungDurasiBerlayar(selectedKapalMasuk) ?? '-'} hari
+                        </p>
+                      </div>
+                    )}
                     <div>
                       <span className="text-sm text-gray-500 block">Persiapan</span>
                       <p className="text-lg font-semibold">{selectedKapalMasuk.listPersiapan?.length || 0} items</p>
