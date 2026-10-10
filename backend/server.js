@@ -2031,8 +2031,8 @@ app.get('/api/status-kerja-kapal', authenticateToken, async (req, res) => {
         ).toLowerCase().trim();
 
         const allInfo = kapalInfoRes.rows.map(r => ({
-            id: r.kapalId,
-            kapalId: r.kapalId,
+            id: r.kapalid ?? r.kapalId,
+            kapalId: r.kapalid ?? r.kapalId,
             nama: r.nama || '',
             namaPemilik: r.namapemilik || '',
             tandaSelar: r.tandaselar || '',
