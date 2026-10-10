@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { kapalAPI } from '../services/api';
-import { kapalMasukAPI, statusKerjaKapalAPI, dokumenAPI, uploadAPI } from '../services/api';
+import { kapalMasukAPI, statusKerjaKapalAPI, dokumenPersiapanAPI, uploadAPI } from '../services/api';
 import DatePicker from '../components/DatePicker';
 
 const KapalMasuk = () => {
@@ -28,6 +28,7 @@ const KapalMasuk = () => {
   const [dokumenForm, setDokumenForm] = useState({ nama: '', tanggalKadaluarsa: '' });
   const [dokumenFiles, setDokumenFiles] = useState([]);
   const [dokumenSaving, setDokumenSaving] = useState(false);
+  const [dokumenPersiapanList, setDokumenPersiapanList] = useState([]);
 
   const [newKebutuhan, setNewKebutuhan] = useState('');
   const [showKebutuhanModal, setShowKebutuhanModal] = useState(false);
@@ -245,6 +246,13 @@ const KapalMasuk = () => {
       const rawPersiapan = kapalStatusRes?.data?.persiapan;
       const rawBerlayar = kapalStatusRes?.data?.berlayar;
       setHistoryList(Array.isArray(kapalStatusRes?.data?.history) ? kapalStatusRes.data.history : []);
+
+      try {
+        const dokRes = await dokumenPersiapanAPI.getAll(token);
+        setDokumenPersiapanList(dokRes?.success && Array.isArray(dokRes.data) ? dokRes.data : []);
+      } catch (dokErr) {
+        console.warn('Dokumen persiapan gagal dimuat:', dokErr);
+      }
 
       const filteredPersiapan = filterValid(rawPersiapan);
       const filteredBerlayar = filterValid(rawBerlayar);
@@ -643,24 +651,77 @@ const KapalMasuk = () => {
         (file.type.startsWith('image/') ? files.images : files.pdfs).push(url);
       }
 
-      const response = await dokumenAPI.create(token, {
+      const response = await dokumenPersiapanAPI.create(token, {
         kapalId: Number(dokumenModal.kapalId),
         nama: dokumenForm.nama.trim(),
-        jenis: 'Lainnya',
         tanggalKadaluarsa: dokumenForm.tanggalKadaluarsa,
-        status: 'aktif',
         filePath: JSON.stringify(files),
       });
       if (!response.success || !response.data) throw new Error(response.message || 'Gagal menyimpan dokumen');
 
+      setDokumenPersiapanList((prev) => [response.data, ...prev]);
       setDokumenModal(null);
-      alert('Dokumen berhasil ditambahkan');
     } catch (err) {
       console.error('Add dokumen error:', err);
       alert('Gagal tambah dokumen: ' + (err.message || 'Unknown error'));
     } finally {
       setDokumenSaving(false);
     }
+  };
+
+  const handleDeleteDokumenPersiapan = async (dok) => {
+    if (!window.confirm(`Hapus dokumen ${dok.nama}?`)) return;
+    try {
+      const response = await dokumenPersiapanAPI.delete(token, dok.id);
+      if (!response.success) throw new Error(response.message || 'Gagal menghapus dokumen');
+      setDokumenPersiapanList((prev) => prev.filter((d) => d.id !== dok.id));
+    } catch (err) {
+      alert('Gagal hapus dokumen: ' + (err.message || 'Unknown error'));
+    }
+  };
+
+  const getDokumenPersiapanSection = (kapal) => {
+    const kapalId = Number(kapal.kapalId ?? kapal.id);
+    const docs = dokumenPersiapanList.filter((d) => Number(d.kapalId) === kapalId);
+    if (docs.length === 0) return null;
+    return (
+      <div className="bg-purple-50 p-4 rounded-xl mt-4">
+        <h3 className="text-base font-semibold text-gray-800 mb-3">Dokumen Persiapan ({docs.length})</h3>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          {docs.map((dok) => {
+            let files = [];
+            try {
+              const parsed = JSON.parse(dok.filePath || '{}');
+              files = [...(parsed.images || []), ...(parsed.pdfs || [])];
+            } catch {
+              files = [];
+            }
+            return (
+              <div key={dok.id} className="bg-white p-3 rounded-lg border-l-4 border-purple-400">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0">
+                    <p className="font-medium text-gray-900 truncate">{dok.nama}</p>
+                    <p className="text-xs text-gray-500">Kadaluarsa: {dok.tanggalKadaluarsa || '-'}</p>
+                  </div>
+                  <button onClick={() => handleDeleteDokumenPersiapan(dok)} className="text-red-500 text-xs hover:underline">
+                    Hapus
+                  </button>
+                </div>
+                {files.length > 0 && (
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    {files.map((url, i) => (
+                      <a key={url} href={url} target="_blank" rel="noreferrer" className="text-xs text-blue-600 hover:underline">
+                        File {i + 1}
+                      </a>
+                    ))}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    );
   };
 
   const handleDeleteHistory = async (kapal) => {
@@ -1097,6 +1158,7 @@ const KapalMasuk = () => {
                     activeTab === 'history' ? undefined : (item) => requestChecklistToggle(item, kapal),
                     (item) => isChecklistItemLocked(kapal, item)
                   )}
+                  {activeTab === 'persiapan' && getDokumenPersiapanSection(kapal)}
                 </div>
               </div>
             ))}

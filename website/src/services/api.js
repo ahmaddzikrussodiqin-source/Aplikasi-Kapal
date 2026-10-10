@@ -270,6 +270,36 @@ export const dokumenAPI = {
   },
 };
 
+// Dokumen persiapan (terpisah dari dokumen kapal)
+export const dokumenPersiapanAPI = {
+  getAll: async (token) => {
+    const response = await fetch(`${API_BASE_URL}/api/dokumen-persiapan`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    return response.json();
+  },
+
+  create: async (token, dokumen) => {
+    const response = await fetch(`${API_BASE_URL}/api/dokumen-persiapan`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify(dokumen),
+    });
+    return response.json();
+  },
+
+  delete: async (token, id) => {
+    const response = await fetch(`${API_BASE_URL}/api/dokumen-persiapan/${id}`, {
+      method: 'DELETE',
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    return response.json();
+  },
+};
+
 // File Upload API
 export const uploadAPI = {
   upload: async (token, file) => {

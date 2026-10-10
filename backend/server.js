@@ -3421,6 +3421,80 @@ app.post('/api/kapal-masuk/by-kapal/:kapalId/berlabuh', authenticateToken, async
     }
 });
 
+// Dokumen persiapan: terpisah dari dokumen kapal (tabel dokumen).
+const ensureDokumenPersiapanTable = () => getStatusKerjaPool().query(`
+    CREATE TABLE IF NOT EXISTS status_kerja_schema.dokumen_persiapan (
+        id SERIAL PRIMARY KEY,
+        kapalid INTEGER NOT NULL,
+        nama TEXT NOT NULL,
+        tanggalkadaluarsa TEXT NOT NULL DEFAULT '',
+        filepath TEXT NOT NULL DEFAULT '{}',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )
+`);
+
+const mapDokumenPersiapan = (r) => ({
+    id: r.id,
+    kapalId: r.kapalid,
+    nama: r.nama,
+    tanggalKadaluarsa: r.tanggalkadaluarsa,
+    filePath: r.filepath,
+});
+
+app.get('/api/dokumen-persiapan', authenticateToken, async (req, res) => {
+    try {
+        await ensureDokumenPersiapanTable();
+        const result = await getStatusKerjaPool().query(
+            'SELECT * FROM status_kerja_schema.dokumen_persiapan ORDER BY id DESC'
+        );
+        res.json({ success: true, data: result.rows.map(mapDokumenPersiapan) });
+    } catch (error) {
+        console.error('Get dokumen persiapan error:', error);
+        res.status(500).json({ success: false, message: 'Gagal memuat dokumen persiapan' });
+    }
+});
+
+app.post('/api/dokumen-persiapan', authenticateToken, async (req, res) => {
+    try {
+        const kapalId = Number(req.body.kapalId);
+        const nama = String(req.body.nama || '').trim();
+        const tanggalKadaluarsa = String(req.body.tanggalKadaluarsa || '').trim();
+        if (!Number.isInteger(kapalId) || kapalId <= 0 || !nama || !tanggalKadaluarsa) {
+            return res.status(400).json({ success: false, message: 'Kapal, nama, dan tanggal kadaluarsa wajib diisi' });
+        }
+        await ensureDokumenPersiapanTable();
+        const result = await getStatusKerjaPool().query(
+            `INSERT INTO status_kerja_schema.dokumen_persiapan (kapalid, nama, tanggalkadaluarsa, filepath)
+             VALUES ($1, $2, $3, $4) RETURNING *`,
+            [kapalId, nama, tanggalKadaluarsa, String(req.body.filePath || '{}')]
+        );
+        res.status(201).json({ success: true, data: mapDokumenPersiapan(result.rows[0]) });
+    } catch (error) {
+        console.error('Create dokumen persiapan error:', error);
+        res.status(500).json({ success: false, message: 'Gagal menyimpan dokumen persiapan' });
+    }
+});
+
+app.delete('/api/dokumen-persiapan/:id', authenticateToken, async (req, res) => {
+    try {
+        const id = Number(req.params.id);
+        if (!Number.isInteger(id) || id <= 0) {
+            return res.status(400).json({ success: false, message: 'ID tidak valid' });
+        }
+        await ensureDokumenPersiapanTable();
+        const result = await getStatusKerjaPool().query(
+            'DELETE FROM status_kerja_schema.dokumen_persiapan WHERE id = $1', [id]
+        );
+        if (result.rowCount === 0) {
+            return res.status(404).json({ success: false, message: 'Dokumen tidak ditemukan' });
+        }
+        res.json({ success: true, message: 'Dokumen persiapan dihapus' });
+    } catch (error) {
+        console.error('Delete dokumen persiapan error:', error);
+        res.status(500).json({ success: false, message: 'Gagal menghapus dokumen persiapan' });
+    }
+});
+
 app.delete('/api/status-kerja-kapal/history/:id', authenticateToken, async (req, res) => {
     try {
         const historyId = Number(req.params.id);
