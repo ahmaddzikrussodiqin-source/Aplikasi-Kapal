@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { kapalAPI } from '../services/api';
-import { kapalMasukAPI, statusKerjaKapalAPI } from '../services/api';
+import { kapalMasukAPI, statusKerjaKapalAPI, dokumenAPI, uploadAPI } from '../services/api';
 import DatePicker from '../components/DatePicker';
 
 const KapalMasuk = () => {
@@ -24,6 +24,10 @@ const KapalMasuk = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [deleteConfirmId, setDeleteConfirmId] = useState(null);
   const [checkDateModal, setCheckDateModal] = useState(null);
+  const [dokumenModal, setDokumenModal] = useState(null);
+  const [dokumenForm, setDokumenForm] = useState({ nama: '', tanggalKadaluarsa: '' });
+  const [dokumenFiles, setDokumenFiles] = useState([]);
+  const [dokumenSaving, setDokumenSaving] = useState(false);
 
   const [newKebutuhan, setNewKebutuhan] = useState('');
   const [showKebutuhanModal, setShowKebutuhanModal] = useState(false);
@@ -619,6 +623,46 @@ const KapalMasuk = () => {
     setCheckDateModal({ item, kapalId, date: new Date().toISOString().slice(0, 10) });
   };
 
+  const openDokumenModal = (kapal) => {
+    setDokumenForm({ nama: '', tanggalKadaluarsa: '' });
+    setDokumenFiles([]);
+    setDokumenModal({ kapalId: kapal.kapalId ?? kapal.id, nama: kapal.nama });
+  };
+
+  const handleDokumenSubmit = async (e) => {
+    e.preventDefault();
+    if (!dokumenModal || dokumenSaving) return;
+    setDokumenSaving(true);
+    try {
+      const backendUrl = import.meta.env.VITE_BACKEND_URL || 'https://aplikasi-kapal-production.up.railway.app';
+      const files = { images: [], pdfs: [] };
+      for (const file of dokumenFiles) {
+        const uploaded = await uploadAPI.upload(token, file);
+        if (!uploaded.success) throw new Error(uploaded.message || `Gagal upload ${file.name}`);
+        const url = uploaded.data?.url || `${backendUrl}/uploads/${uploaded.data?.filename}`;
+        (file.type.startsWith('image/') ? files.images : files.pdfs).push(url);
+      }
+
+      const response = await dokumenAPI.create(token, {
+        kapalId: Number(dokumenModal.kapalId),
+        nama: dokumenForm.nama.trim(),
+        jenis: 'Lainnya',
+        tanggalKadaluarsa: dokumenForm.tanggalKadaluarsa,
+        status: 'aktif',
+        filePath: JSON.stringify(files),
+      });
+      if (!response.success || !response.data) throw new Error(response.message || 'Gagal menyimpan dokumen');
+
+      setDokumenModal(null);
+      alert('Dokumen berhasil ditambahkan');
+    } catch (err) {
+      console.error('Add dokumen error:', err);
+      alert('Gagal tambah dokumen: ' + (err.message || 'Unknown error'));
+    } finally {
+      setDokumenSaving(false);
+    }
+  };
+
   const handleDeleteHistory = async (kapal) => {
     if (!window.confirm(`Hapus history ${kapal.nama}?`)) return;
     try {
@@ -1004,6 +1048,15 @@ const KapalMasuk = () => {
                           </button>
                         </>
                       )}
+                      {activeTab === 'persiapan' && (
+                        <button
+                          onClick={() => openDokumenModal(kapal)}
+                          disabled={!isValidKapalId(kapal.kapalId ?? kapal.id)}
+                          className="bg-purple-600 text-white px-3 py-2 rounded-lg hover:bg-purple-700 text-sm disabled:opacity-50"
+                        >
+                          + Dokumen
+                        </button>
+                      )}
                       {activeTab === 'persiapan' && isFinishEligible(kapal) && (
                         <button
                           onClick={() => handleFinishClick(kapal)}
@@ -1277,6 +1330,63 @@ const KapalMasuk = () => {
                 </button>
               </div>
             </div>
+          </div>
+        )}
+
+        {dokumenModal && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+            <form onSubmit={handleDokumenSubmit} className="bg-white rounded-lg shadow-2xl w-full max-w-md p-6">
+              <h2 className="text-xl font-bold mb-1">Tambah Dokumen</h2>
+              <p className="text-gray-600 mb-4">{dokumenModal.nama}</p>
+
+              <label className="block text-sm font-medium text-gray-700 mb-1">Nama Dokumen</label>
+              <input
+                type="text"
+                value={dokumenForm.nama}
+                onChange={(e) => setDokumenForm({ ...dokumenForm, nama: e.target.value })}
+                className="w-full p-2 border rounded mb-4"
+                required
+              />
+
+              <label className="block text-sm font-medium text-gray-700 mb-1">Tanggal Kadaluarsa</label>
+              <div className="mb-4">
+                <DatePicker
+                  selected={dokumenForm.tanggalKadaluarsa || null}
+                  onChange={(date) => setDokumenForm({ ...dokumenForm, tanggalKadaluarsa: date })}
+                  placeholderText="Pilih tanggal kadaluarsa"
+                />
+              </div>
+
+              <label className="block text-sm font-medium text-gray-700 mb-1">File (gambar atau PDF)</label>
+              <input
+                type="file"
+                multiple
+                accept="image/*,application/pdf"
+                onChange={(e) => setDokumenFiles(Array.from(e.target.files || []))}
+                className="w-full text-sm mb-1"
+              />
+              {dokumenFiles.length > 0 && (
+                <p className="text-xs text-gray-500 mb-2">{dokumenFiles.length} file dipilih</p>
+              )}
+
+              <div className="flex gap-2 mt-5">
+                <button
+                  type="button"
+                  onClick={() => setDokumenModal(null)}
+                  disabled={dokumenSaving}
+                  className="flex-1 p-2 border rounded"
+                >
+                  Batal
+                </button>
+                <button
+                  type="submit"
+                  disabled={dokumenSaving || !dokumenForm.nama.trim() || !dokumenForm.tanggalKadaluarsa}
+                  className="flex-1 bg-purple-600 text-white p-2 rounded disabled:opacity-50"
+                >
+                  {dokumenSaving ? 'Menyimpan...' : 'Simpan'}
+                </button>
+              </div>
+            </form>
           </div>
         )}
 
