@@ -938,9 +938,9 @@ const KapalMasuk = () => {
             <p className="text-gray-500 text-lg mb-4">Belum ada kapal masuk</p>
           </div>
         ) : (
-          <div className="grid gap-4">
-            {filteredKapalMasuk.map((kapal) => (
-              <div key={kapal.id} className="bg-white rounded-lg shadow hover:shadow-lg transition-all">
+          <div className="grid gap-4" key={activeTab}>
+            {filteredKapalMasuk.map((kapal, index) => (
+              <div key={`${activeTab}-${kapal.id ?? 'x'}-${kapal.kapalId ?? 'x'}-${index}`} className="bg-white rounded-lg shadow hover:shadow-lg transition-all">
                 <div className="p-6">
                   <div className="flex items-start justify-between mb-4">
                     <div className="flex-1">
