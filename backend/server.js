@@ -3086,6 +3086,43 @@ app.put('/api/kapal-masuk/by-kapal/:kapalId', authenticateToken, async (req, res
             });
         }
 
+        const toggleItem = String(kapalMasukData.toggleChecklistItem || '').trim();
+        if (toggleItem) {
+            const readActiveField = (field) => activeRow?.[field] ?? activeRow?.[field.toLowerCase()];
+            const checked = Boolean(kapalMasukData.checked);
+            const checklistStates = {
+                ...parseJsonField(readActiveField('checklistStates'), {}),
+                [toggleItem]: checked,
+            };
+            const checklistDates = {
+                ...parseJsonField(readActiveField('checklistDates'), {}),
+                [toggleItem]: checked ? String(kapalMasukData.checkedDate || '') : '',
+            };
+
+            const toggleUpdate = await getStatusKerjaPool().query(`
+                UPDATE status_kerja_schema.status_kerja_kapal
+                SET ${checklistStatesCol2} = $1,
+                    ${checklistDatesCol2} = $2
+                WHERE id = $3
+                RETURNING *
+            `, [JSON.stringify(checklistStates), JSON.stringify(checklistDates), activeRow.id]);
+
+            if (toggleUpdate.rowCount === 0) {
+                return res.status(404).json({
+                    success: false,
+                    message: 'Status Kerja Kapal not found for kapalId',
+                });
+            }
+
+            console.info('[Checklist] update persisted', { kapalId: kapalIdNum, recordId: activeRow.id, checked });
+
+            return res.json({
+                success: true,
+                message: 'Checklist kapal berhasil disimpan',
+                data: { id: activeRow.id, kapalId: kapalIdNum, checklistStates, checklistDates },
+            });
+        }
+
         const updated = await getStatusKerjaPool().query(`
             UPDATE status_kerja_schema.status_kerja_kapal SET
                 ${kapalIdCol2} = $1,

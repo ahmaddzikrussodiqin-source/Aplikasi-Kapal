@@ -747,32 +747,32 @@ const KapalMasuk = () => {
         const newDates = { ...(kapalRecord.checklistDates || {}) };
         newDates[item] = isChecked ? new Date().toLocaleDateString('id-ID') : '';
 
-        // Optimistic update untuk record di kapalMasukList (yang punya id record kapal_masuk)
-        const recordIdNum = Number(kapalRecord.id);
-        setKapalMasukList((prev) =>
-          (prev || []).map((k) =>
-            Number(k.id) === recordIdNum ? { ...k, checklistStates: newStates, checklistDates: newDates } : k
-          )
-        );
+        const applyChecklist = (states, dates) => (list) =>
+          (list || []).map((k) =>
+            Number(k.kapalId ?? k.id) === kapalIdNum ? { ...k, checklistStates: states, checklistDates: dates } : k
+          );
+        const optimistic = applyChecklist(newStates, newDates);
+        setKapalMasukList(optimistic);
+        setPersiapanList(optimistic);
+        setBerlayarList(optimistic);
 
-        const items = kapalRecord.listPersiapan || [];
-        const allDone = items.length > 0 && items.every((it) => !!newStates?.[it]);
-
-        const payload = {
-          checklistStates: newStates,
-          checklistDates: newDates,
-          ...(allDone
-            ? {
-                statusKerja: kapalRecord.statusKerja || kapalRecord.status || 'berlayar',
-              }
-            : {}),
-        };
-
-        const response = await kapalMasukAPI.update(token, recordIdNum, payload);
+        const response = await kapalMasukAPI.updateByKapalId(token, kapalIdNum, {
+          toggleChecklistItem: item,
+          checked: isChecked,
+          checkedDate: newDates[item],
+        });
         if (!response.success) {
           await loadData();
           throw new Error(response.message || 'Update failed');
         }
+
+        const saved = applyChecklist(
+          response.data?.checklistStates || newStates,
+          response.data?.checklistDates || newDates
+        );
+        setKapalMasukList(saved);
+        setPersiapanList(saved);
+        setBerlayarList(saved);
       } catch (e) {
         console.error('Checklist toggle error:', e);
         loadData();
