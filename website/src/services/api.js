@@ -156,6 +156,14 @@ export const statusKerjaKapalAPI = {
     });
     return response.json();
   },
+
+  deleteHistory: async (token, historyId) => {
+    const response = await fetch(`${API_BASE_URL}/api/status-kerja-kapal/history/${historyId}`, {
+      method: 'DELETE',
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    return response.json();
+  },
 };
 
 // Status Kerja Kapal (Ship Status) API

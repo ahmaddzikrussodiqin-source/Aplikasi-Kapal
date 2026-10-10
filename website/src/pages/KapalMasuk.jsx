@@ -23,6 +23,7 @@ const KapalMasuk = () => {
 
   const [searchTerm, setSearchTerm] = useState('');
   const [deleteConfirmId, setDeleteConfirmId] = useState(null);
+  const [checkDateModal, setCheckDateModal] = useState(null);
 
   const [newKebutuhan, setNewKebutuhan] = useState('');
   const [showKebutuhanModal, setShowKebutuhanModal] = useState(false);
@@ -103,7 +104,7 @@ const KapalMasuk = () => {
   };
 
   // NOTE: untuk menampilkan data railway fully, tidak dipotong slice.
-  const getKebutuhanSection = (kapal, isCompact = true, onToggle) => {
+  const getKebutuhanSection = (kapal, isCompact = true, onToggle, isItemLocked) => {
     const listPersiapan = kapal.listPersiapan || [];
     const isEmpty = listPersiapan.length === 0;
     const progress = getChecklistProgress(kapal);
@@ -170,8 +171,8 @@ const KapalMasuk = () => {
               <input
                 type="checkbox"
                 checked={kapal.checklistStates?.[item] || false}
-                onChange={() => onToggle && onToggle(item)}
-                disabled={!onToggle}
+                onChange={() => onToggle && !isItemLocked?.(item) && onToggle(item)}
+                disabled={!onToggle || !!isItemLocked?.(item)}
                 className="mt-1 w-5 h-5 text-emerald-600 rounded focus:ring-emerald-500 flex-shrink-0"
               />
               <div className="flex-1 min-w-0">
@@ -601,6 +602,35 @@ const KapalMasuk = () => {
       );
     });
 
+  // Di Berlayar, item yang sudah tercentang saat Finish tidak boleh diubah.
+  const isChecklistItemLocked = (kapal, item) => {
+    if (activeTab !== 'berlayar') return false;
+    const finished = kapal?.finishedChecklistStates || {};
+    const source = Object.keys(finished).length > 0 ? finished : kapal?.checklistStates || {};
+    return !!source[item];
+  };
+
+  const requestChecklistToggle = (item, kapal) => {
+    const kapalId = kapal.kapalId ?? kapal.id;
+    if (kapal.checklistStates?.[item]) {
+      handleChecklistToggle(item, kapalId);
+      return;
+    }
+    setCheckDateModal({ item, kapalId, date: new Date().toISOString().slice(0, 10) });
+  };
+
+  const handleDeleteHistory = async (kapal) => {
+    if (!window.confirm(`Hapus history ${kapal.nama}?`)) return;
+    try {
+      const response = await statusKerjaKapalAPI.deleteHistory(token, kapal.id);
+      if (!response.success) throw new Error(response.message || 'Gagal menghapus history');
+      await loadData();
+    } catch (e) {
+      console.error('Delete history error:', e);
+      alert('Gagal hapus history: ' + (e.message || 'Unknown error'));
+    }
+  };
+
   const handleBerlabuh = async (kapal) => {
     const kapalIdNum = Number(kapal.kapalId ?? kapal.id);
     if (!isValidKapalId(kapalIdNum)) {
@@ -680,7 +710,7 @@ const KapalMasuk = () => {
   };
 
   const handleChecklistToggle = useCallback(
-    async (item, kapalId) => {
+    async (item, kapalId, pickedDate) => {
       try {
         const kapalIdNum = Number(kapalId);
         if (!Number.isFinite(kapalIdNum) || kapalIdNum <= 0) {
@@ -737,7 +767,7 @@ const KapalMasuk = () => {
         const isChecked = newStates[item];
 
         const newDates = { ...(kapalRecord.checklistDates || {}) };
-        newDates[item] = isChecked ? new Date().toLocaleDateString('id-ID') : '';
+        newDates[item] = isChecked ? (pickedDate || new Date().toLocaleDateString('id-ID')) : '';
 
         const applyChecklist = (states, dates) => (list) =>
           (list || []).map((k) =>
@@ -992,6 +1022,14 @@ const KapalMasuk = () => {
                           Berlabuh
                         </button>
                       )}
+                      {activeTab === 'history' && (
+                        <button
+                          onClick={() => handleDeleteHistory(kapal)}
+                          className="bg-red-500 text-white px-3 py-2 rounded-lg hover:bg-red-600 text-sm"
+                        >
+                          Hapus
+                        </button>
+                      )}
                       {activeTab !== 'history' && (
                         <button onClick={() => handleDelete(kapal.id)} className="bg-red-500 text-white px-3 py-2 rounded-lg hover:bg-red-600 text-sm">
                           Hapus
@@ -1003,7 +1041,8 @@ const KapalMasuk = () => {
                   {getKebutuhanSection(
                     kapal,
                     true,
-                    activeTab !== 'persiapan' ? undefined : (item) => handleChecklistToggle(item, kapal.kapalId ?? kapal.id)
+                    activeTab === 'history' ? undefined : (item) => requestChecklistToggle(item, kapal),
+                    (item) => isChecklistItemLocked(kapal, item)
                   )}
                 </div>
               </div>
@@ -1145,9 +1184,8 @@ const KapalMasuk = () => {
                 {getKebutuhanSection(
                   selectedKapalMasuk,
                   false,
-                  activeTab !== 'persiapan'
-                    ? undefined
-                    : (item) => handleChecklistToggle(item, selectedKapalMasuk.kapalId ?? selectedKapalMasuk.id)
+                  activeTab === 'history' ? undefined : (item) => requestChecklistToggle(item, selectedKapalMasuk),
+                  (item) => isChecklistItemLocked(selectedKapalMasuk, item)
                 )}
 
                 {activeTab !== 'history' && (
@@ -1236,6 +1274,39 @@ const KapalMasuk = () => {
                 </button>
                 <button onClick={() => setDeleteConfirmId(null)} className="flex-1 p-2 border rounded">
                   Batal
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {checkDateModal && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+            <div className="bg-white rounded-lg shadow-2xl w-full max-w-sm p-6">
+              <h2 className="text-xl font-bold mb-2">Tanggal Checklist</h2>
+              <p className="text-gray-600 mb-4">{checkDateModal.item}</p>
+              <input
+                type="date"
+                value={checkDateModal.date}
+                onChange={(e) => setCheckDateModal({ ...checkDateModal, date: e.target.value })}
+                className="w-full p-2 border rounded"
+              />
+              <div className="flex gap-2 mt-5">
+                <button onClick={() => setCheckDateModal(null)} className="flex-1 p-2 border rounded">
+                  Batal
+                </button>
+                <button
+                  type="button"
+                  disabled={!checkDateModal.date}
+                  onClick={() => {
+                    const [y, m, d] = checkDateModal.date.split('-');
+                    const { item, kapalId } = checkDateModal;
+                    setCheckDateModal(null);
+                    handleChecklistToggle(item, kapalId, `${d}/${m}/${y}`);
+                  }}
+                  className="flex-1 bg-emerald-700 text-white p-2 rounded disabled:opacity-50"
+                >
+                  Simpan
                 </button>
               </div>
             </div>

@@ -2127,6 +2127,7 @@ const historyRes = await getStatusKerjaPool().query(`
                         listPersiapan: parseListPersiapan(readStatusColumn(activeRow, 'listPersiapan') || '[]'),
                         checklistStates: parseJSONSafe(readStatusColumn(activeRow, 'checklistStates'), {}),
                         checklistDates: parseJSONSafe(readStatusColumn(activeRow, 'checklistDates'), {}),
+                        finishedChecklistStates: parseJSONSafe(readStatusColumn(activeRow, 'finishedChecklistStates'), {}),
                         statusKerja: readStatusColumn(activeRow, 'statusKerja') || 'berlayar',
                         status: readStatusColumn(activeRow, 'status') || 'berlayar',
                         tanggalKeberangkatan: readStatusColumn(activeRow, 'tanggalKeberangkatan') || '',
@@ -3156,7 +3157,13 @@ app.put('/api/kapal-masuk/by-kapal/:kapalId', authenticateToken, async (req, res
             if (patchFields.statusKerja !== undefined) {
                 const isGoingBerlayar = String(patchFields.statusKerja).toLowerCase().includes('berlayar');
                 if (!isGoingBerlayar) addSet('finishedAt', '');
-                else if (String(patchFields.tanggalKeberangkatan || '').trim()) addSet('finishedAt', new Date().toISOString());
+                else if (String(patchFields.tanggalKeberangkatan || '').trim()) {
+                    addSet('finishedAt', new Date().toISOString());
+                    // Item yang tercentang saat Finish dikunci di tab Berlayar.
+                    if (finishedChecklistCol2 && checklistStatesCol2) {
+                        sets.push(`${finishedChecklistCol2} = ${checklistStatesCol2}`);
+                    }
+                }
             }
 
             if (sets.length === 0) {
@@ -3407,6 +3414,27 @@ app.post('/api/kapal-masuk/by-kapal/:kapalId/berlabuh', authenticateToken, async
         return res.status(500).json({ success: false, message: 'Gagal memproses berlabuh' });
     } finally {
         client.release();
+    }
+});
+
+app.delete('/api/status-kerja-kapal/history/:id', authenticateToken, async (req, res) => {
+    try {
+        const historyId = Number(req.params.id);
+        if (!Number.isInteger(historyId) || historyId <= 0) {
+            return res.status(400).json({ success: false, message: 'ID history tidak valid' });
+        }
+        const result = await getStatusKerjaPool().query(
+            'DELETE FROM status_kerja_schema.status_kerja_history WHERE id = $1',
+            [historyId]
+        );
+        if (result.rowCount === 0) {
+            return res.status(404).json({ success: false, message: 'History tidak ditemukan' });
+        }
+        console.info('[History] deleted', { historyId });
+        return res.json({ success: true, message: 'History berhasil dihapus' });
+    } catch (error) {
+        console.error('Delete history error:', error);
+        return res.status(500).json({ success: false, message: 'Gagal menghapus history' });
     }
 });
 
