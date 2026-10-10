@@ -3123,6 +3123,59 @@ app.put('/api/kapal-masuk/by-kapal/:kapalId', authenticateToken, async (req, res
             });
         }
 
+        const patchFields = kapalMasukData.patchFields && typeof kapalMasukData.patchFields === 'object'
+            ? kapalMasukData.patchFields
+            : null;
+        if (patchFields) {
+            const allowedFields = ['nama', 'tanggalKeberangkatan', 'tanggalBerangkat', 'tanggalKembali', 'statusKerja'];
+            const sets = [];
+            const values = [];
+            const addSet = (logicalName, value) => {
+                const column = colSql(logicalName.toLowerCase()) || colSql(logicalName);
+                if (!column) return;
+                values.push(sanitizeTextField(value));
+                sets.push(`${column} = $${values.length}`);
+            };
+
+            for (const field of allowedFields) {
+                if (patchFields[field] === undefined) continue;
+                addSet(field, patchFields[field]);
+                // Endpoint daftar membaca kolom status lebih dulu, jadi keduanya harus ikut berubah.
+                if (field === 'statusKerja') addSet('status', patchFields[field]);
+            }
+
+            if (sets.length === 0) {
+                return res.status(400).json({ success: false, message: 'Tidak ada field yang dapat diperbarui' });
+            }
+
+            values.push(activeRow.id);
+            const patched = await getStatusKerjaPool().query(`
+                UPDATE status_kerja_schema.status_kerja_kapal
+                SET ${sets.join(', ')}
+                WHERE id = $${values.length}
+                RETURNING id
+            `, values);
+
+            if (patched.rowCount === 0) {
+                return res.status(404).json({
+                    success: false,
+                    message: 'Status Kerja Kapal not found for kapalId',
+                });
+            }
+
+            console.info('[StatusKerja] patch persisted', {
+                kapalId: kapalIdNum,
+                recordId: activeRow.id,
+                fields: Object.keys(patchFields).filter((field) => allowedFields.includes(field)),
+            });
+
+            return res.json({
+                success: true,
+                message: 'Status kerja kapal berhasil disimpan',
+                data: { id: activeRow.id, kapalId: kapalIdNum },
+            });
+        }
+
         const updated = await getStatusKerjaPool().query(`
             UPDATE status_kerja_schema.status_kerja_kapal SET
                 ${kapalIdCol2} = $1,
