@@ -1994,6 +1994,10 @@ async function autoFillKapalInfo(namaKapal, kapalMasukData) {
 }
 
 // Status kerja kapal (Persiapan / Berlayar / History)
+// Penanda ini hanya ditulis oleh aksi Finish, sehingga data lama tidak ikut terhitung.
+const FINISH_MARKER = 'finish:';
+const hasFinishMarker = (value) => String(value || '').startsWith(FINISH_MARKER);
+
 app.get('/api/status-kerja-kapal', authenticateToken, async (req, res) => {
     try {
         // Ambil semua kapal dari kapal_info
@@ -2063,8 +2067,8 @@ const historyRes = await getStatusKerjaPool().query(`
         `);
 
         const historyRows = historyRes.rows
-            // Hanya riwayat hasil Berlabuh (punya finishedAt) yang tampil; data lama disembunyikan.
-            .filter(h => !Object.keys(h).some(k => k.toLowerCase() === 'finishedat') || String(readStatusColumn(h, 'finishedAt') || '').trim() !== '')
+            // Hanya riwayat hasil Berlabuh (membawa penanda Finish) yang tampil; data lama disembunyikan.
+            .filter(h => hasFinishMarker(readStatusColumn(h, 'finishedAt')))
             .map(h => ({
             id: h.id,
             kapalMasukId: readStatusColumn(h, 'kapalMasukId') ?? readStatusColumn(h, 'statusKerjaId'),
@@ -2106,7 +2110,7 @@ const historyRes = await getStatusKerjaPool().query(`
                 const s = toStatusText(activeRow);
                 const statusSaysBerlayar = s.includes('berlayar') || s === 'sailing';
                 // Hanya aksi Finish yang mengisi finishedAt; tanpa itu kapal tetap di persiapan.
-                const hasFinished = String(readStatusColumn(activeRow, 'finishedAt') || '').trim() !== '';
+                const hasFinished = hasFinishMarker(readStatusColumn(activeRow, 'finishedAt'));
                 const statusIsBerlayar = statusSaysBerlayar && hasFinished;
                 const statusIsMenepi = s.includes('menepi') || s === 'docked';
 
@@ -3158,7 +3162,7 @@ app.put('/api/kapal-masuk/by-kapal/:kapalId', authenticateToken, async (req, res
                 const isGoingBerlayar = String(patchFields.statusKerja).toLowerCase().includes('berlayar');
                 if (!isGoingBerlayar) addSet('finishedAt', '');
                 else if (String(patchFields.tanggalKeberangkatan || '').trim()) {
-                    addSet('finishedAt', new Date().toISOString());
+                    addSet('finishedAt', `${FINISH_MARKER}${new Date().toISOString()}`);
                     // Item yang tercentang saat Finish dikunci di tab Berlayar.
                     if (finishedChecklistCol2 && checklistStatesCol2) {
                         sets.push(`${finishedChecklistCol2} = ${checklistStatesCol2}`);
