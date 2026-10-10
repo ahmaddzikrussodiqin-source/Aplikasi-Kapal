@@ -682,7 +682,11 @@ const KapalMasuk = () => {
 
   const getDokumenPersiapanSection = (kapal) => {
     const kapalId = Number(kapal.kapalId ?? kapal.id);
-    const docs = dokumenPersiapanList.filter((d) => Number(d.kapalId) === kapalId);
+    const isHistoryTab = activeTab === 'history';
+    // Dokumen yang sudah dibawa Berlabuh hanya tampil di History kapal itu.
+    const docs = dokumenPersiapanList.filter((d) =>
+      isHistoryTab ? Number(d.historyId) === Number(kapal.id) : Number(d.kapalId) === kapalId && !d.historyId
+    );
     if (docs.length === 0) return null;
     return (
       <div className="bg-purple-50 p-4 rounded-xl mt-4">
@@ -703,9 +707,11 @@ const KapalMasuk = () => {
                     <p className="font-medium text-gray-900 truncate">{dok.nama}</p>
                     <p className="text-xs text-gray-500">Kadaluarsa: {dok.tanggalKadaluarsa || '-'}</p>
                   </div>
-                  <button onClick={() => handleDeleteDokumenPersiapan(dok)} className="text-red-500 text-xs hover:underline">
-                    Hapus
-                  </button>
+                  {!isHistoryTab && (
+                    <button onClick={() => handleDeleteDokumenPersiapan(dok)} className="text-red-500 text-xs hover:underline">
+                      Hapus
+                    </button>
+                  )}
                 </div>
                 {files.length > 0 && (
                   <div className="mt-2 flex flex-wrap gap-2">
@@ -1158,7 +1164,7 @@ const KapalMasuk = () => {
                     activeTab === 'history' ? undefined : (item) => requestChecklistToggle(item, kapal),
                     (item) => isChecklistItemLocked(kapal, item)
                   )}
-                  {activeTab === 'persiapan' && getDokumenPersiapanSection(kapal)}
+                  {getDokumenPersiapanSection(kapal)}
                 </div>
               </div>
             ))}

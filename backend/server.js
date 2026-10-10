@@ -3404,6 +3404,14 @@ app.post('/api/kapal-masuk/by-kapal/:kapalId/berlabuh', authenticateToken, async
             WHERE id = $${resetParams.length}
         `, resetParams);
 
+        // Dokumen persiapan ikut pindah ke History dan Persiapan berikutnya mulai kosong.
+        await ensureDokumenPersiapanTable();
+        await client.query(`
+            UPDATE status_kerja_schema.dokumen_persiapan
+            SET historyid = $1
+            WHERE kapalid = $2 AND historyid IS NULL
+        `, [historyInsert.rows[0]?.id, kapalIdNum]);
+
         await client.query('COMMIT');
         console.info('[Berlabuh] persisted', { kapalId: kapalIdNum, recordId: row.id, historyId: historyInsert.rows[0]?.id });
 
@@ -3422,20 +3430,27 @@ app.post('/api/kapal-masuk/by-kapal/:kapalId/berlabuh', authenticateToken, async
 });
 
 // Dokumen persiapan: terpisah dari dokumen kapal (tabel dokumen).
-const ensureDokumenPersiapanTable = () => getStatusKerjaPool().query(`
-    CREATE TABLE IF NOT EXISTS status_kerja_schema.dokumen_persiapan (
-        id SERIAL PRIMARY KEY,
-        kapalid INTEGER NOT NULL,
-        nama TEXT NOT NULL,
-        tanggalkadaluarsa TEXT NOT NULL DEFAULT '',
-        filepath TEXT NOT NULL DEFAULT '{}',
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-    )
-`);
+const ensureDokumenPersiapanTable = async () => {
+    await getStatusKerjaPool().query(`
+        CREATE TABLE IF NOT EXISTS status_kerja_schema.dokumen_persiapan (
+            id SERIAL PRIMARY KEY,
+            kapalid INTEGER NOT NULL,
+            nama TEXT NOT NULL,
+            tanggalkadaluarsa TEXT NOT NULL DEFAULT '',
+            filepath TEXT NOT NULL DEFAULT '{}',
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    `);
+    // historyid terisi saat Berlabuh; dokumen itu menjadi milik baris History, bukan Persiapan.
+    await getStatusKerjaPool().query(
+        'ALTER TABLE status_kerja_schema.dokumen_persiapan ADD COLUMN IF NOT EXISTS historyid INTEGER'
+    );
+};
 
 const mapDokumenPersiapan = (r) => ({
     id: r.id,
     kapalId: r.kapalid,
+    historyId: r.historyid ?? null,
     nama: r.nama,
     tanggalKadaluarsa: r.tanggalkadaluarsa,
     filePath: r.filepath,
@@ -3503,6 +3518,11 @@ app.delete('/api/status-kerja-kapal/history/:id', authenticateToken, async (req,
         }
         const result = await getStatusKerjaPool().query(
             'DELETE FROM status_kerja_schema.status_kerja_history WHERE id = $1',
+            [historyId]
+        );
+        await ensureDokumenPersiapanTable();
+        await getStatusKerjaPool().query(
+            'DELETE FROM status_kerja_schema.dokumen_persiapan WHERE historyid = $1',
             [historyId]
         );
         if (result.rowCount === 0) {
