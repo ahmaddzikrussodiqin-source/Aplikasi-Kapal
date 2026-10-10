@@ -2062,7 +2062,10 @@ const historyRes = await getStatusKerjaPool().query(`
             ORDER BY id DESC
         `);
 
-        const historyRows = historyRes.rows.map(h => ({
+        const historyRows = historyRes.rows
+            // Hanya riwayat hasil Berlabuh (punya finishedAt) yang tampil; data lama disembunyikan.
+            .filter(h => !Object.keys(h).some(k => k.toLowerCase() === 'finishedat') || String(readStatusColumn(h, 'finishedAt') || '').trim() !== '')
+            .map(h => ({
             id: h.id,
             kapalMasukId: readStatusColumn(h, 'kapalMasukId') ?? readStatusColumn(h, 'statusKerjaId'),
             kapalId: readStatusColumn(h, 'kapalId'),
@@ -3362,6 +3365,7 @@ app.post('/api/kapal-masuk/by-kapal/:kapalId/berlabuh', authenticateToken, async
         const resetValues = {
             statusKerja: 'persiapan',
             status: 'persiapan',
+            listPersiapan: '[]',
             checklistStates: '{}',
             checklistDates: '{}',
             finishedChecklistStates: '{}',
