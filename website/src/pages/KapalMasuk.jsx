@@ -983,7 +983,7 @@ const KapalMasuk = () => {
                   {getKebutuhanSection(
                     kapal,
                     true,
-                    activeTab === 'history' ? undefined : (item) => handleChecklistToggle(item, kapal.kapalId ?? kapal.id)
+                    activeTab !== 'persiapan' ? undefined : (item) => handleChecklistToggle(item, kapal.kapalId ?? kapal.id)
                   )}
                 </div>
               </div>
@@ -1115,7 +1115,7 @@ const KapalMasuk = () => {
                 {getKebutuhanSection(
                   selectedKapalMasuk,
                   false,
-                  activeTab === 'history'
+                  activeTab !== 'persiapan'
                     ? undefined
                     : (item) => handleChecklistToggle(item, selectedKapalMasuk.kapalId ?? selectedKapalMasuk.id)
                 )}

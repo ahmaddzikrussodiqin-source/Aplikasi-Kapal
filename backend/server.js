@@ -2101,7 +2101,10 @@ const historyRes = await getStatusKerjaPool().query(`
             // Bila ada record aktif dan statusKerja berlayar -> masuk berlayar
             if (activeRow) {
                 const s = toStatusText(activeRow);
-                const statusIsBerlayar = s.includes('berlayar') || s === 'sailing';
+                const statusSaysBerlayar = s.includes('berlayar') || s === 'sailing';
+                // Finish selalu mengisi tanggal keberangkatan; tanpa itu kapal belum selesai persiapan.
+                const hasFinished = String(readStatusColumn(activeRow, 'tanggalKeberangkatan') || '').trim() !== '';
+                const statusIsBerlayar = statusSaysBerlayar && hasFinished;
                 const statusIsMenepi = s.includes('menepi') || s === 'docked';
 
                 if (statusIsBerlayar) {
@@ -2159,8 +2162,8 @@ const historyRes = await getStatusKerjaPool().query(`
                     listPersiapan: parseListPersiapan(readStatusColumn(activeRow, 'listPersiapan') || '[]'),
                     checklistStates: parseJSONSafe(readStatusColumn(activeRow, 'checklistStates'), {}),
                     checklistDates: parseJSONSafe(readStatusColumn(activeRow, 'checklistDates'), {}),
-                    statusKerja: readStatusColumn(activeRow, 'statusKerja') || 'persiapan',
-                    status: readStatusColumn(activeRow, 'status') || 'persiapan',
+                    statusKerja: statusSaysBerlayar ? 'persiapan' : (readStatusColumn(activeRow, 'statusKerja') || 'persiapan'),
+                    status: statusSaysBerlayar ? 'persiapan' : (readStatusColumn(activeRow, 'status') || 'persiapan'),
                     tanggalKeberangkatan: readStatusColumn(activeRow, 'tanggalKeberangkatan') || '',
                     tanggalBerangkat: readStatusColumn(activeRow, 'tanggalBerangkat') || '',
                     tanggalKembali: readStatusColumn(activeRow, 'tanggalKembali') || '',
