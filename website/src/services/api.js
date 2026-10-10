@@ -144,6 +144,18 @@ export const statusKerjaKapalAPI = {
     });
     return response.json();
   },
+
+  berlabuh: async (token, kapalId, tanggalBerlabuh) => {
+    const response = await fetch(`${API_BASE_URL}/api/kapal-masuk/by-kapal/${kapalId}/berlabuh`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ tanggalBerlabuh }),
+    });
+    return response.json();
+  },
 };
 
 // Status Kerja Kapal (Ship Status) API

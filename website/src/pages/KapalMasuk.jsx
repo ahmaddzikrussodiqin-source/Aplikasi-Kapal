@@ -11,6 +11,7 @@ const KapalMasuk = () => {
   const [kapalMasukList, setKapalMasukList] = useState([]);
   const [persiapanList, setPersiapanList] = useState([]);
   const [berlayarList, setBerlayarList] = useState([]);
+  const [historyList, setHistoryList] = useState([]);
   const [kapalList, setKapalList] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -79,7 +80,7 @@ const KapalMasuk = () => {
       return { icon: '🛥️', text: 'Berlayar', color: 'bg-emerald-100 text-emerald-800 border-emerald-300' };
     }
     if (s.includes('menepi') || s === 'docked') {
-      return { icon: '⚓', text: 'Menepi', color: 'bg-blue-100 text-blue-800 border-blue-300' };
+      return { icon: '⚓', text: 'Berlabuh', color: 'bg-blue-100 text-blue-800 border-blue-300' };
     }
     return { icon: '⏳', text: status || 'Persiapan', color: 'bg-yellow-100 text-yellow-800 border-yellow-300' };
   };
@@ -162,6 +163,7 @@ const KapalMasuk = () => {
                 type="checkbox"
                 checked={kapal.checklistStates?.[item] || false}
                 onChange={() => onToggle && onToggle(item)}
+                disabled={!onToggle}
                 className="mt-1 w-5 h-5 text-emerald-600 rounded focus:ring-emerald-500 flex-shrink-0"
               />
               <div className="flex-1 min-w-0">
@@ -229,6 +231,7 @@ const KapalMasuk = () => {
 
       const rawPersiapan = kapalStatusRes?.data?.persiapan;
       const rawBerlayar = kapalStatusRes?.data?.berlayar;
+      setHistoryList(Array.isArray(kapalStatusRes?.data?.history) ? kapalStatusRes.data.history : []);
 
       const filteredPersiapan = filterValid(rawPersiapan);
       const filteredBerlayar = filterValid(rawBerlayar);
@@ -313,6 +316,7 @@ const KapalMasuk = () => {
       setKapalList([]);
       setPersiapanList([]);
       setBerlayarList([]);
+      setHistoryList([]);
     } finally {
       setLoading(false);
     }
@@ -578,7 +582,7 @@ const KapalMasuk = () => {
     ? persiapanList
     : activeTab === 'berlayar'
       ? berlayarList
-      : kapalMasukList
+      : historyList
   )
     .filter((kapal) => {
       const q = searchTerm.toLowerCase();
@@ -587,12 +591,26 @@ const KapalMasuk = () => {
         toStatusText(kapal).toLowerCase().includes(q) ||
         kapal.namaPemilik?.toLowerCase().includes(q)
       );
-    })
-    .filter((kapal) => {
-      if (activeTab === 'history') return isHistory(kapal);
-      // untuk persiapan/berlayar sudah dipilih dari list sumbernya
-      return true;
     });
+
+  const handleBerlabuh = async (kapal) => {
+    const kapalIdNum = Number(kapal.kapalId ?? kapal.id);
+    if (!isValidKapalId(kapalIdNum)) {
+      alert('Kapal tidak valid untuk berlabuh');
+      return;
+    }
+    if (!window.confirm(`Kapal ${kapal.nama} berlabuh? Pelayaran akan diselesaikan dan dipindahkan ke History.`)) return;
+
+    try {
+      const response = await statusKerjaKapalAPI.berlabuh(token, kapalIdNum, new Date().toISOString().slice(0, 10));
+      if (!response.success) throw new Error(response.message || 'Gagal berlabuh');
+      await loadData();
+      setActiveTab('history');
+    } catch (e) {
+      console.error('Berlabuh error:', e);
+      alert('Gagal berlabuh: ' + (e.message || 'Unknown error'));
+    }
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -920,18 +938,22 @@ const KapalMasuk = () => {
                         </svg>
                         Detail
                       </button>
-                      <button
-                        onClick={() => handleTambahKebutuhan(kapal.kapalId ?? kapal.id)}
-                        disabled={!isValidKapalId(kapal.kapalId ?? kapal.id)}
-                        className={`bg-yellow-500 text-white px-3 py-2 rounded-lg text-sm hover:bg-yellow-600 ${
-                          !isValidKapalId(kapal.kapalId ?? kapal.id) ? 'opacity-50 cursor-not-allowed hover:bg-yellow-500' : ''
-                        }`}
-                      >
-                        + Kebutuhan
-                      </button>
-                      <button onClick={() => handleEdit(kapal)} className="bg-blue-500 text-white px-3 py-2 rounded-lg hover:bg-blue-600 text-sm">
-                        Edit
-                      </button>
+                      {activeTab !== 'history' && (
+                        <>
+                          <button
+                            onClick={() => handleTambahKebutuhan(kapal.kapalId ?? kapal.id)}
+                            disabled={!isValidKapalId(kapal.kapalId ?? kapal.id)}
+                            className={`bg-yellow-500 text-white px-3 py-2 rounded-lg text-sm hover:bg-yellow-600 ${
+                              !isValidKapalId(kapal.kapalId ?? kapal.id) ? 'opacity-50 cursor-not-allowed hover:bg-yellow-500' : ''
+                            }`}
+                          >
+                            + Kebutuhan
+                          </button>
+                          <button onClick={() => handleEdit(kapal)} className="bg-blue-500 text-white px-3 py-2 rounded-lg hover:bg-blue-600 text-sm">
+                            Edit
+                          </button>
+                        </>
+                      )}
                       {activeTab === 'persiapan' && isFinishEligible(kapal) && (
                         <button
                           onClick={() => handleFinishClick(kapal)}
@@ -941,13 +963,28 @@ const KapalMasuk = () => {
                           Finish
                         </button>
                       )}
-                      <button onClick={() => handleDelete(kapal.id)} className="bg-red-500 text-white px-3 py-2 rounded-lg hover:bg-red-600 text-sm">
-                        Hapus
-                      </button>
+                      {activeTab === 'berlayar' && (
+                        <button
+                          onClick={() => handleBerlabuh(kapal)}
+                          className="bg-indigo-600 text-white px-3 py-2 rounded-lg hover:bg-indigo-700 text-sm"
+                          title="Selesaikan pelayaran dan pindahkan ke History"
+                        >
+                          Berlabuh
+                        </button>
+                      )}
+                      {activeTab !== 'history' && (
+                        <button onClick={() => handleDelete(kapal.id)} className="bg-red-500 text-white px-3 py-2 rounded-lg hover:bg-red-600 text-sm">
+                          Hapus
+                        </button>
+                      )}
                     </div>
                   </div>
 
-                  {getKebutuhanSection(kapal, true, (item) => handleChecklistToggle(item, kapal.kapalId ?? kapal.id))}
+                  {getKebutuhanSection(
+                    kapal,
+                    true,
+                    activeTab === 'history' ? undefined : (item) => handleChecklistToggle(item, kapal.kapalId ?? kapal.id)
+                  )}
                 </div>
               </div>
             ))}
@@ -1075,8 +1112,15 @@ const KapalMasuk = () => {
                   </div>
                 </div>
 
-                {getKebutuhanSection(selectedKapalMasuk, false, (item) => handleChecklistToggle(item, selectedKapalMasuk.kapalId ?? selectedKapalMasuk.id))}
+                {getKebutuhanSection(
+                  selectedKapalMasuk,
+                  false,
+                  activeTab === 'history'
+                    ? undefined
+                    : (item) => handleChecklistToggle(item, selectedKapalMasuk.kapalId ?? selectedKapalMasuk.id)
+                )}
 
+                {activeTab !== 'history' && (
                 <div className="flex flex-col sm:flex-row gap-3 pt-4 border-t">
                   <button
                     onClick={() => {
@@ -1094,6 +1138,7 @@ const KapalMasuk = () => {
                     + Tambah Kebutuhan
                   </button>
                 </div>
+                )}
               </div>
             </div>
           </div>

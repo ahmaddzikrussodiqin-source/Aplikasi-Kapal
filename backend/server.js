@@ -2059,32 +2059,34 @@ app.get('/api/status-kerja-kapal', authenticateToken, async (req, res) => {
 
 const historyRes = await getStatusKerjaPool().query(`
             SELECT * FROM status_kerja_schema.status_kerja_history
+            ORDER BY id DESC
         `);
 
         const historyRows = historyRes.rows.map(h => ({
             id: h.id,
-            kapalMasukId: h.kapalmasukid,
+            kapalMasukId: readStatusColumn(h, 'kapalMasukId') ?? readStatusColumn(h, 'statusKerjaId'),
+            kapalId: readStatusColumn(h, 'kapalId'),
             nama: h.nama || '',
-            namaPemilik: h.namapemilik || '',
-            tandaSelar: h.tandaselar || '',
-            tandaPengenal: h.tandapengenal || '',
-            beratKotor: h.beratkotor || '',
-            beratBersih: h.beratbersih || '',
-            merekMesin: h.merekmesin || '',
-            nomorSeriMesin: h.nomorserimesin || '',
-            jenisAlatTangkap: h.jenisalattangkap || '',
-            listPersiapan: parseJSONSafe(h.listpersiapan, []),
-            checklistStates: parseJSONSafe(h.checkliststates, {}),
-            checklistDates: parseJSONSafe(h.checklistdates, {}),
+            namaPemilik: readStatusColumn(h, 'namaPemilik') || '',
+            tandaSelar: readStatusColumn(h, 'tandaSelar') || '',
+            tandaPengenal: readStatusColumn(h, 'tandaPengenal') || '',
+            beratKotor: readStatusColumn(h, 'beratKotor') || '',
+            beratBersih: readStatusColumn(h, 'beratBersih') || '',
+            merekMesin: readStatusColumn(h, 'merekMesin') || '',
+            nomorSeriMesin: readStatusColumn(h, 'nomorSeriMesin') || '',
+            jenisAlatTangkap: readStatusColumn(h, 'jenisAlatTangkap') || '',
+            listPersiapan: parseListPersiapan(readStatusColumn(h, 'listPersiapan') || '[]'),
+            checklistStates: parseJSONSafe(readStatusColumn(h, 'checklistStates'), {}),
+            checklistDates: parseJSONSafe(readStatusColumn(h, 'checklistDates'), {}),
             statusKerja: 'menepi',
             status: 'menepi',
-            tanggalKeberangkatan: h.tanggalkeberangkatan || '',
-            totalHariPersiapan: h.totalharipersiapan || 0,
-            tanggalBerangkat: h.tanggalberangkat || '',
-            durasiSelesaiPersiapan: h.durasiselesaipersiapan || '',
-            tanggalKembali: h.tanggalkembali || '',
-            durasiBerlayar: h.durasiberlayar || '',
-            finishedAt: h.finishedat || '',
+            tanggalKeberangkatan: readStatusColumn(h, 'tanggalKeberangkatan') || readStatusColumn(h, 'tanggalKeberanglement') || '',
+            totalHariPersiapan: readStatusColumn(h, 'totalHariPersiapan') || 0,
+            tanggalBerangkat: readStatusColumn(h, 'tanggalBerangkat') || '',
+            tanggalKembali: readStatusColumn(h, 'tanggalKembali') || '',
+            durasiSelesaiPersiapan: readStatusColumn(h, 'durasiSelesaiPersiapan') || '',
+            durasiBerlayar: readStatusColumn(h, 'durasiBerlayar') || '',
+            finishedAt: readStatusColumn(h, 'finishedAt') || '',
         }));
 
         // Tentukan kategori per kapal
@@ -3245,6 +3247,152 @@ app.put('/api/kapal-masuk/by-kapal/:kapalId', authenticateToken, async (req, res
             success: false,
             message: 'Failed to update kapal masuk'
         });
+    }
+});
+
+app.post('/api/kapal-masuk/by-kapal/:kapalId/berlabuh', authenticateToken, async (req, res) => {
+    const kapalIdNum = Number(req.params.kapalId);
+    if (!Number.isFinite(kapalIdNum) || kapalIdNum <= 0) {
+        return res.status(400).json({ success: false, message: 'Invalid kapalId' });
+    }
+
+    const requestedDate = String(req.body?.tanggalBerlabuh || '');
+    const berlabuhDate = /^\d{4}-\d{2}-\d{2}$/.test(requestedDate)
+        ? requestedDate
+        : new Date().toISOString().slice(0, 10);
+
+    const client = await getStatusKerjaPool().connect();
+    try {
+        await client.query('BEGIN');
+
+        const readColumns = async (table) => {
+            const result = await client.query(`
+                SELECT column_name
+                FROM information_schema.columns
+                WHERE table_schema = 'status_kerja_schema' AND table_name = $1
+            `, [table]);
+            return new Map(result.rows.map(r => [String(r.column_name).toLowerCase(), String(r.column_name)]));
+        };
+        const quoteColumn = (columns, name) => {
+            const actual = columns.get(name.toLowerCase());
+            return actual ? `"${actual.replace(/"/g, '""')}"` : null;
+        };
+
+        const activeCols = await readColumns('status_kerja_kapal');
+        const historyCols = await readColumns('status_kerja_history');
+        const kapalIdCol = quoteColumn(activeCols, 'kapalId');
+        if (!kapalIdCol) throw new Error('status_kerja_kapal is missing kapalId');
+
+        const activeRes = await client.query(`
+            SELECT * FROM status_kerja_schema.status_kerja_kapal
+            WHERE ${kapalIdCol} = $1
+            ORDER BY id DESC
+            LIMIT 1
+            FOR UPDATE
+        `, [kapalIdNum]);
+
+        if (activeRes.rows.length === 0) {
+            await client.query('ROLLBACK');
+            return res.status(404).json({ success: false, message: 'Status Kerja Kapal not found for kapalId' });
+        }
+
+        const row = activeRes.rows[0];
+        const read = (name) => row[activeCols.get(name.toLowerCase())];
+        const currentStatus = String(read('status') || read('statusKerja') || '').toLowerCase().trim();
+        if (!currentStatus.includes('berlayar') && currentStatus !== 'sailing') {
+            await client.query('ROLLBACK');
+            return res.status(400).json({ success: false, message: 'Kapal tidak sedang berlayar' });
+        }
+
+        const text = (name, fallback = '') => read(name) ?? fallback;
+        const snapshot = {
+            statusKerjaId: row.id,
+            kapalMasukId: row.id,
+            kapalId: kapalIdNum,
+            nama: text('nama'),
+            namaPemilik: text('namaPemilik'),
+            tandaSelar: text('tandaSelar'),
+            tandaPengenal: text('tandaPengenal'),
+            beratKotor: text('beratKotor'),
+            beratBersih: text('beratBersih'),
+            merekMesin: text('merekMesin'),
+            nomorSeriMesin: text('nomorSeriMesin'),
+            jenisAlatTangkap: text('jenisAlatTangkap'),
+            tanggalInput: text('tanggalInput'),
+            statusKerja: 'menepi',
+            status: 'menepi',
+            tanggalKeberangkatan: text('tanggalKeberangkatan'),
+            tanggalKeberanglement: text('tanggalKeberangkatan'),
+            totalHariPersiapan: Number(read('totalHariPersiapan')) || 0,
+            tanggalBerangkat: text('tanggalBerangkat'),
+            durasiSelesaiPersiapan: text('durasiSelesaiPersiapan'),
+            tanggalKembali: berlabuhDate,
+            durasiBerlayar: text('durasiBerlayar'),
+            listPersiapan: text('listPersiapan', '[]'),
+            checklistStates: text('checklistStates', '{}'),
+            checklistDates: text('checklistDates', '{}'),
+            finishedAt: text('finishedAt'),
+        };
+
+        const historyColumns = [];
+        const historyValues = [];
+        for (const [logicalName, value] of Object.entries(snapshot)) {
+            const column = quoteColumn(historyCols, logicalName);
+            if (!column) continue;
+            historyColumns.push(column);
+            historyValues.push(value);
+        }
+
+        const historyInsert = await client.query(`
+            INSERT INTO status_kerja_schema.status_kerja_history (${historyColumns.join(', ')})
+            VALUES (${historyValues.map((_, i) => `$${i + 1}`).join(', ')})
+            RETURNING id
+        `, historyValues);
+
+        const resetValues = {
+            statusKerja: 'persiapan',
+            status: 'persiapan',
+            checklistStates: '{}',
+            checklistDates: '{}',
+            finishedChecklistStates: '{}',
+            newItemsAddedAfterFinish: '[]',
+            tanggalKeberangkatan: '',
+            tanggalBerangkat: '',
+            tanggalKembali: '',
+            perkiraanKeberangkatan: '',
+            durasiSelesaiPersiapan: '',
+            durasiBerlayar: '',
+            finishedAt: '',
+        };
+        const resetSets = [];
+        const resetParams = [];
+        for (const [logicalName, value] of Object.entries(resetValues)) {
+            const column = quoteColumn(activeCols, logicalName);
+            if (!column) continue;
+            resetParams.push(value);
+            resetSets.push(`${column} = $${resetParams.length}`);
+        }
+        resetParams.push(row.id);
+        await client.query(`
+            UPDATE status_kerja_schema.status_kerja_kapal
+            SET ${resetSets.join(', ')}
+            WHERE id = $${resetParams.length}
+        `, resetParams);
+
+        await client.query('COMMIT');
+        console.info('[Berlabuh] persisted', { kapalId: kapalIdNum, recordId: row.id, historyId: historyInsert.rows[0]?.id });
+
+        return res.json({
+            success: true,
+            message: 'Kapal berlabuh dan dipindahkan ke history',
+            data: { kapalId: kapalIdNum, historyId: historyInsert.rows[0]?.id },
+        });
+    } catch (error) {
+        await client.query('ROLLBACK').catch(() => {});
+        console.error('❌ Berlabuh error:', error);
+        return res.status(500).json({ success: false, message: 'Gagal memproses berlabuh' });
+    } finally {
+        client.release();
     }
 });
 
