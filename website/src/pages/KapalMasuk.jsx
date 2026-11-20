@@ -29,6 +29,7 @@ const KapalMasuk = () => {
   const [dokumenFiles, setDokumenFiles] = useState([]);
   const [dokumenSaving, setDokumenSaving] = useState(false);
   const [dokumenPersiapanList, setDokumenPersiapanList] = useState([]);
+  const [recentlyAddedItems, setRecentlyAddedItems] = useState({});
 
   const [newKebutuhan, setNewKebutuhan] = useState('');
   const [showKebutuhanModal, setShowKebutuhanModal] = useState(false);
@@ -169,8 +170,11 @@ const KapalMasuk = () => {
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3 max-h-96 overflow-y-auto">
           {itemsToShow.map((item) => {
-            const newlyAdded = Array.isArray(kapal.newItemsAddedAfterFinish)
-              && kapal.newItemsAddedAfterFinish.includes(item);
+            const kapalKey = String(kapal.kapalId ?? kapal.id);
+            const newlyAdded = (Array.isArray(kapal.newItemsAddedAfterFinish)
+              && kapal.newItemsAddedAfterFinish.includes(item))
+              || (Array.isArray(recentlyAddedItems[kapalKey])
+              && recentlyAddedItems[kapalKey].includes(item));
             return (
               <div
                 key={item}
@@ -530,6 +534,12 @@ const KapalMasuk = () => {
         setKapalMasukList(updateVessel);
         setPersiapanList(updateVessel);
         setBerlayarList(updateVessel);
+        setRecentlyAddedItems((prev) => ({
+          ...prev,
+          [kapalIdNum]: Array.isArray(prev[kapalIdNum])
+            ? (prev[kapalIdNum].includes(kebutuhanTrim) ? prev[kapalIdNum] : [...prev[kapalIdNum], kebutuhanTrim])
+            : [kebutuhanTrim],
+        }));
         await loadData();
         setShowKebutuhanModal(false);
         setSelectedKapalForKebutuhan(null);
@@ -583,6 +593,10 @@ const KapalMasuk = () => {
       setKapalMasukList(updateVessel);
       setPersiapanList(updateVessel);
       setBerlayarList(updateVessel);
+      setRecentlyAddedItems((prev) => ({
+        ...prev,
+        [kapalId]: (prev[kapalId] || []).filter((entry) => entry !== item),
+      }));
       await loadData();
     } catch (err) {
       alert('Gagal hapus persiapan: ' + (err.message || 'Unknown error'));
