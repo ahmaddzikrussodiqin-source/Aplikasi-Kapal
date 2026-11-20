@@ -109,7 +109,7 @@ const KapalMasuk = () => {
   };
 
   // NOTE: untuk menampilkan data railway fully, tidak dipotong slice.
-  const getKebutuhanSection = (kapal, isCompact = true, onToggle, isItemLocked) => {
+  const getKebutuhanSection = (kapal, isCompact = true, onToggle, isItemLocked, onDelete) => {
     const listPersiapan = kapal.listPersiapan || [];
     const isEmpty = listPersiapan.length === 0;
     const progress = getChecklistProgress(kapal);
@@ -168,26 +168,43 @@ const KapalMasuk = () => {
           />
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3 max-h-96 overflow-y-auto">
-          {itemsToShow.map((item) => (
-            <label
-              key={item}
-              className="flex items-start gap-3 p-3 bg-white rounded-lg border-l-4 border-yellow-400 hover:bg-yellow-100 cursor-pointer"
-            >
-              <input
-                type="checkbox"
-                checked={kapal.checklistStates?.[item] || false}
-                onChange={() => onToggle && !isItemLocked?.(item) && onToggle(item)}
-                disabled={!onToggle || !!isItemLocked?.(item)}
-                className="mt-1 w-5 h-5 text-emerald-600 rounded focus:ring-emerald-500 flex-shrink-0"
-              />
-              <div className="flex-1 min-w-0">
-                <p className="font-medium text-gray-900 truncate">{item}</p>
-                {kapal.checklistDates?.[item] && (
-                  <p className="text-xs text-gray-500">Selesai: {kapal.checklistDates[item]}</p>
+          {itemsToShow.map((item) => {
+            const newlyAdded = Array.isArray(kapal.newItemsAddedAfterFinish)
+              && kapal.newItemsAddedAfterFinish.includes(item);
+            return (
+              <div
+                key={item}
+                className="flex items-start gap-3 p-3 bg-white rounded-lg border-l-4 border-yellow-400 hover:bg-yellow-100"
+              >
+                <label className="flex items-start gap-3 flex-1 min-w-0 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={kapal.checklistStates?.[item] || false}
+                    onChange={() => onToggle && !isItemLocked?.(item) && onToggle(item)}
+                    disabled={!onToggle || !!isItemLocked?.(item)}
+                    className="mt-1 w-5 h-5 text-emerald-600 rounded focus:ring-emerald-500 flex-shrink-0"
+                  />
+                  <div className="flex-1 min-w-0">
+                    <p className="font-medium text-gray-900 truncate">{item}</p>
+                    {kapal.checklistDates?.[item] && (
+                      <p className="text-xs text-gray-500">Selesai: {kapal.checklistDates[item]}</p>
+                    )}
+                  </div>
+                </label>
+                {newlyAdded && onDelete && (
+                  <button
+                    type="button"
+                    onClick={() => onDelete(item)}
+                    className="flex-shrink-0 w-7 h-7 rounded-full text-red-600 hover:bg-red-100 border border-red-300 font-bold leading-none"
+                    title={`Hapus persiapan: ${item}`}
+                    aria-label={`Hapus persiapan: ${item}`}
+                  >
+                    ×
+                  </button>
                 )}
               </div>
-            </label>
-          ))}
+            );
+          })}
         </div>
       </div>
     );
@@ -476,11 +493,19 @@ const KapalMasuk = () => {
       const currentDates = kapalMasukRecord.checklistDates || {};
       const updatedChecklistDates = { ...currentDates, [kebutuhanTrim]: '' };
 
+      const currentNewItems = Array.isArray(kapalMasukRecord.newItemsAddedAfterFinish)
+        ? kapalMasukRecord.newItemsAddedAfterFinish
+        : [];
+      const updatedNewItems = currentNewItems.includes(kebutuhanTrim)
+        ? currentNewItems
+        : [...currentNewItems, kebutuhanTrim];
+
       const updatePayload = {
         ...kapalMasukRecord,
         addKebutuhan: kebutuhanTrim,
         checklistStates: updatedChecklistStates,
         checklistDates: updatedChecklistDates,
+        newItemsAddedAfterFinish: updatedNewItems,
       };
 
       console.log('[TambahKebutuhanConfirm] PUT kapal-masuk record id=', recordIdNum);
@@ -494,10 +519,11 @@ const KapalMasuk = () => {
         }
         const savedChecklistStates = response.data?.checklistStates || updatedChecklistStates;
         const savedChecklistDates = response.data?.checklistDates || updatedChecklistDates;
+        const savedNewItems = response.data?.newItemsAddedAfterFinish || updatedNewItems;
         const updateVessel = (list) =>
           list.map((kapal) =>
             Number(kapal.kapalId ?? kapal.id) === kapalIdNum
-              ? { ...kapal, listPersiapan: savedList, checklistStates: savedChecklistStates, checklistDates: savedChecklistDates }
+              ? { ...kapal, listPersiapan: savedList, checklistStates: savedChecklistStates, checklistDates: savedChecklistDates, newItemsAddedAfterFinish: savedNewItems }
               : kapal
           );
 
@@ -525,6 +551,43 @@ const KapalMasuk = () => {
     isValidKapalId,
     loadData,
   ]);
+
+  const handleDeleteKebutuhan = useCallback(async (kapal, item) => {
+    if (!window.confirm(`Hapus persiapan "${item}" yang baru dimasukkan?`)) return;
+
+    const kapalId = Number(kapal.kapalId ?? kapal.id);
+    if (!isValidKapalId(kapalId)) return;
+
+    try {
+      const response = await kapalMasukAPI.updateByKapalId(token, kapalId, {
+        removeKebutuhan: item,
+      });
+      if (!response.success) throw new Error(response.message || 'Gagal menghapus persiapan');
+
+      const savedList = response.data?.listPersiapan || [];
+      const savedStates = response.data?.checklistStates || {};
+      const savedDates = response.data?.checklistDates || {};
+      const savedNewItems = response.data?.newItemsAddedAfterFinish || [];
+      const updateVessel = (list) => list.map((entry) =>
+        Number(entry.kapalId ?? entry.id) === kapalId
+          ? {
+              ...entry,
+              listPersiapan: savedList,
+              checklistStates: savedStates,
+              checklistDates: savedDates,
+              newItemsAddedAfterFinish: savedNewItems,
+            }
+          : entry
+      );
+
+      setKapalMasukList(updateVessel);
+      setPersiapanList(updateVessel);
+      setBerlayarList(updateVessel);
+      await loadData();
+    } catch (err) {
+      alert('Gagal hapus persiapan: ' + (err.message || 'Unknown error'));
+    }
+  }, [token, isValidKapalId, loadData]);
 
   const toStatusText = (kapal) => (kapal?.status || kapal?.statusKerja || '');
 
@@ -1162,7 +1225,8 @@ const KapalMasuk = () => {
                     kapal,
                     true,
                     activeTab === 'history' ? undefined : (item) => requestChecklistToggle(item, kapal),
-                    (item) => isChecklistItemLocked(kapal, item)
+                    (item) => isChecklistItemLocked(kapal, item),
+                    activeTab === 'history' ? undefined : (item) => handleDeleteKebutuhan(kapal, item)
                   )}
                   {getDokumenPersiapanSection(kapal)}
                 </div>
@@ -1306,7 +1370,10 @@ const KapalMasuk = () => {
                   selectedKapalMasuk,
                   false,
                   activeTab === 'history' ? undefined : (item) => requestChecklistToggle(item, selectedKapalMasuk),
-                  (item) => isChecklistItemLocked(selectedKapalMasuk, item)
+                  (item) => isChecklistItemLocked(selectedKapalMasuk, item),
+                  activeTab === 'history'
+                    ? undefined
+                    : (item) => handleDeleteKebutuhan(selectedKapalMasuk, item)
                 )}
 
                 {activeTab !== 'history' && (

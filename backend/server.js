@@ -1,4 +1,5 @@
 const express = require('express');
+require('dotenv').config();
 const { Pool } = require('pg');
 const cors = require('cors');
 const bcrypt = require('bcryptjs');
@@ -265,6 +266,7 @@ async function initializeStatusKerjaDatabase() {
         
 // Add missing columns if they don't exist
         const columnsToCheck = [
+            'kapalId',
             'finishedChecklistStates', 
             'finishedAt',
             'newItemsAddedAfterFinish',
@@ -691,8 +693,14 @@ async function initializeDatabase() {
                 `, [col]);
 
                 if (columnCheck.rows.length === 0) {
-                    const defaultValue = col === 'newItemsAddedAfterFinish' ? "'[]'" : "'{}'";
-                    await getKapalMasukPool().query(`ALTER TABLE kapal_masuk_schema.kapal_masuk ADD COLUMN "${col}" TEXT NOT NULL DEFAULT ${defaultValue}`);
+                    const defaultValue = col === 'newItemsAddedAfterFinish' ? "'[]'" : 
+                                  col === 'finishedChecklistStates' ? "'{}'" : 
+                                  col === 'checklistStates' ? "'{}'" :
+                                  col === 'checklistDates' ? "'{}'" :
+                                  col === 'kapalId' ? "NULL" : "''";
+                    await getKapalMasukPool().query(
+                        `ALTER TABLE kapal_masuk_schema.kapal_masuk ADD COLUMN "${col}" TEXT NOT NULL DEFAULT ${defaultValue}`
+                    );
                     console.log(`✅ Added missing column ${col}`);
                 } else {
                     console.log(`Column ${col} already exists`);
@@ -1701,7 +1709,7 @@ app.put('/api/dokumen/:id', authenticateToken, async (req, res) => {
                 jenis TEXT NOT NULL,
                 nomor TEXT,
                 tanggalTerbit TEXT,
-                tanggalKadaluarsa TEXT,
+                "tanggalKadaluarsa" TEXT,
                 status TEXT NOT NULL DEFAULT 'aktif',
                 "filePath" TEXT,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -2649,6 +2657,7 @@ app.get('/api/kapal-masuk/:id', authenticateToken, async (req, res) => {
             perkiraanKeberangkatan: kapalMasuk.perkiraankeberangkatan || '',
             durasiSelesaiPersiapan: kapalMasuk.durasiselesaipersiapan || '',
             durasiBerlayar: kapalMasuk.durasiberlayar || '',
+            status: kapalMasuk.status || '',
             statusKerja: kapalMasuk.statuskerja || 'persiapan',
 checklistStates: safeParse(kapalMasuk.checkliststates || kapalMasuk.checklistStates || '{}', {}),
 checklistDates: safeParse(kapalMasuk.checklistdates || kapalMasuk.checklistDates || '{}', {}),
@@ -2749,16 +2758,26 @@ app.put('/api/kapal-masuk/:id', authenticateToken, async (req, res) => {
             tanggalBerangkat: kapalMasukData.tanggalBerangkat ?? '',
             tanggalKembali: kapalMasukData.tanggalKembali ?? '',
             listPersiapan: Array.isArray(kapalMasukData.listPersiapan) ? kapalMasukData.listPersiapan : (kapalMasukData.listPersiapan ? [String(kapalMasukData.listPersiapan)] : []),
-            isFinished: Boolean(kapalMasukData.isFinished),
+            isFinished: typeof kapalMasukData.isFinished === 'boolean'
+                ? kapalMasukData.isFinished
+                : Boolean(kapalMasukData.isfinished),
             perkiraanKeberangkatan: kapalMasukData.perkiraanKeberangkatan ?? '',
             durasiSelesaiPersiapan: kapalMasukData.durasiSelesaiPersiapan ?? '',
             durasiBerlayar: kapalMasukData.durasiBerlayar ?? '',
             status: kapalMasukData.status ?? '',
             statusKerja: kapalMasukData.statusKerja ?? kapalMasukData.status ?? 'persiapan',
-            checklistStates: kapalMasukData.checklistStates && typeof kapalMasukData.checklistStates === 'object' ? kapalMasukData.checklistStates : {},
-            checklistDates: kapalMasukData.checklistDates && typeof kapalMasukData.checklistDates === 'object' ? kapalMasukData.checklistDates : {},
-            newItemsAddedAfterFinish: Array.isArray(kapalMasukData.newItemsAddedAfterFinish) ? kapalMasukData.newItemsAddedAfterFinish : [],
-            finishedChecklistStates: kapalMasukData.finishedChecklistStates && typeof kapalMasukData.finishedChecklistStates === 'object' ? kapalMasukData.finishedChecklistStates : {},
+            checklistStates: kapalMasukData.checklistStates && typeof kapalMasukData.checklistStates === 'object'
+                ? kapalMasukData.checklistStates
+                : (kapalMasukData.checkliststates ? JSON.parse(kapalMasukData.checkliststates || '{}') : {}),
+            checklistDates: kapalMasukData.checklistDates && typeof kapalMasukData.checklistDates === 'object'
+                ? kapalMasukData.checklistDates
+                : (kapalMasukData.checklistdates ? JSON.parse(kapalMasukData.checklistdates || '{}') : {}),
+            newItemsAddedAfterFinish: Array.isArray(kapalMasukData.newItemsAddedAfterFinish)
+                ? kapalMasukData.newItemsAddedAfterFinish
+                : (kapalMasukData.newitemsaddedafterfinish ? JSON.parse(kapalMasukData.newitemsaddedafterfinish || '[]') : []),
+            finishedChecklistStates: kapalMasukData.finishedChecklistStates && typeof kapalMasukData.finishedChecklistStates === 'object'
+                ? kapalMasukData.finishedChecklistStates
+                : (kapalMasukData.finishedcheckliststates ? JSON.parse(kapalMasukData.finishedcheckliststates || '{}') : {}),
             finishedAt: kapalMasukData.finishedAt ?? ''
         };
 
@@ -2964,6 +2983,7 @@ app.put('/api/kapal-masuk/by-kapal/:kapalId', authenticateToken, async (req, res
             perkiraanKeberangkatan: kapalMasukData.perkiraanKeberangkatan ?? activeRow.perkiraankeberangkatan ?? '',
             durasiSelesaiPersiapan: kapalMasukData.durasiSelesaiPersiapan ?? activeRow.durasiselesaipersiapan ?? '',
             durasiBerlayar: kapalMasukData.durasiBerlayar ?? activeRow.durasiberlayar ?? '',
+            status: kapalMasukData.status ?? '',
             statusKerja: kapalMasukData.statusKerja ?? kapalMasukData.status ?? activeRow.statuskerja ?? 'persiapan',
             checklistStates: kapalMasukData.checklistStates && typeof kapalMasukData.checklistStates === 'object'
                 ? kapalMasukData.checklistStates
@@ -2990,6 +3010,7 @@ app.put('/api/kapal-masuk/by-kapal/:kapalId', authenticateToken, async (req, res
         };
 
         const addKebutuhan = String(kapalMasukData.addKebutuhan || '').trim();
+        const removeKebutuhan = String(kapalMasukData.removeKebutuhan || '').trim();
         if (addKebutuhan) {
             const readActiveField = (field) => activeRow?.[field] ?? activeRow?.[field.toLowerCase()];
             const currentList = parseListPersiapan(readActiveField('listPersiapan') || '[]');
@@ -3004,6 +3025,12 @@ app.put('/api/kapal-masuk/by-kapal/:kapalId', authenticateToken, async (req, res
                 ...parseJsonField(readActiveField('checklistDates'), {}),
                 [addKebutuhan]: '',
             };
+            const existingNewItems = Array.isArray(normalized.newItemsAddedAfterFinish)
+                ? normalized.newItemsAddedAfterFinish
+                : [];
+            normalized.newItemsAddedAfterFinish = existingNewItems.includes(addKebutuhan)
+                ? existingNewItems
+                : [...existingNewItems, addKebutuhan];
             console.info('[Kebutuhan] update request', {
                 kapalId: kapalIdNum,
                 recordId: activeRow.id,
@@ -3056,13 +3083,15 @@ app.put('/api/kapal-masuk/by-kapal/:kapalId', authenticateToken, async (req, res
                 UPDATE status_kerja_schema.status_kerja_kapal
                 SET ${listPersiapanCol2} = $1,
                     ${checklistStatesCol2} = $2,
-                    ${checklistDatesCol2} = $3
-                WHERE id = $4
+                    ${checklistDatesCol2} = $3,
+                    ${newItemsCol2} = $4
+                WHERE id = $5
                 RETURNING *
             `, [
                 JSON.stringify(normalized.listPersiapan),
                 JSON.stringify(normalized.checklistStates),
                 JSON.stringify(normalized.checklistDates),
+                JSON.stringify(normalized.newItemsAddedAfterFinish || []),
                 activeRow.id,
             ]);
 
@@ -3095,6 +3124,56 @@ app.put('/api/kapal-masuk/by-kapal/:kapalId', authenticateToken, async (req, res
                     listPersiapan: savedList,
                     checklistStates: parseJsonField(readSavedField('checklistStates'), {}),
                     checklistDates: parseJsonField(readSavedField('checklistDates'), {}),
+                    newItemsAddedAfterFinish: safeParse(readSavedField('newItemsAddedAfterFinish') || '[]', []),
+                },
+            });
+        }
+
+        if (removeKebutuhan) {
+            const readActiveField = (field) => activeRow?.[field] ?? activeRow?.[field.toLowerCase()];
+            const currentList = parseListPersiapan(readActiveField('listPersiapan') || '[]');
+            const currentStates = parseJsonField(readActiveField('checklistStates'), {});
+            const currentDates = parseJsonField(readActiveField('checklistDates'), {});
+            const currentNewItems = parseJsonField(readActiveField('newItemsAddedAfterFinish'), []);
+
+            const savedList = currentList.filter((item) => item !== removeKebutuhan);
+            const savedStates = { ...currentStates };
+            const savedDates = { ...currentDates };
+            delete savedStates[removeKebutuhan];
+            delete savedDates[removeKebutuhan];
+            const savedNewItems = (Array.isArray(currentNewItems) ? currentNewItems : [])
+                .filter((item) => item !== removeKebutuhan);
+
+            const needsUpdate = await getStatusKerjaPool().query(`
+                UPDATE status_kerja_schema.status_kerja_kapal
+                SET ${listPersiapanCol2} = $1,
+                    ${checklistStatesCol2} = $2,
+                    ${checklistDatesCol2} = $3,
+                    ${newItemsCol2} = $4
+                WHERE id = $5
+                RETURNING *
+            `, [
+                JSON.stringify(savedList),
+                JSON.stringify(savedStates),
+                JSON.stringify(savedDates),
+                JSON.stringify(savedNewItems),
+                activeRow.id,
+            ]);
+
+            if (needsUpdate.rowCount === 0) {
+                return res.status(404).json({ success: false, message: 'Status Kerja Kapal not found' });
+            }
+
+            return res.json({
+                success: true,
+                message: 'Persiapan berhasil dihapus',
+                data: {
+                    id: needsUpdate.rows[0].id,
+                    kapalId: kapalIdNum,
+                    listPersiapan: savedList,
+                    checklistStates: savedStates,
+                    checklistDates: savedDates,
+                    newItemsAddedAfterFinish: savedNewItems,
                 },
             });
         }
