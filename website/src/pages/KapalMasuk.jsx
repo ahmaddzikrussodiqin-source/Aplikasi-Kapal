@@ -411,8 +411,13 @@ const KapalMasuk = () => {
   }, [showKebutuhanModal, selectedKapalForKebutuhan, isValidKapalId]);
 
   const handleTambahKebutuhanConfirm = useCallback(async () => {
-    const kebutuhanTrim = newKebutuhan.trim();
-    if (!kebutuhanTrim) return;
+    const kebutuhanList = [...new Set(
+      newKebutuhan
+        .split(/\r?\n/)
+        .map((item) => item.trim())
+        .filter(Boolean)
+    )];
+    if (kebutuhanList.length === 0) return;
     if (!selectedKapalForKebutuhan) return;
 
     // kapalId dari modal = id kapal_info (bukan id record kapal_masuk)
@@ -487,21 +492,21 @@ const KapalMasuk = () => {
 
       const currentStates = kapalMasukRecord.checklistStates || {};
 
-      const updatedChecklistStates = { ...currentStates, [kebutuhanTrim]: false };
-
-      const currentDates = kapalMasukRecord.checklistDates || {};
-      const updatedChecklistDates = { ...currentDates, [kebutuhanTrim]: '' };
+      const updatedChecklistStates = { ...currentStates };
+      const updatedChecklistDates = { ...kapalMasukRecord.checklistDates || {} };
+      kebutuhanList.forEach((item) => {
+        updatedChecklistStates[item] = false;
+        updatedChecklistDates[item] = '';
+      });
 
       const currentNewItems = Array.isArray(kapalMasukRecord.newItemsAddedAfterFinish)
         ? kapalMasukRecord.newItemsAddedAfterFinish
         : [];
-      const updatedNewItems = currentNewItems.includes(kebutuhanTrim)
-        ? currentNewItems
-        : [...currentNewItems, kebutuhanTrim];
+      const updatedNewItems = [...new Set([...currentNewItems, ...kebutuhanList])];
 
       const updatePayload = {
         ...kapalMasukRecord,
-        addKebutuhan: kebutuhanTrim,
+        addKebutuhan: kebutuhanList,
         checklistStates: updatedChecklistStates,
         checklistDates: updatedChecklistDates,
         newItemsAddedAfterFinish: updatedNewItems,
@@ -513,7 +518,7 @@ const KapalMasuk = () => {
 
       if (response.success) {
         const savedList = response.data?.listPersiapan;
-        if (!Array.isArray(savedList) || !savedList.includes(kebutuhanTrim)) {
+        if (!Array.isArray(savedList) || !kebutuhanList.every((item) => savedList.includes(item))) {
           throw new Error('Kebutuhan belum terkonfirmasi tersimpan. Muat ulang data dan coba lagi.');
         }
         const savedChecklistStates = response.data?.checklistStates || updatedChecklistStates;
@@ -531,9 +536,10 @@ const KapalMasuk = () => {
         setBerlayarList(updateVessel);
         setRecentlyAddedItems((prev) => ({
           ...prev,
-          [kapalIdNum]: Array.isArray(prev[kapalIdNum])
-            ? (prev[kapalIdNum].includes(kebutuhanTrim) ? prev[kapalIdNum] : [...prev[kapalIdNum], kebutuhanTrim])
-            : [kebutuhanTrim],
+          [kapalIdNum]: [...new Set([
+            ...(Array.isArray(prev[kapalIdNum]) ? prev[kapalIdNum] : []),
+            ...kebutuhanList,
+          ])],
         }));
         await loadData();
         setShowKebutuhanModal(false);
@@ -1413,12 +1419,12 @@ const KapalMasuk = () => {
           <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
             <div className="bg-white rounded-lg shadow-2xl w-full max-w-sm p-6">
               <h2 className="text-xl font-bold mb-4">Tambah Kebutuhan</h2>
-              <input
-                type="text"
+              <textarea
                 value={newKebutuhan}
                 onChange={(e) => setNewKebutuhan(e.target.value)}
-                placeholder="Kebutuhan baru..."
-                className="w-full p-2 border rounded mb-4"
+                placeholder={'Persiapan 1\nPersiapan 2\nPersiapan 3'}
+                rows={5}
+                className="w-full p-2 border rounded mb-4 resize-y"
               />
               <div className="flex gap-2">
                 {(() => {

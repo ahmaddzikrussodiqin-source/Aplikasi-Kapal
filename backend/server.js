@@ -3009,32 +3009,39 @@ app.put('/api/kapal-masuk/by-kapal/:kapalId', authenticateToken, async (req, res
             }
         };
 
-        const addKebutuhan = String(kapalMasukData.addKebutuhan || '').trim();
+        const rawAddKebutuhan = kapalMasukData.addKebutuhan;
+        const addKebutuhanItems = [...new Set(
+            (Array.isArray(rawAddKebutuhan)
+                ? rawAddKebutuhan
+                : String(rawAddKebutuhan || '').split(/\r?\n/))
+                .map((item) => String(item || '').trim())
+                .filter(Boolean)
+        )];
+        const addKebutuhan = addKebutuhanItems.length === 1 ? addKebutuhanItems[0] : '';
         const removeKebutuhan = String(kapalMasukData.removeKebutuhan || '').trim();
-        if (addKebutuhan) {
+        if (addKebutuhanItems.length > 0) {
             const readActiveField = (field) => activeRow?.[field] ?? activeRow?.[field.toLowerCase()];
             const currentList = parseListPersiapan(readActiveField('listPersiapan') || '[]');
-            normalized.listPersiapan = currentList.includes(addKebutuhan)
-                ? currentList
-                : [...currentList, addKebutuhan];
-            normalized.checklistStates = {
-                ...parseJsonField(readActiveField('checklistStates'), {}),
-                [addKebutuhan]: false,
-            };
-            normalized.checklistDates = {
-                ...parseJsonField(readActiveField('checklistDates'), {}),
-                [addKebutuhan]: '',
-            };
+            normalized.listPersiapan = [...new Set([...currentList, ...addKebutuhanItems])];
+
+            const currentStates = parseJsonField(readActiveField('checklistStates'), {});
+            const currentDates = parseJsonField(readActiveField('checklistDates'), {});
+            normalized.checklistStates = { ...currentStates };
+            normalized.checklistDates = { ...currentDates };
+            addKebutuhanItems.forEach((item) => {
+                normalized.checklistStates[item] = false;
+                normalized.checklistDates[item] = '';
+            });
+
             const existingNewItems = Array.isArray(normalized.newItemsAddedAfterFinish)
                 ? normalized.newItemsAddedAfterFinish
                 : [];
-            normalized.newItemsAddedAfterFinish = existingNewItems.includes(addKebutuhan)
-                ? existingNewItems
-                : [...existingNewItems, addKebutuhan];
+            normalized.newItemsAddedAfterFinish = [...new Set([...existingNewItems, ...addKebutuhanItems])];
             console.info('[Kebutuhan] update request', {
                 kapalId: kapalIdNum,
                 recordId: activeRow.id,
                 listCount: normalized.listPersiapan.length,
+                itemsCount: addKebutuhanItems.length,
             });
         }
 
@@ -3078,7 +3085,7 @@ app.put('/api/kapal-masuk/by-kapal/:kapalId', authenticateToken, async (req, res
         const finishedChecklistCol2 = colSql('finishedcheckliststates') || colSql('finishedChecklistStates');
         const finishedAtCol2 = colSql('finishedat') || colSql('finishedAt');
 
-        if (addKebutuhan) {
+        if (addKebutuhanItems.length > 0) {
             const needsUpdate = await getStatusKerjaPool().query(`
                 UPDATE status_kerja_schema.status_kerja_kapal
                 SET ${listPersiapanCol2} = $1,
@@ -3112,7 +3119,7 @@ app.put('/api/kapal-masuk/by-kapal/:kapalId', authenticateToken, async (req, res
                 kapalId: kapalIdNum,
                 recordId: activeRow.id,
                 listCount: savedList.length,
-                itemPresent: savedList.includes(addKebutuhan),
+                itemPresent: addKebutuhanItems.every((item) => savedList.includes(item)),
             });
 
             return res.json({
