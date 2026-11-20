@@ -3131,7 +3131,10 @@ app.put('/api/kapal-masuk/by-kapal/:kapalId', authenticateToken, async (req, res
                     listPersiapan: savedList,
                     checklistStates: parseJsonField(readSavedField('checklistStates'), {}),
                     checklistDates: parseJsonField(readSavedField('checklistDates'), {}),
-                    newItemsAddedAfterFinish: safeParse(readSavedField('newItemsAddedAfterFinish') || '[]', []),
+                    newItemsAddedAfterFinish: (() => {
+                        const parsed = parseJsonField(readSavedField('newItemsAddedAfterFinish') || '[]', []);
+                        return Array.isArray(parsed) ? parsed : [];
+                    })(),
                 },
             });
         }
@@ -3355,7 +3358,8 @@ app.put('/api/kapal-masuk/by-kapal/:kapalId', authenticateToken, async (req, res
         console.error('❌ Update by kapalId error:', error);
         return res.status(500).json({
             success: false,
-            message: 'Failed to update kapal masuk'
+            message: 'Failed to update kapal masuk',
+            details: process.env.NODE_ENV === 'development' ? String(error.message || error) : undefined
         });
     }
 });
