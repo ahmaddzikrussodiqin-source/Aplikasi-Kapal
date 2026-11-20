@@ -170,11 +170,6 @@ const KapalMasuk = () => {
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3 max-h-96 overflow-y-auto">
           {itemsToShow.map((item) => {
-            const kapalKey = String(kapal.kapalId ?? kapal.id);
-            const newlyAdded = (Array.isArray(kapal.newItemsAddedAfterFinish)
-              && kapal.newItemsAddedAfterFinish.includes(item))
-              || (Array.isArray(recentlyAddedItems[kapalKey])
-              && recentlyAddedItems[kapalKey].includes(item));
             return (
               <div
                 key={item}
@@ -195,7 +190,7 @@ const KapalMasuk = () => {
                     )}
                   </div>
                 </label>
-                {newlyAdded && onDelete && (
+                {onDelete && (
                   <button
                     type="button"
                     onClick={() => onDelete(item)}
@@ -1240,7 +1235,7 @@ const KapalMasuk = () => {
                     true,
                     activeTab === 'history' ? undefined : (item) => requestChecklistToggle(item, kapal),
                     (item) => isChecklistItemLocked(kapal, item),
-                    activeTab === 'history' ? undefined : (item) => handleDeleteKebutuhan(kapal, item)
+                    activeTab === 'persiapan' ? (item) => handleDeleteKebutuhan(kapal, item) : undefined
                   )}
                   {getDokumenPersiapanSection(kapal)}
                 </div>
@@ -1385,9 +1380,9 @@ const KapalMasuk = () => {
                   false,
                   activeTab === 'history' ? undefined : (item) => requestChecklistToggle(item, selectedKapalMasuk),
                   (item) => isChecklistItemLocked(selectedKapalMasuk, item),
-                  activeTab === 'history'
-                    ? undefined
-                    : (item) => handleDeleteKebutuhan(selectedKapalMasuk, item)
+                  activeTab === 'persiapan'
+                    ? (item) => handleDeleteKebutuhan(selectedKapalMasuk, item)
+                    : undefined
                 )}
 
                 {activeTab !== 'history' && (
